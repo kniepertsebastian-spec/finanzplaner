@@ -2,23 +2,45 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  transactions Transaction[]
-  categories   Category[]
-  budgets      Budget[]
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  passwordHash        String
+  totpSecretEncrypted String?
+  totpEnabled         Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  transactions   Transaction[]
+  categories     Category[]
+  budgets        Budget[]
+  authenticators Authenticator[]
+}
+
+model Authenticator {
+  id                   String    @id @default(uuid())
+  credentialId         String    @unique
+  publicKey            Bytes
+  counter              BigInt    @default(0)
+  transports           String[]
+  credentialDeviceType String?
+  credentialBackedUp   Boolean   @default(false)
+  deviceName           String?
+  createdAt            DateTime  @default(now())
+  lastUsedAt           DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Transaction {
