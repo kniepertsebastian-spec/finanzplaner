@@ -29,6 +29,8 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql://postgres_user:secure_password_123@postgres:5432/finance_db?schema=public
       REDIS_URL: redis://redis:6379
@@ -46,6 +48,44 @@ services:
     depends_on:
       - backend
 
+  bookstack_db:
+    image: lscr.io/linuxserver/mariadb:latest
+    container_name: bookstack_db
+    restart: always
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: Europe/Berlin
+      MYSQL_ROOT_PASSWORD: bookstack_root_password_123
+      MYSQL_DATABASE: bookstackapp
+      MYSQL_USER: bookstack_user
+      MYSQL_PASSWORD: bookstack_password_123
+    volumes:
+      - bookstack_dbdata:/config
+
+  bookstack:
+    image: lscr.io/linuxserver/bookstack:latest
+    container_name: bookstack
+    restart: always
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: Europe/Berlin
+      APP_URL: http://localhost:6875
+      DB_HOST: bookstack_db
+      DB_PORT: 3306
+      DB_USER: bookstack_user
+      DB_PASS: bookstack_password_123
+      DB_DATABASE: bookstackapp
+    ports:
+      - "6875:80"
+    volumes:
+      - bookstack_data:/config
+    depends_on:
+      - bookstack_db
+
 volumes:
   pgdata:
   redisdata:
+  bookstack_dbdata:
+  bookstack_data:
