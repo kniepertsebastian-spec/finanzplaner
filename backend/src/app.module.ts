@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { AppController } from './app.controller';
@@ -10,11 +11,13 @@ import { UsersModule } from './users/users.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { CategoriesModule } from './categories/categories.module';
 import { BudgetsModule } from './budgets/budgets.module';
+import { RecurringTransactionsModule } from './recurring-transactions/recurring-transactions.module';
 
 @Module({
   imports: [
     PrismaModule,
     RedisModule,
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60000, limit: 30 }],
       storage: new ThrottlerStorageRedisService(process.env.REDIS_URL),
@@ -24,6 +27,7 @@ import { BudgetsModule } from './budgets/budgets.module';
     TransactionsModule,
     CategoriesModule,
     BudgetsModule,
+    RecurringTransactionsModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

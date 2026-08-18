@@ -19,10 +19,12 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  transactions   Transaction[]
-  categories     Category[]
-  budgets        Budget[]
-  authenticators Authenticator[]
+  transactions          Transaction[]
+  categories            Category[]
+  budgets               Budget[]
+  authenticators        Authenticator[]
+  categoryRules         CategoryRule[]
+  recurringTransactions RecurringTransaction[]
 }
 
 model Authenticator {
@@ -63,18 +65,56 @@ model Category {
   userId String
   user   User   @relation(fields: [userId], references: [id])
   
-  transactions Transaction[]
-  budgets      Budget[]
+  transactions          Transaction[]
+  budgets               Budget[]
+  categoryRules         CategoryRule[]
+  recurringTransactions RecurringTransaction[]
 }
 
 model Budget {
   id     String @id @default(uuid())
   amount Int    // Stored in Cents
   month  DateTime
-  
+
   userId     String
   user       User     @relation(fields: [userId], references: [id])
-  
+
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
+}
+
+model CategoryRule {
+  id         String   @id @default(uuid())
+  matchText  String   // normalized (trim+lowercase) transaction description
+  useCount   Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, matchText])
+  @@index([userId])
+}
+
+model RecurringTransaction {
+  id          String    @id @default(uuid())
+  amount      Int       // Stored in Cents; positive = income, negative = expense
+  description String
+  dayOfMonth  Int       // 1-31, day of month to post the transaction
+  active      Boolean   @default(true)
+  lastRunAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@index([userId])
 }

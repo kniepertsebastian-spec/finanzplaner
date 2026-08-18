@@ -48,6 +48,11 @@ export class AuthService {
     return { id: user.id, email: user.email };
   }
 
+  async me(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    return { id: user.id, email: user.email };
+  }
+
   logout(res: Response) {
     res.clearCookie(AUTH_COOKIE_NAME);
     return { success: true };
