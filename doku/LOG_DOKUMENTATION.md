@@ -2,6 +2,30 @@
 
 ---
 
+### 📋 Schritt-Log: Phase 6 (Einstellungs- & Sicherheits-UI) implementiert
+**Zeitstempel:** `2026-08-21 03:42`
+
+#### 1. Was wurde getan?
+*   **Backend-Lücke zuerst geschlossen:** Die Roadmap verlangte "Anzeige aktiver Authentikatoren" und implizit eine Möglichkeit, Passkeys/TOTP wieder zu entfernen — dafür gab es aus Phase 2 noch keine Endpunkte (nur `register-*`/`login-*` bei WebAuthn, nur `enroll`/`verify-enable` bei TOTP). Neu ergänzt: `GET /auth/webauthn/authenticators` (Liste ohne `publicKey`/`credentialId`, nur `id`/`deviceName`/`credentialDeviceType`/`transports`/`createdAt`/`lastUsedAt`), `DELETE /auth/webauthn/authenticators/:id` (Eigentümer-Check via `findFirst({id, userId})`), `POST /auth/totp/disable` (verlangt einen aktuell gültigen TOTP-Code, nicht nur die Session-Cookie — siehe Punkt 2). `WebauthnRegistrationVerifyDto` um ein optionales `deviceName`-Feld erweitert (bleibt ein Typalias statt einer Klasse, damit `ValidationPipe`s `whitelist` es weiterhin durchreicht). `GET /auth/me` und `POST /auth/login` liefern jetzt zusätzlich `totpEnabled`, damit das Frontend ohne Zusatzaufruf weiß, ob TOTP schon aktiv ist.
+*   **Frontend – `/settings`-Route** (`SettingsPage.tsx`, neu, im Nav als "Einstellungen"): komponiert drei neue Unterkomponenten unter `components/settings/`: `PasskeyManager.tsx` (Registrierung via `startRegistration()` inkl. optionalem Gerätenamen-Feld, Liste mit Lösch-Button), `TotpEnrollment.tsx` (drei Zustände: deaktiviert → QR-Code+Code-Eingabe → aktiviert mit Deaktivieren-Formular), `RecurringTransactionsPanel.tsx` (Formular + Tabelle für `RecurringTransaction`, Ausgabe/Einnahme-Umschalter im exakten visuellen Stil von `QuickAddPage.tsx`, Pausieren via `PATCH {active}`, kein eigener Toggle-Endpunkt nötig, da das Backend das schon konnte). Neue API-Module `lib/api/recurringTransactions.ts` (nach dem `budgets.ts`-Muster) sowie Ergänzungen in `lib/api/auth.ts`/`lib/api/types.ts`. `AuthContext` um `refreshUser()` erweitert, damit die Settings-Seite `user.totpEnabled` nach Enroll/Disable ohne vollen Reload aktualisieren kann.
+*   **Bug beim End-to-End-Test gefunden und behoben, unabhängig von dieser Phase:** `frontend/nginx.conf` hatte **keine** `/api`-Proxy-Regel zum Backend-Container — jeder API-Call (nicht nur die neuen) lief ins Leere und bekam von nginx' SPA-Fallback (`try_files … /index.html`) ein `200 text/html` statt einer echten Antwort zurück, was `AuthContext` fälschlich als "eingeloggt" interpretierte (jede Fetch-Antwort mit Status 200 wurde als Erfolg gewertet, unabhängig vom Inhalt). Vermutlich entstanden, als `frontend/.env`s `VITE_API_URL` irgendwann von `http://localhost:3000` (siehe Phase-4-Log) auf `/api` umgestellt wurde, ohne die nginx-Seite der Docker-Prod-Config nachzuziehen. Behoben durch einen neuen `location /api/ { proxy_pass http://backend:3000/; … }`-Block.
+*   Verifiziert: `npx tsc --noEmit` (Backend + Frontend, je 0 Fehler). `docker compose up -d --build backend frontend` (mit Nutzerzustimmung, da laufende Prod-artige Container betroffen). End-to-end via Playwright gegen die echten Container (Login mit Seed-Nutzer): `RecurringTransactionsPanel` komplett (Anlegen mit negativem Betrag bei "Ausgabe", Pausieren, Löschen, Tabelle aktualisiert sich), TOTP komplett über die UI (Enroll → echten TOTP-Code aus dem zurückgegebenen Secret berechnet, per Hand nachgebautem RFC-6238 in Node, da kein `pyotp`/npm-TOTP-Paket zur Hand — Bestätigen → "aktiviert"-Zustand → Deaktivieren mit frischem Code → zurück zu "deaktivieren"-Zustand), Passkey-Liste/Löschen (Zeile direkt per SQL eingefügt statt einer echten Registrierungs-Zeremonie, siehe Punkt 3). Kein horizontaler Overflow, keine unerwarteten Konsolenfehler.
+
+#### 2. Warum wurde es getan?
+*   Nutzer bestätigte den neuen Roadmap-Text (Phasen 6–8) und bat direkt im Anschluss um Fortsetzung mit Schritt 6.
+*   `POST /auth/totp/disable` verlangt bewusst einen frischen Code statt nur der Session-Cookie zu vertrauen — Deaktivieren von 2FA ist sicherheitsrelevanter als das Hinzufügen eines weiteren Passkeys (dafür reicht die Session, da Passwort-Login als Fallback ohnehin immer bestehen bleibt und daher kein Lockout-Risiko besteht).
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **`WEBAUTHN_ORIGIN` in `backend/.env` zeigt noch auf eine alte Cloudflare-Tunnel-URL** (`https://unknown-headset-knows-contributed.trycloudflare.com`), nicht auf die aktuell für Tests genutzte `http://localhost`. `@simplewebauthn/server` lehnt jede Registrierungs-Antwort mit abweichendem Origin aus Sicherheitsgründen zu Recht ab — das ist kein Code-Bug, sondern ein veralteter Konfigurationswert. **Absichtlich nicht selbst geändert**, da unklar ist, über welche URL die App aktuell tatsächlich erreicht wird (Tunnel? LAN? künftige Domain aus Phase 8?) — das ist eine Entscheidung für den Nutzer. Deshalb wurde die vollständige Registrierungs-Zeremonie nur soweit möglich getestet (Optionen abrufen, dann Abbruch mit dem erwarteten Origin-Fehler); Listen-/Lösch-UI wurde stattdessen gegen eine direkt per SQL eingefügte Test-Zeile verifiziert.
+*   Backend- und Frontend-Container wurden neu gebaut und neu gestartet (`docker compose up -d --build backend frontend`), da beide ohne Bind-Mount laufen. Datenbank-Inhalt (Nutzer, Kategorien) blieb unangetastet; alle während des Tests angelegten Datensätze (Recurring-Transaction, TOTP-Status, Test-Authenticator-Zeile) wurden am Ende wieder entfernt.
+*   `AuthenticationResponseJSON`/`RegistrationResponseJSON`-Typen kommen jetzt zusätzlich aus `@simplewebauthn/browser` in `lib/api/auth.ts` — keine neue Dependency, das Paket war bereits vorhanden.
+*   Keine neue Prisma-Migration nötig — `Authenticator.deviceName` existierte im Schema bereits (wurde in Phase 2 angelegt, aber nie beschrieben).
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen
+
+---
+
 ### 📋 Schritt-Log: Phase 5 (PWA-Feinschliff & Offline-Modus) implementiert
 **Zeitstempel:** `2026-08-17 18:00`
 

@@ -5,6 +5,7 @@ import { BudgetsPage } from './pages/BudgetsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { QuickAddPage } from './pages/QuickAddPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 export function App() {
   return (
@@ -15,6 +16,7 @@ export function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/budgets" element={<BudgetsPage />} />
           <Route path="/add" element={<QuickAddPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>
     </Routes>

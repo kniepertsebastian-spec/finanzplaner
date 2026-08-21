@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import type Redis from 'ioredis';
 import {
@@ -86,11 +92,39 @@ export class WebauthnService {
         transports: credential.transports ?? [],
         credentialDeviceType,
         credentialBackedUp,
+        deviceName: response.deviceName?.trim() || null,
         userId,
       },
     });
     await this.redis.del(registrationChallengeKey(userId));
     return { verified: true };
+  }
+
+  listAuthenticators(userId: string) {
+    return this.prisma.authenticator.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        deviceName: true,
+        credentialDeviceType: true,
+        transports: true,
+        createdAt: true,
+        lastUsedAt: true,
+      },
+    });
+  }
+
+  async deleteAuthenticator(userId: string, id: string) {
+    // Password login always remains available (User.passwordHash is required), so there's no
+    // lockout risk in letting a user delete their last passkey — unlike disabling TOTP, this
+    // doesn't need a fresh credential check to confirm.
+    const authenticator = await this.prisma.authenticator.findFirst({ where: { id, userId } });
+    if (!authenticator) {
+      throw new NotFoundException('Passkey not found');
+    }
+    await this.prisma.authenticator.delete({ where: { id } });
+    return { success: true };
   }
 
   async generateLoginOptions() {

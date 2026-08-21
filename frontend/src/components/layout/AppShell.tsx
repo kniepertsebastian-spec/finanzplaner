@@ -1,4 +1,4 @@
-import { CloudOff, LayoutDashboard, LogOut, Moon, Plus, Sun, Wallet } from 'lucide-react';
+import { CloudOff, LayoutDashboard, LogOut, Moon, Plus, Settings, Sun, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import clsx from 'clsx';
@@ -58,6 +58,10 @@ export function AppShell() {
             <NavLink to="/add" className={navLinkClass}>
               <Plus size={16} />
               Hinzufügen
+            </NavLink>
+            <NavLink to="/settings" className={navLinkClass}>
+              <Settings size={16} />
+              Einstellungen
             </NavLink>
           </nav>
           <div className="flex items-center gap-2">

@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { TotpDisableDto } from './dto/totp-disable.dto';
 import { TotpVerifyDto } from './dto/totp-verify.dto';
 import { TotpService } from './totp.service';
 
@@ -15,5 +16,10 @@ export class TotpController {
   @Post('verify-enable')
   verifyEnable(@CurrentUser() user: { id: string }, @Body() dto: TotpVerifyDto) {
     return this.totpService.verifyAndEnable(user.id, dto.code);
+  }
+
+  @Post('disable')
+  disable(@CurrentUser() user: { id: string }, @Body() dto: TotpDisableDto) {
+    return this.totpService.disable(user.id, dto.code);
   }
 }

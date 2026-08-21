@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
@@ -19,6 +19,16 @@ export class WebauthnController {
   @Post('register-verify')
   registerVerify(@CurrentUser() user: { id: string }, @Body() body: WebauthnRegistrationVerifyDto) {
     return this.webauthnService.verifyRegistration(user.id, body);
+  }
+
+  @Get('authenticators')
+  listAuthenticators(@CurrentUser() user: { id: string }) {
+    return this.webauthnService.listAuthenticators(user.id);
+  }
+
+  @Delete('authenticators/:id')
+  deleteAuthenticator(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.webauthnService.deleteAuthenticator(user.id, id);
   }
 
   @Public()

@@ -4,7 +4,7 @@ import * as QRCode from 'qrcode';
 import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS_CLIENT } from '../common/redis/redis.module';
-import { encryptSecret } from './crypto.util';
+import { decryptSecret, encryptSecret } from './crypto.util';
 
 const ENROLL_TTL_SECONDS = 600;
 const TOTP_EPOCH_TOLERANCE_SECONDS = 30;
@@ -48,6 +48,32 @@ export class TotpService {
       data: { totpSecretEncrypted: encryptSecret(pendingSecret), totpEnabled: true },
     });
     await this.redis.del(enrollKey(userId));
+    return { success: true };
+  }
+
+  // Requires a currently-valid code rather than just the session cookie — disabling 2FA is
+  // security-sensitive enough to warrant proving live possession of the authenticator, unlike
+  // deleting a passkey (see the comment in webauthn.service.ts's deleteAuthenticator).
+  async disable(userId: string, code: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (!user.totpEnabled || !user.totpSecretEncrypted) {
+      throw new BadRequestException('TOTP is not enabled');
+    }
+
+    const secret = decryptSecret(user.totpSecretEncrypted);
+    const result = await verifyTotp({
+      secret,
+      token: code,
+      epochTolerance: TOTP_EPOCH_TOLERANCE_SECONDS,
+    });
+    if (!result.valid) {
+      throw new UnauthorizedException('Invalid TOTP code');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { totpSecretEncrypted: null, totpEnabled: false },
+    });
     return { success: true };
   }
 }
