@@ -56,7 +56,10 @@ export class RecurringTransactionsService {
     if (dto.categoryId) {
       await this.assertCategoryOwnership(userId, dto.categoryId);
     }
-    return this.prisma.recurringTransaction.update({ where: { id }, data: dto });
+    return this.prisma.recurringTransaction.update({
+      where: { id },
+      data: { ...dto, nextDueDate: dto.nextDueDate ? new Date(dto.nextDueDate) : undefined },
+    });
   }
 
   async remove(userId: string, id: string) {

@@ -6,7 +6,8 @@ import { RecurringTransactionsService } from './recurring-transactions.service';
 describe('RecurringTransactionsService', () => {
   let service: RecurringTransactionsService;
   let prisma: {
-    recurringTransaction: { findMany: jest.Mock; update: jest.Mock };
+    recurringTransaction: { findMany: jest.Mock; findFirst: jest.Mock; update: jest.Mock };
+    category: { findFirst: jest.Mock };
   };
   let transactionsService: { create: jest.Mock };
 
@@ -16,7 +17,11 @@ describe('RecurringTransactionsService', () => {
     prisma = {
       recurringTransaction: {
         findMany: jest.fn(),
+        findFirst: jest.fn(),
         update: jest.fn(),
+      },
+      category: {
+        findFirst: jest.fn(),
       },
     };
     transactionsService = { create: jest.fn() };
@@ -34,6 +39,30 @@ describe('RecurringTransactionsService', () => {
 
   it('is defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('update', () => {
+    it('converts a plain date string nextDueDate into a Date before writing to Prisma', async () => {
+      prisma.recurringTransaction.findFirst.mockResolvedValue({ id: 'rec-1', userId: 'user-1' });
+
+      await service.update('user-1', 'rec-1', { nextDueDate: '2026-09-01' });
+
+      expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
+        where: { id: 'rec-1' },
+        data: { nextDueDate: new Date('2026-09-01') },
+      });
+    });
+
+    it('leaves nextDueDate untouched when not part of the update (e.g. pausing a rule)', async () => {
+      prisma.recurringTransaction.findFirst.mockResolvedValue({ id: 'rec-1', userId: 'user-1' });
+
+      await service.update('user-1', 'rec-1', { active: false });
+
+      expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
+        where: { id: 'rec-1' },
+        data: { active: false, nextDueDate: undefined },
+      });
+    });
   });
 
   describe('runDueRecurringTransactions', () => {
