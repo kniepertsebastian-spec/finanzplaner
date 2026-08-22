@@ -2,6 +2,34 @@
 
 ---
 
+### 📋 Schritt-Log: Produktions-Deployment auf Mini-PC (finance.pwa-tree.de) — Vorbereitung Phase 8
+**Zeitstempel:** `2026-08-22 18:35`
+
+#### 1. Was wurde getan?
+*   **Mini-PC-Zugang eingerichtet:** Dediziertes SSH-Schlüsselpaar (`~/.ssh/mini-pc-claude` lokal, Alias `minipc`) für den vom Nutzer angelegten `claude`-User auf `192.168.178.151` (Hostname `pwa01`) generiert und autorisiert.
+*   **Bestehende Infrastruktur analysiert:** Der Mini-PC hostet bereits `fitnesstracker` hinter einem gemeinsamen Cloudflare-Tunnel (`edge`-Docker-Netzwerk, Projekt `edge` mit einzelnem `cloudflared`-Container). Kein Host-Port wird je veröffentlicht — Routing erfolgt ausschließlich über Docker-Containernamen, die Cloudflare-Zuordnung `Hostname → Containername:Port` liegt im Cloudflare-Zero-Trust-Dashboard (nicht im Repo). Jede App bekommt einen eigenen, read-only GitHub-Deploy-Key (`~/.ssh/id_ed25519_github_<app>` + passender `Host`-Alias in `~/.ssh/config`).
+*   **Gleiches Muster für `finanzplaner` repliziert:** Deploy-Key `id_ed25519_github_finanzplaner` erzeugt (vom Nutzer als Deploy-Key auf GitHub hinterlegt), Repo nach `~/finanzplaner` auf dem Mini-PC geklont.
+*   **`backend/Dockerfile`-Bug gefunden und behoben** (in beiden Repos — lokaler WSL-Klon und Mini-PC-Klon): Die Runner-Stage kopierte bisher nur `dist/` und `node_modules/`, nicht aber `prisma/` (Schema + Migrations) und `prisma.config.ts`. Dadurch konnte `npx prisma migrate deploy` im laufenden Container nicht ausgeführt werden ("Could not find Prisma Schema"). Fix: `COPY --from=builder /app/prisma ./prisma` und `COPY --from=builder /app/prisma.config.ts ./prisma.config.ts` in der Runner-Stage ergänzt.
+*   **`docker-compose.prod.yml`** (neu, Mini-PC only, nicht im lokalen Dev-Setup) nach dem `fitnesstracker`-Muster erstellt: `postgres` + `redis` + `backend` ohne veröffentlichte Host-Ports (nur intern erreichbar), `frontend` (bestehendes Nginx-Image, das bereits seit Phase 6 `/api/*` zu `backend:3000` proxied) als `finanzplaner-frontend` zusätzlich im `edge`-Netzwerk — kein separater Caddy-Container nötig, da Nginx die Aufgabe schon übernimmt.
+*   **Produktions-Secrets generiert** (nicht mit lokalen Dev-Werten geteilt): `POSTGRES_PASSWORD`, `JWT_SECRET`, `TOTP_ENCRYPTION_KEY`, `SEED_USER_PASSWORD` — alle per `openssl rand` direkt auf dem Mini-PC erzeugt, in `.env`/`backend/.env` (chmod 600) abgelegt, nie im Klartext committed.
+*   **`WEBAUTHN_ORIGIN`/`WEBAUTHN_RP_ID`** (offener Punkt aus dem Phase-6-Log) jetzt korrekt auf `https://finance.pwa-tree.de` gesetzt, `COOKIE_SECURE=true`. `frontend/.env.production` mit `VITE_API_URL=/api` ergänzt (Build-Zeit-Konfiguration für den produktiven Vite-Build).
+*   Stack gestartet (`docker compose -f docker-compose.prod.yml up -d`), Migrationen angewendet (`npx prisma migrate deploy` — beide bestehenden Migrationen erfolgreich angewendet), Seed-User über den kompilierten Seed (`node dist/prisma/seed.js`, da `ts-node` gegen die nicht mitkopierte Quell-`generated/prisma`-Directory fehlschlägt) angelegt.
+*   Verifiziert: Alle vier Container laufen (`postgres` healthy, `redis`, `backend`, `frontend`). Backend-Boot-Log fehlerfrei, alle Routen gemappt. Von einem temporären Container im `edge`-Netzwerk aus (simuliert exakt den Zugriffsweg von `cloudflared`) `http://finanzplaner-frontend:80/` → `200`, `http://finanzplaner-frontend:80/api/auth/me` → echtes `401 Unauthorized` (JSON vom Backend, nicht die SPA-Fallback-HTML) mit korrektem `Access-Control-Allow-Origin: https://finance.pwa-tree.de`.
+
+#### 2. Warum wurde es getan?
+*   Nutzer wollte die Domain `finance.pwa-tree.de` (bestehende Domain `pwa-tree.de`, bestehender Cloudflare-Tunnel) für den produktiven Betrieb von finanzplaner in Betrieb nehmen, parallel zum bereits laufenden `fitnesstracker` auf demselben Mini-PC. Damit wird auch der in Phase 6 offen gelassene `WEBAUTHN_ORIGIN`-Platzhalter aufgelöst und ein Teil von Phase 8 ("Docker-Compose für Produktion optimieren") vorweggenommen.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Noch ausstehend (Nutzer-Aktion, kein Cloudflare-API-Zugriff vorhanden):** Im Cloudflare-Zero-Trust-Dashboard unter dem bestehenden Tunnel einen Public-Hostname-Eintrag `finance.pwa-tree.de → HTTP://finanzplaner-frontend:80` anlegen (erzeugt automatisch den DNS-Eintrag). Erst danach ist die App unter der echten Domain erreichbar.
+*   Der `backend/Dockerfile`-Fix wurde bisher **nur lokal (WSL-Klon) und auf dem Mini-PC** angewendet, **nicht committed/gepusht** — das Repo auf GitHub hat den Bug weiterhin. Sollte bei Gelegenheit committed werden, sonst bricht das nächste `git pull` + Rebuild auf dem Mini-PC (oder ein Neuklon) die Migrationsfähigkeit erneut.
+*   Seed-Passwort (`SEED_USER_PASSWORD`) wurde dem Nutzer im Chat mitgeteilt, nicht in einer Datei außerhalb von `backend/.env` (chmod 600, nicht im Git) gespeichert — sollte nach erstem Login geändert und durch einen Passkey ersetzt werden.
+*   `frontend/.env.production` (`VITE_API_URL=/api`) existiert bisher nur auf dem Mini-PC, nicht im Repo — ohne diese Datei würde ein zukünftiger Rebuild auf einem frischen Klon wieder mit der lokalen Dev-URL bauen. Sollte ebenfalls ins Repo übernommen werden (oder als Doku ergänzt), analog zum offenen Dockerfile-Fix.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Mini-PC-seitig) — [ ] Überprüfung erforderlich (Cloudflare Public Hostname durch Nutzer, Dockerfile-Fix + `frontend/.env.production` noch nicht ins Repo übernommen)
+
+---
+
 ### 📋 Schritt-Log: Phase 6 (Einstellungs- & Sicherheits-UI) implementiert
 **Zeitstempel:** `2026-08-21 03:42`
 
