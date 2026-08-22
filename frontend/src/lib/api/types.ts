@@ -18,6 +18,7 @@ export interface RecurringTransaction {
   amount: number; // cents; positive = income, negative = expense
   description: string;
   dayOfMonth: number; // 1-31
+  intervalMonths: number; // 1 = monthly, 3 = quarterly, 12 = yearly, ...
   active: boolean;
   lastRunAt: string | null;
   createdAt: string;

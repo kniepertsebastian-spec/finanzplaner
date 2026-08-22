@@ -8,6 +8,16 @@ import { eurosToCents, formatCents } from '../../lib/money';
 
 type Sign = 'expense' | 'income';
 
+const intervalLabels: Record<number, string> = {
+  1: 'Monatlich',
+  2: 'Alle 2 Monate',
+  3: 'Vierteljährlich',
+  6: 'Halbjährlich',
+  12: 'Jährlich',
+};
+
+const intervalLabel = (months: number) => intervalLabels[months] ?? `Alle ${months} Monate`;
+
 export function RecurringTransactionsPanel() {
   const [items, setItems] = useState<RecurringTransaction[] | null>(null);
   const [categories, setCategories] = useState<Category[] | null>(null);
@@ -18,6 +28,7 @@ export function RecurringTransactionsPanel() {
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState('1');
+  const [intervalMonths, setIntervalMonths] = useState('1');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,6 +49,7 @@ export function RecurringTransactionsPanel() {
     setDescription('');
     setCategoryId('');
     setDayOfMonth('1');
+    setIntervalMonths('1');
     setFormError(null);
   };
 
@@ -52,6 +64,7 @@ export function RecurringTransactionsPanel() {
         description,
         categoryId,
         dayOfMonth: Number(dayOfMonth),
+        intervalMonths: Number(intervalMonths),
       });
       resetForm();
       load();
@@ -171,6 +184,20 @@ export function RecurringTransactionsPanel() {
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Rhythmus</label>
+            <select
+              value={intervalMonths}
+              onChange={(e) => setIntervalMonths(e.target.value)}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+            >
+              {[1, 2, 3, 6, 12].map((months) => (
+                <option key={months} value={months}>
+                  {intervalLabel(months)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {formError && <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>}
@@ -189,6 +216,7 @@ export function RecurringTransactionsPanel() {
           <thead className="border-b border-neutral-200 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
             <tr>
               <th className="px-4 py-2 font-medium">Tag</th>
+              <th className="px-4 py-2 font-medium">Rhythmus</th>
               <th className="px-4 py-2 font-medium">Beschreibung</th>
               <th className="px-4 py-2 font-medium">Kategorie</th>
               <th className="px-4 py-2 font-medium">Betrag</th>
@@ -205,6 +233,9 @@ export function RecurringTransactionsPanel() {
                 )}
               >
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{item.dayOfMonth}.</td>
+                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
+                  {intervalLabel(item.intervalMonths)}
+                </td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{item.description}</td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {categoryById.get(item.categoryId)?.name ?? 'Unbekannt'}
@@ -232,7 +263,7 @@ export function RecurringTransactionsPanel() {
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-neutral-400 dark:text-neutral-500">
+                <td colSpan={6} className="px-4 py-6 text-center text-neutral-400 dark:text-neutral-500">
                   Noch keine wiederkehrenden Buchungen angelegt.
                 </td>
               </tr>

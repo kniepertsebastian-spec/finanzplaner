@@ -17,6 +17,12 @@ export class CreateRecurringTransactionDto {
   dayOfMonth: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  intervalMonths?: number;
+
+  @IsOptional()
   @IsBoolean()
   active?: boolean;
 }

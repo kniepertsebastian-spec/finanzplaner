@@ -6,6 +6,7 @@ export interface RecurringTransactionInput {
   description: string;
   categoryId: string;
   dayOfMonth: number;
+  intervalMonths?: number;
   active?: boolean;
 }
 

@@ -30,6 +30,7 @@ export class RecurringTransactionsService {
         description: dto.description,
         categoryId: dto.categoryId,
         dayOfMonth: dto.dayOfMonth,
+        intervalMonths: dto.intervalMonths ?? 1,
         active: dto.active ?? true,
       },
     });
@@ -63,17 +64,20 @@ export class RecurringTransactionsService {
     await this.prisma.recurringTransaction.delete({ where: { id } });
   }
 
-  private isDueToday(recurring: { dayOfMonth: number; lastRunAt: Date | null }, today: Date): boolean {
+  private isDueToday(
+    recurring: { dayOfMonth: number; intervalMonths: number; lastRunAt: Date | null },
+    today: Date,
+  ): boolean {
     if (recurring.dayOfMonth !== today.getDate()) {
       return false;
     }
     if (!recurring.lastRunAt) {
       return true;
     }
-    return (
-      recurring.lastRunAt.getMonth() !== today.getMonth() ||
-      recurring.lastRunAt.getFullYear() !== today.getFullYear()
-    );
+    const monthsSinceLastRun =
+      (today.getFullYear() - recurring.lastRunAt.getFullYear()) * 12 +
+      (today.getMonth() - recurring.lastRunAt.getMonth());
+    return monthsSinceLastRun >= recurring.intervalMonths;
   }
 
   async runDueRecurringTransactions(today: Date = new Date()): Promise<number> {

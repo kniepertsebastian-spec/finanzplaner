@@ -46,6 +46,7 @@ describe('RecurringTransactionsService', () => {
           description: 'Miete',
           categoryId: 'cat-1',
           dayOfMonth: 17,
+          intervalMonths: 1,
           active: true,
           lastRunAt: null,
         },
@@ -68,7 +69,7 @@ describe('RecurringTransactionsService', () => {
 
     it('skips a rule whose dayOfMonth does not match today', async () => {
       prisma.recurringTransaction.findMany.mockResolvedValue([
-        { id: 'rec-2', userId: 'user-1', dayOfMonth: 1, active: true, lastRunAt: null },
+        { id: 'rec-2', userId: 'user-1', dayOfMonth: 1, intervalMonths: 1, active: true, lastRunAt: null },
       ]);
 
       const count = await service.runDueRecurringTransactions(today);
@@ -83,6 +84,7 @@ describe('RecurringTransactionsService', () => {
           id: 'rec-3',
           userId: 'user-1',
           dayOfMonth: 17,
+          intervalMonths: 1,
           active: true,
           lastRunAt: new Date('2026-08-17T01:00:00.000Z'),
         },
@@ -103,6 +105,7 @@ describe('RecurringTransactionsService', () => {
           description: 'Gehalt',
           categoryId: 'cat-2',
           dayOfMonth: 17,
+          intervalMonths: 1,
           active: true,
           lastRunAt: new Date('2026-07-17T01:00:00.000Z'),
         },
@@ -112,6 +115,50 @@ describe('RecurringTransactionsService', () => {
 
       expect(count).toBe(1);
       expect(transactionsService.create).toHaveBeenCalled();
+    });
+
+    it('skips a quarterly rule (GEZ-style) only two months after its last run', async () => {
+      prisma.recurringTransaction.findMany.mockResolvedValue([
+        {
+          id: 'rec-5',
+          userId: 'user-1',
+          dayOfMonth: 17,
+          intervalMonths: 3,
+          active: true,
+          lastRunAt: new Date('2026-06-17T01:00:00.000Z'),
+        },
+      ]);
+
+      const count = await service.runDueRecurringTransactions(today);
+
+      expect(count).toBe(0);
+      expect(transactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it('re-runs a quarterly rule (GEZ-style) three months after its last run', async () => {
+      prisma.recurringTransaction.findMany.mockResolvedValue([
+        {
+          id: 'rec-6',
+          userId: 'user-1',
+          amount: -5525,
+          description: 'GEZ',
+          categoryId: 'cat-3',
+          dayOfMonth: 17,
+          intervalMonths: 3,
+          active: true,
+          lastRunAt: new Date('2026-05-17T01:00:00.000Z'),
+        },
+      ]);
+
+      const count = await service.runDueRecurringTransactions(today);
+
+      expect(count).toBe(1);
+      expect(transactionsService.create).toHaveBeenCalledWith('user-1', {
+        amount: -5525,
+        description: 'GEZ',
+        categoryId: 'cat-3',
+        date: today.toISOString(),
+      });
     });
   });
 });
