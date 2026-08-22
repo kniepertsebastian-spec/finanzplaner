@@ -2,6 +2,30 @@
 
 ---
 
+### 📋 Schritt-Log: Mobile Navigation überarbeitet (Hamburger-Dropdown statt Zeile)
+**Zeitstempel:** `2026-08-22 19:50`
+
+#### 1. Was wurde getan?
+*   **Problem:** Nutzer meldete, dass die vier horizontalen Nav-Links (Dashboard/Budgets/Hinzufügen/Einstellungen) zusammen mit Titel und dem rechten Icon-Cluster (Sync-Badge, Dark-Mode, Logout) auf schmalen Mobile-Breiten aus dem sichtbaren Bereich nach rechts herausgedrängt wurden. Zusätzlich überlappte der Header auf manchen Geräten mit der Status-Bar/Notch (Uhrzeit).
+*   **`frontend/src/components/layout/AppShell.tsx`:** Horizontale `<nav>`-Leiste entfernt, ersetzt durch einen einzelnen Button oben links ("Finance Menü", umbenannt von reinem "Finanz-PWA"-Text, mit `Menu`-Icon aus `lucide-react`), der ein Dropdown mit den vier bisherigen `NavLink`s öffnet/schließt. Schließt automatisch bei Routenwechsel (`useLocation`), Klick außerhalb (`mousedown`-Listener + `ref`) und `Escape`. Rechter Icon-Cluster (Sync-Badge/Dark-Mode/Logout) unverändert, hat jetzt aber sichtbar mehr Platz.
+*   **`frontend/index.html`:** `viewport-fit=cover` zum `viewport`-Meta-Tag ergänzt — Voraussetzung dafür, dass `env(safe-area-inset-top)` auf iOS/Android überhaupt einen Wert ungleich 0 liefert.
+*   **`AppShell.tsx`-Header:** `style={{ paddingTop: 'env(safe-area-inset-top)' }}` ergänzt, damit der Header auf Geräten mit Notch/Statusleiste (v. a. als installierte PWA im Standalone-Modus) nicht mehr darunter verschwindet.
+*   **Verifiziert (echter Browser, nicht nur Build):** Lokalen Dev-Stack aufgesetzt (Postgres/Redis via `docker compose up -d postgres redis`, Backend via `npm run start:dev`, Frontend via `npm run dev`, jeweils frisches `backend/.env`/`frontend/.env` für lokale Entwicklung angelegt, Migrationen + Seed liefen erstmals gegen diese lokale DB). Da `chromium-cli` und `playwright install --with-deps` in dieser Umgebung nicht verfügbar sind (kein passwortloses `sudo`), fehlende Shared Libraries (`libnspr4`, `libnss3`, `libatk*`, `libxkbcommon0`, `libasound2`, `libatspi2.0-0`) einzeln per `apt-get download` (kein Root nötig) geladen, in ein Scratch-Verzeichnis entpackt und per `LD_LIBRARY_PATH` verfügbar gemacht — danach lief `playwright`s Chromium headless ohne Root. Per Skript bei 375px-Viewport eingeloggt, Menü-Button geklickt, Dropdown-Inhalt (alle vier Links vorhanden) und Screenshot geprüft — Layout wie gewünscht, kein horizontaler Overflow. Danach identischer Test **gegen die echte Produktions-URL** (`https://finance.pwa-tree.de`) mit dem echten Seed-Login wiederholt — gleiches Ergebnis, keine unerwarteten Konsolenfehler (nur der normale 401 des anonymen `/auth/me`-Checks vor dem Login).
+*   Nach dem Test: lokale Dev-Server (Backend/Frontend) gestoppt; lokale Postgres/Redis-Container laufen weiter (für zukünftige lokale Entwicklung).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag nach Sichtung der App auf dem eigenen Handy unter der neuen Produktions-URL.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   `backend/.env` und `frontend/.env` existieren jetzt erstmals auch im lokalen WSL-Klon (zuvor nur auf dem Mini-PC bzw. gar nicht) — beide `.gitignore`t, enthalten harmlose lokale Dev-Werte (kein Bezug zu den Produktions-Secrets auf dem Mini-PC).
+*   Änderung committed und gepusht (`9c27e8c`), auf dem Mini-PC gepullt (dabei die dortigen, inhaltsgleichen uncommitteten Vorarbeiten aus dem letzten Schritt verworfen, siehe vorheriger Log-Eintrag) und die `frontend`-Produktions-Image neu gebaut/neu gestartet. Live unter `https://finance.pwa-tree.de` verifiziert (neuer Asset-Hash `index-s5elQrQH.js` bestätigt den frischen Build).
+*   `navLinkClass` liefert jetzt `w-full`-Blockelemente statt Inline-Pills — nur innerhalb des Dropdowns verwendet, keine anderweitigen Verwendungsstellen betroffen.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen
+
+---
+
 ### 📋 Schritt-Log: Produktions-Deployment auf Mini-PC (finance.pwa-tree.de) — Vorbereitung Phase 8
 **Zeitstempel:** `2026-08-22 18:35`
 
