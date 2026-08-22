@@ -2,6 +2,28 @@
 
 ---
 
+### 📋 Schritt-Log: Fixkosten bearbeiten (Edit) + Bugfix in `update()`
+**Zeitstempel:** `2026-08-22 22:35`
+
+#### 1. Was wurde getan?
+*   Nutzer bat um mehrere Erweiterungen (Budgets-Erklärung, Fixkosten bearbeiten, Monats-Summe, Beleg-Upload mit Auto-Löschung, "zu hoch"/"vermeidbar"-Flags) — per Rückfrage auf **Fixkosten bearbeiten** als ersten Umfang eingegrenzt; die übrigen Punkte (Flags auf Transaktionen *und* Fixkosten-Regeln, Beleg-Upload lokal auf dem Mini-PC) sind für spätere Schritte notiert, aber noch nicht umgesetzt.
+*   **`RecurringTransactionsPanel.tsx`:** Bearbeiten-Flow nach dem `BudgetsPage.tsx`-Muster ergänzt — `editingId`-State, `startEdit()` befüllt das Formular aus der bestehenden Zeile (inkl. Vorzeichen-Erkennung aus `amount`), Formular-Titel/Submit-Button wechseln zwischen "Anlegen"/"Fixkosten bearbeiten"+"Speichern", neuer "Abbrechen"-Button, neuer Stift-Button in der Tabelle vor Pausieren/Löschen.
+*   **Bug gefunden und behoben:** `RecurringTransactionsService.update()` reichte `dto.nextDueDate` (ein reiner Datums-String wie `"2026-09-01"`) unverändert an Prisma durch — anders als `create()`, das explizit in ein `Date`-Objekt konvertiert. Jede Bearbeitung, die `nextDueDate` änderte, schlug serverseitig mit `PrismaClientValidationError: premature end of input. Expected ISO-8601 DateTime` (HTTP 500) fehl. Beim ersten End-to-End-Test der neuen Edit-UI aufgefallen. Fix: `nextDueDate: dto.nextDueDate ? new Date(dto.nextDueDate) : undefined` in `update()`.
+*   **Tests:** Zwei neue Fälle für `update()` (String→Date-Konvertierung; `nextDueDate` bleibt `undefined`/unangetastet bei einem reinen Pausieren-Update ohne das Feld). Mock-Setup um `recurringTransaction.findFirst` und `category.findFirst` erweitert (vorher nur für `runDueRecurringTransactions` ausgelegt). `npm test` (Backend, 12 Suiten/24 Tests grün).
+*   **Verifiziert (echter Browser):** Testkategorie + Fixkosten-Eintrag angelegt, Stift-Button geklickt (Formular korrekt vorbefüllt inkl. Datum/Rhythmus), Beschreibung und Betrag geändert, "Speichern" — vor dem Fix: 500-Fehler, Formular blieb im Bearbeiten-Modus; nach dem Fix: Zeile aktualisiert (Beschreibung + neuer Betrag `-14,99 €` sichtbar), Formular zurückgesetzt. Test-Daten entfernt. Committed, gepusht (`c12771c`), auf dem Mini-PC gepullt, Backend+Frontend neu gebaut (keine Migration nötig, reine Code-Änderung), neuer Asset-Hash (`index-CWi56D03.js`) live bestätigt.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerwunsch: nach dem Anlegen ließ sich ein Fixkosten-Eintrag bisher nur pausieren oder löschen, nicht inhaltlich korrigieren (Betrag, Datum, Kategorie).
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Keine Schema-Änderung, kein Migrations-Schritt nötig — reiner Anwendungscode.
+*   Offene Punkte aus der ursprünglichen Anfrage (Monats-Summe der Fixkosten, "zu hoch"/"vermeidbar"-Flags auf Transaktionen und Fixkosten-Regeln, Beleg-Upload mit 30-Tage-Auto-Löschung auf lokalem Speicher des Mini-PCs) bewusst noch nicht begonnen — warten auf den nächsten Arbeitsschritt.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Teilumfang "Fixkosten bearbeiten")
+
+---
+
 ### 📋 Schritt-Log: Fixkosten mit echtem Fälligkeitsdatum statt reinem Tag-im-Monat
 **Zeitstempel:** `2026-08-22 22:15`
 
