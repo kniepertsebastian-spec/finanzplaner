@@ -1,4 +1,5 @@
 import { useAuth } from '../context/AuthContext';
+import { CategoryManager } from '../components/settings/CategoryManager';
 import { PasskeyManager } from '../components/settings/PasskeyManager';
 import { RecurringTransactionsPanel } from '../components/settings/RecurringTransactionsPanel';
 import { TotpEnrollment } from '../components/settings/TotpEnrollment';
@@ -15,6 +16,7 @@ export function SettingsPage() {
 
       <PasskeyManager />
       <TotpEnrollment />
+      <CategoryManager />
       <RecurringTransactionsPanel />
     </div>
   );
