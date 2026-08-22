@@ -2,6 +2,30 @@
 
 ---
 
+### 📋 Schritt-Log: Nicht-monatliche wiederkehrende Buchungen (z. B. GEZ vierteljährlich)
+**Zeitstempel:** `2026-08-22 22:05`
+
+#### 1. Was wurde getan?
+*   **Problem:** Nutzer meldete, dass Fixkosten/wiederkehrende Buchungen nur monatlich abgebildet werden können — Beispiel GEZ, die vierteljährlich abgebucht wird.
+*   **`backend/prisma/schema.prisma`:** `RecurringTransaction` um `intervalMonths Int @default(1)` erweitert (Default `1` erhält das bisherige monatliche Verhalten für alle Bestandsdaten). Migration `20260822192428_add_recurring_interval_months` erstellt.
+*   **`recurring-transactions.service.ts` — `isDueToday()`:** Statt nur "anderer Kalendermonat als `lastRunAt`" wird jetzt geprüft, ob `(heute.Jahr*12+heute.Monat) - (lastRunAt.Jahr*12+lastRunAt.Monat) >= intervalMonths` — verallgemeinert die bisherige Logik exakt (bei `intervalMonths=1` identisches Verhalten) und deckt beliebige Vielfache ab (2, 3, 6, 12, …).
+*   **`create-recurring-transaction.dto.ts`:** optionales `intervalMonths` (1–24) ergänzt, Default weiterhin `1` im Service.
+*   **Frontend (`RecurringTransactionsPanel.tsx`):** Neues "Rhythmus"-Auswahlfeld beim Anlegen (Monatlich/Alle 2 Monate/Vierteljährlich/Halbjährlich/Jährlich) sowie neue Tabellenspalte "Rhythmus" in der Liste. `frontend/src/lib/api/types.ts`/`recurringTransactions.ts` um das Feld ergänzt.
+*   **Tests:** Zwei neue Fälle in `recurring-transactions.service.spec.ts` (Vierteljährlich-Regel wird nach 2 Monaten übersprungen, nach 3 Monaten korrekt erneut gebucht), bestehende Mocks um `intervalMonths` ergänzt. `npm run build` + `npm test` (Backend, 12 Suiten/21 Tests grün).
+*   **Verifiziert (echter Browser):** Lokal eingeloggt, Test-Kategorie "Rundfunk" angelegt, GEZ-Eintrag (55,25 €, Tag 15, Vierteljährlich) über das neue Formular angelegt — per SQL-Check bestätigt (`intervalMonths=3` korrekt persistiert), Tabelle zeigt "Vierteljährlich" korrekt an. Test-Daten danach aus der lokalen Dev-DB entfernt. Committed, gepusht (`976acee`), auf dem Mini-PC gepullt, Backend **und** Frontend neu gebaut, `prisma migrate deploy` in Produktion ausgeführt (Migration erfolgreich angewendet, Backend danach fehlerfrei neu gestartet), neuer Frontend-Asset-Hash (`index-DM6PZ6Yk.js`) auf `https://finance.pwa-tree.de` bestätigt.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag/Bug-Report nach dem Versuch, GEZ als Fixkosten-Eintrag anzulegen.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Bestehende wiederkehrende Buchungen (aktuell keine in Produktion vorhanden) laufen durch den Migrations-Default (`intervalMonths=1`) unverändert monatlich weiter.
+*   Kein Datenverlust, keine Downtime — Migration ist rein additiv (neue Spalte mit Default).
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen
+
+---
+
 ### 📋 Schritt-Log: Kategorien-Verwaltung im Frontend nachgerüstet
 **Zeitstempel:** `2026-08-22 20:25`
 
