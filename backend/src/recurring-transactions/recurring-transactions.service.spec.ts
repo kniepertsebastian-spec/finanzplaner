@@ -37,7 +37,7 @@ describe('RecurringTransactionsService', () => {
   });
 
   describe('runDueRecurringTransactions', () => {
-    it('posts a transaction for a due, never-run recurring rule and stamps lastRunAt', async () => {
+    it('posts a transaction due today and advances nextDueDate by intervalMonths', async () => {
       prisma.recurringTransaction.findMany.mockResolvedValue([
         {
           id: 'rec-1',
@@ -45,7 +45,7 @@ describe('RecurringTransactionsService', () => {
           amount: -5000,
           description: 'Miete',
           categoryId: 'cat-1',
-          dayOfMonth: 17,
+          nextDueDate: new Date('2026-08-17T00:00:00.000Z'),
           intervalMonths: 1,
           active: true,
           lastRunAt: null,
@@ -63,30 +63,19 @@ describe('RecurringTransactionsService', () => {
       });
       expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
         where: { id: 'rec-1' },
-        data: { lastRunAt: today },
+        data: { lastRunAt: today, nextDueDate: new Date('2026-09-17T00:00:00.000Z') },
       });
     });
 
-    it('skips a rule whose dayOfMonth does not match today', async () => {
-      prisma.recurringTransaction.findMany.mockResolvedValue([
-        { id: 'rec-2', userId: 'user-1', dayOfMonth: 1, intervalMonths: 1, active: true, lastRunAt: null },
-      ]);
-
-      const count = await service.runDueRecurringTransactions(today);
-
-      expect(count).toBe(0);
-      expect(transactionsService.create).not.toHaveBeenCalled();
-    });
-
-    it('skips a rule already run this month', async () => {
+    it('skips a rule whose nextDueDate is still in the future', async () => {
       prisma.recurringTransaction.findMany.mockResolvedValue([
         {
-          id: 'rec-3',
+          id: 'rec-2',
           userId: 'user-1',
-          dayOfMonth: 17,
+          nextDueDate: new Date('2026-08-18T00:00:00.000Z'),
           intervalMonths: 1,
           active: true,
-          lastRunAt: new Date('2026-08-17T01:00:00.000Z'),
+          lastRunAt: null,
         },
       ]);
 
@@ -96,18 +85,18 @@ describe('RecurringTransactionsService', () => {
       expect(transactionsService.create).not.toHaveBeenCalled();
     });
 
-    it('re-runs a rule already run in a previous month', async () => {
+    it('catches up an overdue rule whose nextDueDate is in the past', async () => {
       prisma.recurringTransaction.findMany.mockResolvedValue([
         {
-          id: 'rec-4',
+          id: 'rec-3',
           userId: 'user-1',
-          amount: 250000,
-          description: 'Gehalt',
-          categoryId: 'cat-2',
-          dayOfMonth: 17,
+          amount: -1000,
+          description: 'Verspätet',
+          categoryId: 'cat-1',
+          nextDueDate: new Date('2026-08-10T00:00:00.000Z'),
           intervalMonths: 1,
           active: true,
-          lastRunAt: new Date('2026-07-17T01:00:00.000Z'),
+          lastRunAt: new Date('2026-07-10T00:00:00.000Z'),
         },
       ]);
 
@@ -117,36 +106,18 @@ describe('RecurringTransactionsService', () => {
       expect(transactionsService.create).toHaveBeenCalled();
     });
 
-    it('skips a quarterly rule (GEZ-style) only two months after its last run', async () => {
+    it('quarterly rule (GEZ-style): advances nextDueDate by 3 months after firing', async () => {
       prisma.recurringTransaction.findMany.mockResolvedValue([
         {
-          id: 'rec-5',
-          userId: 'user-1',
-          dayOfMonth: 17,
-          intervalMonths: 3,
-          active: true,
-          lastRunAt: new Date('2026-06-17T01:00:00.000Z'),
-        },
-      ]);
-
-      const count = await service.runDueRecurringTransactions(today);
-
-      expect(count).toBe(0);
-      expect(transactionsService.create).not.toHaveBeenCalled();
-    });
-
-    it('re-runs a quarterly rule (GEZ-style) three months after its last run', async () => {
-      prisma.recurringTransaction.findMany.mockResolvedValue([
-        {
-          id: 'rec-6',
+          id: 'rec-4',
           userId: 'user-1',
           amount: -5525,
           description: 'GEZ',
           categoryId: 'cat-3',
-          dayOfMonth: 17,
+          nextDueDate: new Date('2026-08-17T00:00:00.000Z'),
           intervalMonths: 3,
           active: true,
-          lastRunAt: new Date('2026-05-17T01:00:00.000Z'),
+          lastRunAt: new Date('2026-05-17T00:00:00.000Z'),
         },
       ]);
 
@@ -158,6 +129,78 @@ describe('RecurringTransactionsService', () => {
         description: 'GEZ',
         categoryId: 'cat-3',
         date: today.toISOString(),
+      });
+      expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
+        where: { id: 'rec-4' },
+        data: { lastRunAt: today, nextDueDate: new Date('2026-11-17T00:00:00.000Z') },
+      });
+    });
+
+    it('yearly rule anchored in October (car tax) does not fire in August', async () => {
+      prisma.recurringTransaction.findMany.mockResolvedValue([
+        {
+          id: 'rec-5',
+          userId: 'user-1',
+          nextDueDate: new Date('2026-10-15T00:00:00.000Z'),
+          intervalMonths: 12,
+          active: true,
+          lastRunAt: null,
+        },
+      ]);
+
+      const count = await service.runDueRecurringTransactions(today);
+
+      expect(count).toBe(0);
+      expect(transactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it('yearly rule anchored in October (car tax) fires in October and rolls over to next October', async () => {
+      const october = new Date('2026-10-15T12:00:00.000Z');
+      prisma.recurringTransaction.findMany.mockResolvedValue([
+        {
+          id: 'rec-6',
+          userId: 'user-1',
+          amount: -12000,
+          description: 'Kfz-Steuer',
+          categoryId: 'cat-4',
+          nextDueDate: new Date('2026-10-15T00:00:00.000Z'),
+          intervalMonths: 12,
+          active: true,
+          lastRunAt: null,
+        },
+      ]);
+
+      const count = await service.runDueRecurringTransactions(october);
+
+      expect(count).toBe(1);
+      expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
+        where: { id: 'rec-6' },
+        data: { lastRunAt: october, nextDueDate: new Date('2027-10-15T00:00:00.000Z') },
+      });
+    });
+
+    it('clamps month-end overflow when advancing (Jan 31 + 1 month -> Feb 28, not Mar 3)', async () => {
+      const jan31 = new Date('2026-01-31T12:00:00.000Z');
+      prisma.recurringTransaction.findMany.mockResolvedValue([
+        {
+          id: 'rec-7',
+          userId: 'user-1',
+          amount: -100,
+          description: 'Monatsende-Regel',
+          categoryId: 'cat-1',
+          nextDueDate: new Date('2026-01-31T00:00:00.000Z'),
+          intervalMonths: 1,
+          active: true,
+          lastRunAt: null,
+        },
+      ]);
+
+      const count = await service.runDueRecurringTransactions(jan31);
+
+      expect(count).toBe(1);
+      expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
+        where: { id: 'rec-7' },
+        data: { lastRunAt: jan31, nextDueDate: new Date('2026-02-28T00:00:00.000Z') },
       });
     });
   });

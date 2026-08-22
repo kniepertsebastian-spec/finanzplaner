@@ -18,6 +18,10 @@ const intervalLabels: Record<number, string> = {
 
 const intervalLabel = (months: number) => intervalLabels[months] ?? `Alle ${months} Monate`;
 
+const todayIsoDate = () => new Date().toISOString().slice(0, 10);
+
+const formatDate = (isoDate: string) => new Date(isoDate).toLocaleDateString('de-DE', { timeZone: 'UTC' });
+
 export function RecurringTransactionsPanel() {
   const [items, setItems] = useState<RecurringTransaction[] | null>(null);
   const [categories, setCategories] = useState<Category[] | null>(null);
@@ -27,7 +31,7 @@ export function RecurringTransactionsPanel() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [dayOfMonth, setDayOfMonth] = useState('1');
+  const [nextDueDate, setNextDueDate] = useState(todayIsoDate());
   const [intervalMonths, setIntervalMonths] = useState('1');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +52,7 @@ export function RecurringTransactionsPanel() {
     setAmount('');
     setDescription('');
     setCategoryId('');
-    setDayOfMonth('1');
+    setNextDueDate(todayIsoDate());
     setIntervalMonths('1');
     setFormError(null);
   };
@@ -63,7 +67,7 @@ export function RecurringTransactionsPanel() {
         amount: sign === 'income' ? cents : -cents,
         description,
         categoryId,
-        dayOfMonth: Number(dayOfMonth),
+        nextDueDate,
         intervalMonths: Number(intervalMonths),
       });
       resetForm();
@@ -173,14 +177,14 @@ export function RecurringTransactionsPanel() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Tag im Monat</label>
+            <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+              Nächste Fälligkeit
+            </label>
             <input
-              type="number"
-              min="1"
-              max="31"
+              type="date"
               required
-              value={dayOfMonth}
-              onChange={(e) => setDayOfMonth(e.target.value)}
+              value={nextDueDate}
+              onChange={(e) => setNextDueDate(e.target.value)}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
@@ -215,7 +219,7 @@ export function RecurringTransactionsPanel() {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
             <tr>
-              <th className="px-4 py-2 font-medium">Tag</th>
+              <th className="px-4 py-2 font-medium">Fälligkeit</th>
               <th className="px-4 py-2 font-medium">Rhythmus</th>
               <th className="px-4 py-2 font-medium">Beschreibung</th>
               <th className="px-4 py-2 font-medium">Kategorie</th>
@@ -232,7 +236,7 @@ export function RecurringTransactionsPanel() {
                   !item.active && 'opacity-50',
                 )}
               >
-                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{item.dayOfMonth}.</td>
+                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{formatDate(item.nextDueDate)}</td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {intervalLabel(item.intervalMonths)}
                 </td>

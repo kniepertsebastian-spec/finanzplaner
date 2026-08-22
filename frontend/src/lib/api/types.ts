@@ -17,7 +17,7 @@ export interface RecurringTransaction {
   id: string;
   amount: number; // cents; positive = income, negative = expense
   description: string;
-  dayOfMonth: number; // 1-31
+  nextDueDate: string; // ISO date of the next posting
   intervalMonths: number; // 1 = monthly, 3 = quarterly, 12 = yearly, ...
   active: boolean;
   lastRunAt: string | null;

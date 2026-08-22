@@ -29,7 +29,7 @@ export class RecurringTransactionsService {
         amount: dto.amount,
         description: dto.description,
         categoryId: dto.categoryId,
-        dayOfMonth: dto.dayOfMonth,
+        nextDueDate: new Date(dto.nextDueDate),
         intervalMonths: dto.intervalMonths ?? 1,
         active: dto.active ?? true,
       },
@@ -39,7 +39,7 @@ export class RecurringTransactionsService {
   findAll(userId: string) {
     return this.prisma.recurringTransaction.findMany({
       where: { userId },
-      orderBy: { dayOfMonth: 'asc' },
+      orderBy: { nextDueDate: 'asc' },
     });
   }
 
@@ -64,25 +64,30 @@ export class RecurringTransactionsService {
     await this.prisma.recurringTransaction.delete({ where: { id } });
   }
 
-  private isDueToday(
-    recurring: { dayOfMonth: number; intervalMonths: number; lastRunAt: Date | null },
-    today: Date,
-  ): boolean {
-    if (recurring.dayOfMonth !== today.getDate()) {
-      return false;
+  private static dateOnly(date: Date): number {
+    return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  }
+
+  private isDue(recurring: { nextDueDate: Date }, today: Date): boolean {
+    return RecurringTransactionsService.dateOnly(recurring.nextDueDate) <= RecurringTransactionsService.dateOnly(today);
+  }
+
+  /** Advances a date by N months, clamping day overflow to the last day of the target month
+   *  (e.g. Jan 31 + 1 month -> Feb 28/29, not Mar 3), so a monthly/yearly rule anchored on a
+   *  short month doesn't drift into the following month over time. */
+  private static addMonths(date: Date, months: number): Date {
+    const day = date.getUTCDate();
+    const next = new Date(date);
+    next.setUTCMonth(next.getUTCMonth() + months);
+    if (next.getUTCDate() !== day) {
+      next.setUTCDate(0);
     }
-    if (!recurring.lastRunAt) {
-      return true;
-    }
-    const monthsSinceLastRun =
-      (today.getFullYear() - recurring.lastRunAt.getFullYear()) * 12 +
-      (today.getMonth() - recurring.lastRunAt.getMonth());
-    return monthsSinceLastRun >= recurring.intervalMonths;
+    return next;
   }
 
   async runDueRecurringTransactions(today: Date = new Date()): Promise<number> {
     const active = await this.prisma.recurringTransaction.findMany({ where: { active: true } });
-    const due = active.filter((recurring) => this.isDueToday(recurring, today));
+    const due = active.filter((recurring) => this.isDue(recurring, today));
 
     for (const recurring of due) {
       await this.transactionsService.create(recurring.userId, {
@@ -93,7 +98,10 @@ export class RecurringTransactionsService {
       });
       await this.prisma.recurringTransaction.update({
         where: { id: recurring.id },
-        data: { lastRunAt: today },
+        data: {
+          lastRunAt: today,
+          nextDueDate: RecurringTransactionsService.addMonths(recurring.nextDueDate, recurring.intervalMonths),
+        },
       });
     }
 

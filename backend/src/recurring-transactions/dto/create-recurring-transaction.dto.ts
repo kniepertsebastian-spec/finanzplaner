@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Max, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsInt, IsOptional, IsString, IsUUID, Max, Min, MinLength } from 'class-validator';
 
 export class CreateRecurringTransactionDto {
   @IsInt()
@@ -11,10 +11,8 @@ export class CreateRecurringTransactionDto {
   @IsUUID()
   categoryId: string;
 
-  @IsInt()
-  @Min(1)
-  @Max(31)
-  dayOfMonth: number;
+  @IsDateString()
+  nextDueDate: string;
 
   @IsOptional()
   @IsInt()

@@ -104,8 +104,8 @@ model RecurringTransaction {
   id             String    @id @default(uuid())
   amount         Int // Stored in Cents; positive = income, negative = expense
   description    String
-  dayOfMonth     Int // 1-31, day of month to post the transaction
-  intervalMonths Int       @default(1) // e.g. 1 = monthly, 3 = quarterly (GEZ), 12 = yearly
+  nextDueDate    DateTime // next calendar date to post; anchors which month a yearly/quarterly rule falls on
+  intervalMonths Int       @default(1) // e.g. 1 = monthly, 3 = quarterly (GEZ), 12 = yearly (car tax, ADAC)
   active         Boolean   @default(true)
   lastRunAt      DateTime?
   createdAt      DateTime  @default(now())
