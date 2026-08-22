@@ -2,6 +2,31 @@
 
 ---
 
+### 📋 Schritt-Log: Fixkosten mit echtem Fälligkeitsdatum statt reinem Tag-im-Monat
+**Zeitstempel:** `2026-08-22 22:15`
+
+#### 1. Was wurde getan?
+*   **Problem:** Nutzer wies darauf hin, dass eine reine "Rhythmus"-Auswahl (Monatlich/Vierteljährlich/…) nicht ausreicht — sie legt zwar den *Abstand* fest, aber nicht den *Anker-Monat*. Konkrete Beispiele: Kfz-Steuer fällt jährlich im Oktober an, ADAC-Beitrag jährlich im August, GEZ alle 3 Monate. Mit der bisherigen `dayOfMonth` + `intervalMonths`-Logik (Fälligkeit = "X Monate seit `lastRunAt`") ließ sich der Startmonat nicht wählen — ein heute angelegter Jahres-Eintrag wäre einfach ab heute jährlich gelaufen, nicht zwingend im richtigen Monat.
+*   **Modell-Umbau:** `dayOfMonth: Int` ersetzt durch `nextDueDate: DateTime` (echtes Kalenderdatum, vom Nutzer per `<input type="date">` gewählt — genau das vom Nutzer gewünschte "Kalender"-Element). `intervalMonths` bleibt bestehen für den Wiederholungsabstand. Fälligkeitsprüfung (`isDue`) jetzt: `nextDueDate <= heute` (datumsgenau, UTC-normalisiert) statt der alten Monatsdifferenz-Berechnung — holt zudem automatisch verpasste Buchungen nach, falls der Server mal einen Tag stillstand (vorher: stiller Ausfall, kein Nachholen). Nach jeder Buchung wird `nextDueDate` um `intervalMonths` weitergeschoben (`addMonths`-Helfer mit Monatsend-Clamping, z. B. 31. Januar + 1 Monat → 28. Februar statt 3. März).
+*   **Zweistufige Migration** (da auf der Produktions-DB bereits 5 echte Einträge existierten — Gehalt, Miete, Kredit, Strom, Autokredit): 1) `nextDueDate` nullable ergänzt, 2) `backend/prisma/backfill-next-due-date.ts` (neu, per Raw-SQL statt typisiertem Client, damit es unabhängig vom generierten Prisma-Client-Stand läuft) berechnet für jede Zeile die nächste Wiederkehr von `dayOfMonth` ab heute, 3) `nextDueDate` NOT NULL gesetzt und `dayOfMonth` gedroppt.
+*   **Frontend (`RecurringTransactionsPanel.tsx`):** "Tag im Monat"-Zahlenfeld ersetzt durch "Nächste Fälligkeit"-Datumsfeld; Tabellenspalte "Tag" → "Fälligkeit" (formatiert `de-DE`). Rhythmus-Auswahl (Monatlich…Jährlich) unverändert für den Abstand.
+*   **Tests:** `recurring-transactions.service.spec.ts` komplett auf `nextDueDate` umgestellt, sieben Fälle (fällig heute + Vorschub, zukünftig noch nicht fällig, verspätetes Nachholen, Quartalsvorschub, Jahresregel im Oktober die im August nicht feuert, Jahresregel feuert im Oktober und springt auf Oktober nächsten Jahres, Monatsend-Clamping Jan→Feb). `npm run build` + `npm test` (Backend, 12 Suiten/22 Tests grün), `tsc --noEmit` (Frontend, 0 Fehler).
+*   **Verifiziert (echter Browser, lokal):** Test-Kategorie "Auto" angelegt, Kfz-Steuer-Eintrag mit Fälligkeit `15.10.2026` und Rhythmus "Jährlich" über das neue Formular angelegt — per SQL bestätigt (`nextDueDate=2026-10-15`, `intervalMonths=12`), Tabelle zeigt korrekt "15.10.2026 | Jährlich | Kfz-Steuer". Test-Daten danach entfernt.
+*   **Produktions-Deployment (sorgfältig sequenziert, da 5 reale Zeilen betroffen):** Migration 2 (`finalize-next-due-date`) temporär aus dem `prisma/migrations`-Ordner entfernt, Backend+Frontend gebaut, nur Migration 1 angewendet (`nextDueDate` nullable), Backfill-Skript gegen die echten Produktionsdaten ausgeführt (Gehalt→23.08., Miete/Kredit/Strom/Autokredit→01.09., alle korrekt berechnet), Migration 2 zurückgelegt, Backend **erneut** gebaut (damit das Image die finale Migration enthält), Migration 2 angewendet (lief fehlerfrei durch, da keine NULL-Werte mehr vorhanden) — alle 5 Einträge samt korrektem `nextDueDate` erhalten, kein Datenverlust. Live unter `https://finance.pwa-tree.de` verifiziert (neuer Asset-Hash `index-Dvcj01H_.js`).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag/Bug-Report: die feste 5-Optionen-Auswahl aus dem vorherigen Schritt konnte den Anker-Monat für jährliche/quartalsweise Zahlungen nicht abbilden.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Die API akzeptiert jetzt `nextDueDate` (ISO-Datum) statt `dayOfMonth` beim Anlegen/Ändern — ein reiner Breaking Change auf API-Ebene, aber unkritisch, da es sich um eine Single-User-App ohne weitere Clients handelt.
+*   `runDueRecurringTransactions` holt ab jetzt auch überfällige (verpasste) Buchungen nach, statt sie stillschweigend zu überspringen — bewusste Verhaltensänderung, siehe Punkt 1.
+*   `backend/prisma/backfill-next-due-date.ts` bleibt als einmaliges Migrations-Skript im Repo (analog zu den SQL-Migrationsdateien selbst) — hat nach diesem Deployment keinen weiteren Verwendungszweck mehr.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen
+
+---
+
 ### 📋 Schritt-Log: Nicht-monatliche wiederkehrende Buchungen (z. B. GEZ vierteljährlich)
 **Zeitstempel:** `2026-08-22 22:05`
 
