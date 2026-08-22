@@ -2,6 +2,27 @@
 
 ---
 
+### 📋 Schritt-Log: Kategorien-Verwaltung im Frontend nachgerüstet
+**Zeitstempel:** `2026-08-22 20:25`
+
+#### 1. Was wurde getan?
+*   **Problem:** Nutzer meldete, dass die Kategorie-Auswahl (z. B. beim Hinzufügen einer Transaktion) leer ist und sich keine Kategorien anlegen lassen. Analyse ergab: Das Backend hat seit Phase 3 volles CRUD unter `/categories`, aber es existierte **nie** eine Frontend-Seite oder -Komponente dafür — weder eine eigene Route noch ein Panel in den Einstellungen. Der Seed-Skript legt zudem bewusst nur den User an, keine Default-Kategorien (`backend/prisma/seed.ts` geprüft).
+*   **`frontend/src/components/settings/CategoryManager.tsx`** (neu): Liste + Anlegen-Formular (Name) + Löschen, nach exakt demselben Muster wie `RecurringTransactionsPanel.tsx` (gleiche Lade-/Fehler-States, gleiches Karten-Layout). Löschen fängt Backend-Fehler ab (Kategorie hat `onDelete: Restrict` zu `Transaction`/`Budget` im Schema, kein `onDelete: Cascade` wie bei `CategoryRule`) und zeigt eine verständliche Meldung statt eines unbehandelten Fehlers, falls die Kategorie noch verwendet wird.
+*   **`frontend/src/pages/SettingsPage.tsx`:** `CategoryManager` zwischen TOTP und `RecurringTransactionsPanel` eingehängt (Kategorien müssen vor Fixkosten existieren, daher diese Reihenfolge).
+*   **Verifiziert (echter Browser):** Lokalen Dev-Stack erneut hochgefahren (Postgres/Redis liefen noch aus dem letzten Schritt, Backend/Frontend neu gestartet), per Playwright bei 375px eingeloggt, in den Einstellungen eine Test-Kategorie ("Lebensmittel") angelegt, deren sofortiges Erscheinen im Kategorie-Dropdown der Quick-Add-Seite (`/add`) bestätigt — belegt, dass keine separate Caching-Schicht dazwischenhängt. Test-Kategorie danach direkt per `psql` aus der lokalen Dev-DB entfernt. Danach committed, gepusht (`a65f693`), auf dem Mini-PC gepullt, `frontend`-Image neu gebaut (neuer Asset-Hash `index-B-oOhwuH.js`), und derselbe Check **gegen die echte Produktions-URL** mit dem echten Login wiederholt — Kategorien-Panel korrekt sichtbar, keine Konsolenfehler.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag/Bug-Report: "kategorie is empty? i can't add them manually".
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Keine neue Backend-Änderung nötig — die API existierte bereits vollständig, es fehlte ausschließlich die UI.
+*   Auf der Produktions-DB (Mini-PC) existiert weiterhin keine einzige Kategorie — der Nutzer muss nach diesem Deployment mindestens eine über `/settings` anlegen, bevor Quick-Add, Budgets oder wiederkehrende Buchungen nutzbar sind.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen
+
+---
+
 ### 📋 Schritt-Log: Mobile Navigation überarbeitet (Hamburger-Dropdown statt Zeile)
 **Zeitstempel:** `2026-08-22 19:50`
 
