@@ -1,14 +1,21 @@
-import { CloudOff, LayoutDashboard, LogOut, Moon, Plus, Settings, Sun, Wallet } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { CloudOff, LayoutDashboard, LogOut, Menu, Moon, Plus, Settings, Sun, Wallet } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '../../context/AuthContext';
 import { useDarkMode } from '../../context/DarkModeContext';
 import { countPendingTransactions } from '../../lib/offlineDb';
 
+const navItems = [
+  { to: '/', end: true, label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/budgets', end: false, label: 'Budgets', icon: Wallet },
+  { to: '/add', end: false, label: 'Hinzufügen', icon: Plus },
+  { to: '/settings', end: false, label: 'Einstellungen', icon: Settings },
+];
+
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   clsx(
-    'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium',
+    'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium',
     isActive
       ? 'bg-blue-600 text-white'
       : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800',
@@ -18,6 +25,32 @@ export function AppShell() {
   const { logout } = useAuth();
   const { isDark, toggle } = useDarkMode();
   const [pendingCount, setPendingCount] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const onClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     const refresh = () => {
@@ -43,27 +76,33 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
-      <header className="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+      <header
+        className="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <span className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Finanz-PWA</span>
-          <nav className="flex items-center gap-1">
-            <NavLink to="/" end className={navLinkClass}>
-              <LayoutDashboard size={16} />
-              Dashboard
-            </NavLink>
-            <NavLink to="/budgets" className={navLinkClass}>
-              <Wallet size={16} />
-              Budgets
-            </NavLink>
-            <NavLink to="/add" className={navLinkClass}>
-              <Plus size={16} />
-              Hinzufügen
-            </NavLink>
-            <NavLink to="/settings" className={navLinkClass}>
-              <Settings size={16} />
-              Einstellungen
-            </NavLink>
-          </nav>
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-expanded={menuOpen}
+              aria-haspopup="true"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-lg font-semibold text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-neutral-800"
+            >
+              <Menu size={20} />
+              Finance Menü
+            </button>
+            {menuOpen && (
+              <nav className="absolute left-0 top-full z-20 mt-2 w-56 space-y-0.5 rounded-lg border border-neutral-200 bg-white p-1.5 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
+                {navItems.map(({ to, end, label, icon: Icon }) => (
+                  <NavLink key={to} to={to} end={end} className={navLinkClass}>
+                    <Icon size={16} />
+                    {label}
+                  </NavLink>
+                ))}
+              </nav>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {pendingCount > 0 && (
               <span
