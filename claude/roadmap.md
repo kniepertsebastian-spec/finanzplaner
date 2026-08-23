@@ -1,4 +1,4 @@
-# Project: Finanz-PWA (\"Finanzguru-Style\" ohne Bank-Pull)
+# Project: Finanz-PWA ("Finanzguru-Style" ohne Bank-Pull)
 
 ## 📌 Tech-Stack & Architektur
 * **Frontend:** React (Vite) als Progressive Web App (PWA)
@@ -12,14 +12,14 @@
 
 ## 🗺️ Phasen-Planung & Roadmap
 
-### Phase 1: Fundament & Infrastruktur (Setup)
+### Phase 1: Fundament & Infrastruktur (Setup) ✅
 * **Ziel:** Lokal stabile Umgebung und stehende Datenbasis.
 * **Tasks:**
   * Repository-Struktur und Docker-Compose-Setup (`docker-compose.yml` für PostgreSQL, Redis, Backend, Frontend) einrichten.
   * PostgreSQL-Datenbankschema anlegen (`users`, `transactions`, `categories`, `budgets`).
   * Migrations-Tool (z. B. Prisma oder TypeORM) konfigurieren.
 
-### Phase 2: Authentifizierung & Security (Passkeys)
+### Phase 2: Authentifizierung & Security (Passkeys) ✅
 * **Ziel:** Sicherer, passwortloser Login-Flow.
 * **Tasks:**
   * Backend-Endpunkte für WebAuthn (Passkeys) implementieren.
@@ -27,7 +27,7 @@
   * JWT-Authentifizierung mit Speicherung in `HttpOnly` Cookies realisieren.
   * Rate-Limiting via Redis auf kritische Endpunkte (wie Login) legen.
 
-### Phase 3: Kernfunktionen & Smart-Eingabe (Backend & UI)
+### Phase 3: Kernfunktionen & Smart-Eingabe (Backend & UI) ✅
 * **Ziel:** Reibungslose Erfassung von variablen Kosten und Einnahmen.
 * **Tasks:**
   * CRUD-Operationen für Transaktionen im NestJS-Backend erstellen.
@@ -35,15 +35,15 @@
   * Automatisierte Wiederholungen (Scheduled Jobs) für Gehalt und Fixkosten einrichten.
   * Intelligente, regelbasierte Kategorisierung (Lernfunktion bei wiederkehrenden Empfängern).
 
-### Phase 4: Visualisierung & Dashboards
+### Phase 4: Visualisierung & Dashboards ✅
 * **Ziel:** Perfekte Übersicht und Finanzanalyse.
 * **Tasks:**
   * Integration von ECharts (oder Chart.js) für performante Finanz-Charts.
-  * Dashboard-Timeline mit Einnahmen-Ausgaben-Vergleich und Restbudget-Prognosebauen.
+  * Dashboard-Timeline mit Einnahmen-Ausgaben-Vergleich und Restbudget-Prognose bauen.
   * Kategorie-Budgets mit visuellen Warnungen bei Grenzwertüberschreitung hinzufügen.
   * Dark-Mode-Unterstützung integrieren.
 
-### Phase 5: PWA-Feinschliff & Offline-Modus
+### Phase 5: PWA-Feinschliff & Offline-Modus ✅
 * **Ziel:** Nativ-ähnliches Verhalten auf mobilen Endgeräten.
 * **Tasks:**
   * Service Worker für App-Shell-Caching einrichten.
@@ -53,14 +53,6 @@
 
 ---
 
-## 📌 Status Quo (Rest-Roadmap bis zum Release)
-
-Erledigt: Phase 1 bis Phase 5 (DB-Setup, Auth-Backend, Offline-First mit IndexedDB,
-Background-Sync, Quick-Add, Dashboard mit Chart.js, Budget-CRUD, PWA-Manifest & Service Worker).
-Fokus ab hier: Schließen der UI-Lücken, Fertigstellung von Phase 6 (Export/DSGVO), Bereinigung
-der Konfigurationen und Vorbereitung für das Single-VM-Deployment. Die ursprüngliche Phase 6
-("Datenschutz, Export & Feinschliff") wird dafür in die Phasen 6–8 unten aufgeteilt.
-
 ### Phase 6: Einstellungs- & Sicherheits-UI (Settings Page) ✅
 * **Ziel:** Vollständige Verwaltung von Passkeys, 2FA und wiederkehrenden Buchungen über das Frontend.
 * **Tasks:**
@@ -69,7 +61,7 @@ der Konfigurationen und Vorbereitung für das Single-VM-Deployment. Die ursprün
   * TOTP-Enrollment: Dialog zur Generierung eines QR-Codes für Authenticator-Apps inkl. Verifizierungscode-Eingabe.
   * Fixkosten / Wiederkehrende Buchungen: UI-Verwaltung (Liste, Anlegen, Pausieren, Löschen) für `RecurringTransactions` (Gehalt, Miete, Abos) angebunden an die bestehenden Backend-Endpunkte.
 
-### Phase 7: Datenexport, DSGVO & Unit-Tests (Abschluss Phase 6 der alten Roadmap)
+### Phase 7: Datenexport, DSGVO & Unit-Tests
 * **Ziel:** Rechtssicherheit, Datenhoheit und mathematische Korrektheit.
 * **Tasks:**
   * CSV- & JSON-Export: Endpunkte und UI-Buttons für den vollständigen Download aller Transaktionen, Budgets und Kategorien.
@@ -84,3 +76,85 @@ der Konfigurationen und Vorbereitung für das Single-VM-Deployment. Die ursprün
   * `backend/.env.example` bereinigen (reale Secrets durch Platzhalter ersetzen).
   * Docker-Compose für Produktion optimieren: Backend-Image-Rebuild verifizieren (`docker compose up -d --build backend`).
   * Reverse-Proxy-Konfiguration (Caddyfile) für HTTPS-Subdomain-Routing (`fitnesstracker.*`, `finanzplaner.*`) anlegen.
+
+---
+
+### Phase 9: Salden-Engine & Flexibler Gehaltszyklus
+* **Ziel:** Realistische Finanzübersicht ohne starr an Kalendermonaten zu hängen.
+* **Tasks:**
+  * **Startsaldo & Reconciliation:** Initialer Basis-Kontostand sowie Ein-Klick-Funktion *„Saldo abgleichen“* (erzeugt automatische Ausgleichsbuchung bei Cent-Differenzen).
+  * **Dynamischer Monatsstart:** Konfigurierbares Feld `salaryDayOfMonth` in `users` (z. B. 23. des Monats).
+  * **Zyklus-Helfer (`getBillingCycle`):** Filterung aller Budgets und Dashboard-Transaktionen auf das flexible Fenster (`cycleStart` bis `cycleEnd`) inklusive Monatsende-Clamping.
+  * **Frei verfügbares Einkommen:** Dashboard-Berechnung: $\text{Verfügbar} = \text{Gesamtsaldo} - \sum \text{ausstehende Fixkosten} - \sum \text{Rücklagen}$.
+  * **Tages-Burn-Rate:** Dynamische Berechnung des verbleibenden Tagesbudgets bis zum nächsten Gehaltseingang.
+  * **Cashflow-Projektion:** Tagesgenauer Liquiditätsverlauf im Dashboard mit optischer Warnung bei drohendem Saldo-Unterdeckungsrisiko.
+
+### Phase 10: Virtuelle Töpfe & Vertragsmanagement
+* **Ziel:** Sparziele verwalten und Fixkosten-Verträge im Blick behalten.
+* **Tasks:**
+  * **Virtuelle Töpfe (Sinking Funds):** Erstellung von Rücklagen (z. B. Notgroschen, Kfz-Steuer, Urlaub), die Teile des Gesamtsaldos sperren und vom frei verfügbaren Einkommen abziehen.
+  * **Vertrags-Metadaten:** Erweiterung von `RecurringTransactions` um `cancellationPeriodDays` (Kündigungsfrist), `contractEndDate` (Mindestlaufzeit) und Vertragsnummer.
+  * **Kündigungswecker:** Dashboard-Hinweise und Benachrichtigungen vor automatischer Vertragsverlängerung.
+  * **Preiserhöhungs-Erkennung:** Automatischer Indikator bei Erhöhungen wiederkehrender Buchungsbeträge im Zyklusvergleich.
+
+### Phase 11: Smarte Datenerfassung & Import
+* **Ziel:** Manuellen Erfassungsaufwand minimieren.
+* **Tasks:**
+  * **CSV-Transaktions-Import:** Generischer Uploader mit interaktivem Spalten-Mapper (Datum, Betrag, Empfänger/Beschreibung) und Duplikaterkennung via Content-Hash.
+  * **OCR-Belegscan:** Client- oder Worker-basierte Texterkennung (OCR) für hochgeladene Kassenbons zur automatischen Vorbefüllung von Betrag, Datum und Händler.
+  * **Split-Transaktionen:** Aufteilung einer einzelnen Buchung auf mehrere Kategorien (z. B. 60 € Supermarkt $\rightarrow$ 45 € Lebensmittel, 15 € Drogerie).
+  * **Währungsumrechner:** Schnelleingabe von Fremdwährungen bei Reisen mit direkter Umrechnung in den Cent-Basiswert.
+
+### Phase 12: UI/UX Redesign & Modernes Dashboard
+* **Ziel:** Hochwertige, übersichtliche und responsive Darstellung im Finanzguru-Stil.
+* **Tasks:**
+  * **Hero-Card mit Mesh-Gradient:** Zentrale Darstellung von Gesamtsaldo, frei verfügbarem Einkommen und Tagesbudget.
+  * **Privacy-Mode (Blickschutz):** Globaler Toggle im Header zum Verwischen (`backdrop-blur`) sensibler Cent-Beträge.
+  * **Moderne Chart-Ästhetik:** Glatte Bézier-Kurven (`tension: 0.4`) mit transparenten Farbverläufen, Donut-Chart für Kategorie-Anteile und gestrichelter Prognoselinie.
+  * **Pill-Progress-Bars & Category Badges:** Abgerundete Budgetbalken mit Ampel-Farbübergängen und pastellfarbenen Icon-Badges.
+  * **Micro-Interactions:** Zähl-Animationen für Beträge (Animated Counters), Skeleton-Loader mit Shimmer-Effekt und Transaktions-Gruppierung nach Datumsblöcken (*Heute*, *Gestern*).
+
+### Phase 13: Auswertungen, Tags & PWA-Power-Features
+* **Ziel:** Tiefe Einblicke in Ausgabengewohnheiten und volle PWA-Plattformintegration.
+* **Tasks:**
+  * **Erweiterte Analytics:** Automatische Berechnung der Sparquote, Sankey-Geldflussdiagramm und 50/30/20-Regel-Auswertung.
+  * **Flag-Auswertung:** Aggregiertes Einsparpotenzial-Dashboard für die Flags *Vermeidbar*, *Ineffizient* und *Zu hoch*.
+  * **Projektbezogene Tags:** Beliebige Hashtags (`#Urlaub2026`, `#Renovierung`) für kategorieübergreifende Auswertungen.
+  * **Steuer-Marker:** Flag für steuerrelevante Buchungen inklusive gefiltertem Jahres-Export samt Belegen.
+  * **Web Push Notifications:** Service-Worker-Benachrichtigungen bei Budgetüberschreitungen und anstehenden Großbuchungen.
+  * **App Shortcuts:** Direkter Absprung aus dem Homescreen-Icon zur Schnellerfassung und Spracheingabe via Web Manifest.
+  * **Batch-Bearbeitung:** Massenbearbeitung/-löschung in der Transaktionsliste.
+
+---
+
+### Phase 14: Vertrags-Benchmark & Sparpotenzial-Engine (Automatischer Vertrags-Check)
+* **Ziel:** Automatische Erkennung überteuerter Verträge und ineffizienter Gebühren per Marktreferenz.
+* **Tasks:**
+  * **Typisierte Vertragsmetadaten (`contractDetails` JSONB in `RecurringTransactions`):**
+    * *Strom / Gas:* Netto ct/kWh (Arbeitspreis), Grundpreis (€/Mo), geschätzter Jahresverbrauch.
+    * *Internet (DSL/Glasfaser/Kabel):* Bandbreite (Mbit/s), Anschlusstyp, Monatspreis.
+    * *Mobilfunk:* Datenvolumen (GB/Unlimited), Netz, Monatspreis.
+    * *Versicherungen:* Typ (Haftpflicht, Hausrat, BU, Kfz, etc.), Tarifart (Single/Familie), Jahresbeitrag.
+  * **Benchmark-Datensatz im Backend:** Strukturierte Referenztabelle mit Marktdurchschnitten und Schwellenwerten (Günstig / Fair / Teuer).
+  * **Automatisches Flag-System:**
+    * Verträge über Marktschnitt erhalten automatisch das Flag `Zu hoch`.
+    * Automatische Erkennung von Bank- und Kontoführungsgebühren $\rightarrow$ direktes Vorschlagen von `Ineffizient / Vermeidbar`.
+  * **Sparpotenzial-Widget:** Dashboard-Card mit aggregiertem monatlichem & jährlichem Einsparpotenzial sowie horizontalen Benchmark-Vergleichsskalen.
+
+### Phase 15: Dynamischer Experten-Ratgeber & Smart-Finance-Feed
+* **Ziel:** Zeitaktuelle Tipps zum Sparen, Investieren und für zusätzliches Einkommen direkt in der App bereitstellen.
+* **Tasks:**
+  * **Datenbankschema & Interaktions-Tracking:**
+    * `AdviceTip`-Tabelle: Attribute wie `slug`, `title`, `content`, `category` (`SAVINGS`, `INCOME`, `TAX`, `SEASONAL`), `actionUrl`, `triggerRule` (JSON), `validFrom`/`validUntil` und `priority`.
+    * `UserAdviceInteraction`-Tabelle: Speicherung des Nutzerstatus pro Tipp (`PINNED`, `DISMISSED`, `COMPLETED`).
+  * **Regel- & Filter-Engine (`AdviceService`):**
+    * *Saisonale Filter:* Abgleich mit aktuellem Datum (z. B. Kfz-Wechselsaison im Nov, Steuer-Deadlines).
+    * *Verhaltens-Trigger (Behavioral Rules):* Hoher ruhender Saldo $\rightarrow$ Tagesgeld-/Zins-Tipp; Überproportionale Ausgaben in Kategorien (z. B. Gastro) $\rightarrow$ Cashback/Budgeting-Hinweise; Verträge mit Flag `Zu hoch` $\rightarrow$ Wechsel-Checklisten.
+    * *Redis-Caching:* Caching aktiver globaler Tipps (TTL 1h) zur Entlastung von PostgreSQL.
+  * **Content-Pipeline & Sync:**
+    * Basis-Seed via `tips.json` für Entwicklungs- und Offline-Betrieb.
+    * Optionaler Cron-Job zum periodischen Abgleich mit einem Remote-JSON-Feed (z. B. für Zinsanpassungen oder neue Steuerfreibeträge ohne App-Deployment).
+  * **UI-Widget (`AdviceFeed`):**
+    * Swipeable / dismissable Karten im Dashboard unterhalb des Hero-Bereichs.
+    * Ein-Klick-Aktionen (`📌 Merken`, `✕ Ausblenden`, `✓ Erledigt`).
+    * Offline-Fallback: Gecachte Tipps in `IndexedDB` speichern für unterbrechungsfreie Nutzung ohne Netz.
