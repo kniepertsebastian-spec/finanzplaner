@@ -32,6 +32,8 @@ export class RecurringTransactionsService {
         nextDueDate: new Date(dto.nextDueDate),
         intervalMonths: dto.intervalMonths ?? 1,
         active: dto.active ?? true,
+        avoidable: dto.avoidable ?? false,
+        inefficient: dto.inefficient ?? false,
       },
     });
   }

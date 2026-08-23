@@ -12,6 +12,8 @@ export interface TransactionInput {
   description: string;
   date?: string;
   categoryId?: string;
+  avoidable?: boolean;
+  inefficient?: boolean;
 }
 
 export const transactionsApi = {

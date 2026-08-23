@@ -13,6 +13,16 @@ export interface Authenticator {
   lastUsedAt: string | null;
 }
 
+export interface Invoice {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number; // bytes
+  important: boolean;
+  uploadedAt: string;
+  userId: string;
+}
+
 export interface RecurringTransaction {
   id: string;
   amount: number; // cents; positive = income, negative = expense
@@ -20,6 +30,8 @@ export interface RecurringTransaction {
   nextDueDate: string; // ISO date of the next posting
   intervalMonths: number; // 1 = monthly, 3 = quarterly, 12 = yearly, ...
   active: boolean;
+  avoidable: boolean;
+  inefficient: boolean;
   lastRunAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -38,6 +50,8 @@ export interface Transaction {
   amount: number; // cents; positive = income, negative = expense
   description: string;
   date: string;
+  avoidable: boolean;
+  inefficient: boolean;
   userId: string;
   categoryId: string;
 }

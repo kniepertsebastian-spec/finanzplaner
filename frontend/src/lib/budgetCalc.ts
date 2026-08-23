@@ -1,4 +1,18 @@
-import type { Transaction } from './api/types';
+import type { RecurringTransaction, Transaction } from './api/types';
+
+// Sums active, expense-only (negative amount) recurring rules whose nextDueDate falls
+// within [startISO, endISO) — i.e. what's due to post next calendar month.
+export function upcomingFixedCosts(recurring: RecurringTransaction[], startISO: string, endISO: string): number {
+  const start = new Date(startISO).getTime();
+  const end = new Date(endISO).getTime();
+  return recurring
+    .filter((r) => r.active && r.amount < 0)
+    .filter((r) => {
+      const due = new Date(r.nextDueDate).getTime();
+      return due >= start && due <= end;
+    })
+    .reduce((sum, r) => sum + Math.abs(r.amount), 0);
+}
 
 export function spentForCategory(transactions: Transaction[], categoryId: string): number {
   return transactions

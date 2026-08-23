@@ -23,4 +23,12 @@ export class CreateRecurringTransactionDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  avoidable?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  inefficient?: boolean;
 }

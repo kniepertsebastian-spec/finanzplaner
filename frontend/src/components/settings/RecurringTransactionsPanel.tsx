@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Pause, Pencil, Play, Trash2 } from 'lucide-react';
+import { Flag, Pause, Pencil, Play, Trash2, TrendingDown } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { categoriesApi } from '../../lib/api/categories';
 import { recurringTransactionsApi } from '../../lib/api/recurringTransactions';
@@ -99,6 +99,16 @@ export function RecurringTransactionsPanel() {
 
   const handleToggleActive = async (item: RecurringTransaction) => {
     await recurringTransactionsApi.update(item.id, { active: !item.active });
+    load();
+  };
+
+  const handleToggleAvoidable = async (item: RecurringTransaction) => {
+    await recurringTransactionsApi.update(item.id, { avoidable: !item.avoidable });
+    load();
+  };
+
+  const handleToggleInefficient = async (item: RecurringTransaction) => {
+    await recurringTransactionsApi.update(item.id, { inefficient: !item.inefficient });
     load();
   };
 
@@ -275,6 +285,34 @@ export function RecurringTransactionsPanel() {
                 </td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{formatCents(item.amount)}</td>
                 <td className="px-4 py-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAvoidable(item)}
+                    aria-label={item.avoidable ? 'Als vermeidbar entfernen' : 'Als vermeidbar markieren'}
+                    title="Vermeidbar"
+                    className={clsx(
+                      'mr-2 rounded p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+                      item.avoidable
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-neutral-500 dark:text-neutral-400',
+                    )}
+                  >
+                    <Flag size={16} fill={item.avoidable ? 'currentColor' : 'none'} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleInefficient(item)}
+                    aria-label={item.inefficient ? 'Als ineffizient entfernen' : 'Als ineffizient markieren'}
+                    title="Ineffizient"
+                    className={clsx(
+                      'mr-2 rounded p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+                      item.inefficient
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-neutral-500 dark:text-neutral-400',
+                    )}
+                  >
+                    <TrendingDown size={16} />
+                  </button>
                   <button
                     type="button"
                     onClick={() => startEdit(item)}

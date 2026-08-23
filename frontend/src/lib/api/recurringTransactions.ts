@@ -8,6 +8,8 @@ export interface RecurringTransactionInput {
   nextDueDate: string; // ISO date, e.g. "2026-10-15"
   intervalMonths?: number;
   active?: boolean;
+  avoidable?: boolean;
+  inefficient?: boolean;
 }
 
 export const recurringTransactionsApi = {

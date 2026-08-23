@@ -35,6 +35,9 @@ services:
       DATABASE_URL: postgresql://postgres_user:secure_password_123@postgres:5432/finance_db?schema=public
       REDIS_URL: redis://redis:6379
       PORT: 3000
+      UPLOADS_DIR: /app/uploads/invoices
+    volumes:
+      - uploads:/app/uploads/invoices
     depends_on:
       - postgres
       - redis
@@ -87,5 +90,6 @@ services:
 volumes:
   pgdata:
   redisdata:
+  uploads:
   bookstack_dbdata:
   bookstack_data:

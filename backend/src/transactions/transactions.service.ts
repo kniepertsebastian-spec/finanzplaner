@@ -48,6 +48,8 @@ export class TransactionsService {
         amount: dto.amount,
         description: dto.description,
         date: dto.date ? new Date(dto.date) : undefined,
+        avoidable: dto.avoidable,
+        inefficient: dto.inefficient,
       },
     });
   }
@@ -91,6 +93,8 @@ export class TransactionsService {
         description: dto.description,
         date: dto.date ? new Date(dto.date) : undefined,
         categoryId,
+        avoidable: dto.avoidable,
+        inefficient: dto.inefficient,
       },
     });
   }

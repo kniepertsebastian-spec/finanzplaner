@@ -1,4 +1,4 @@
-import { IsInt, IsISO8601, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsBoolean, IsInt, IsISO8601, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class CreateTransactionDto {
   @IsInt()
@@ -15,4 +15,12 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  avoidable?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  inefficient?: boolean;
 }

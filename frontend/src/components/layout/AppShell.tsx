@@ -1,4 +1,16 @@
-import { CloudOff, LayoutDashboard, LogOut, Menu, Moon, Plus, Settings, Sun, Wallet } from 'lucide-react';
+import {
+  CloudOff,
+  LayoutDashboard,
+  List,
+  LogOut,
+  Menu,
+  Moon,
+  Plus,
+  Receipt,
+  Settings,
+  Sun,
+  Wallet,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
@@ -10,6 +22,8 @@ const navItems = [
   { to: '/', end: true, label: 'Dashboard', icon: LayoutDashboard },
   { to: '/budgets', end: false, label: 'Budgets', icon: Wallet },
   { to: '/add', end: false, label: 'Hinzufügen', icon: Plus },
+  { to: '/transactions', end: false, label: 'Transaktionen', icon: List },
+  { to: '/invoices', end: false, label: 'Rechnungen', icon: Receipt },
   { to: '/settings', end: false, label: 'Einstellungen', icon: Settings },
 ];
 

@@ -12,6 +12,7 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { CategoriesModule } from './categories/categories.module';
 import { BudgetsModule } from './budgets/budgets.module';
 import { RecurringTransactionsModule } from './recurring-transactions/recurring-transactions.module';
+import { InvoicesModule } from './invoices/invoices.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { RecurringTransactionsModule } from './recurring-transactions/recurring-
     CategoriesModule,
     BudgetsModule,
     RecurringTransactionsModule,
+    InvoicesModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
