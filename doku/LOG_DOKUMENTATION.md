@@ -2,6 +2,28 @@
 
 ---
 
+### 📋 Schritt-Log: "Zu hoch"-Flag gemerged und auf dem Mini-PC deployed
+**Zeitstempel:** `2026-08-23 19:55`
+
+#### 1. Was wurde getan?
+*   Fortsetzung der Session, die den vorherigen Eintrag (17:15) hinterlassen hat: der Feature-Branch `claude/session-continuation-x6322m` war seit dem "Zu hoch"-Flag-Schritt fertig entwickelt, aber weder in `main` gemerged noch auf dem Mini-PC deployed.
+*   Mit dem Nutzer explizit abgestimmt (der Mini-PC-Klon trackt `main`, das noch 3 Commits zurücklag): Fast-Forward-Merge von `claude/session-continuation-x6322m` nach `main` (`git merge --ff-only`, keine Konflikte, da `main` ein reiner Vorfahre des Branches war), gepusht (`a3cd9b9..4113b83`).
+*   Auf dem Mini-PC (`claude@192.168.178.151`, per SSH — Nutzer hat die SSH-Aktion explizit freigegeben): `git pull --ff-only` (main), `docker compose -f docker-compose.prod.yml build backend frontend`, `docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy` (Migration `20260823171500_add_too_expensive_flag` erfolgreich angewendet, Prisma-Output bestätigt "All migrations have been successfully applied"), `docker compose -f docker-compose.prod.yml up -d backend frontend`.
+*   **Stolperstein unterwegs:** Der erste Backend-Build-Versuch lief in ein Tool-seitiges Timeout, das den SSH-Prozess killte, bevor die finale Image-Export-Stage durchlief — das produzierte Image war dadurch de facto ein Cache-Rest vom vorherigen Build (nur 7 statt 8 Migrationsordner enthalten, per `docker run --entrypoint ls` im Image bestätigt). Erkannt durch Abgleich der Image-Erstellungszeit (`docker inspect --format '{{.Created}}'`) gegen die tatsächliche Bauzeit. Backend-Build per `nohup ssh ... &` erneut im Hintergrund gestartet, diesmal bis zum tatsächlichen Prozessende abgewartet (nicht nur bis der auslösende Shell-Befehl zurückkehrte) — danach bestätigt, dass das neue Image alle 8 Migrationsordner inkl. `add_too_expensive_flag` enthält.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag: Fortsetzung der Session laut `context.md`/vorherigem Log-Eintrag, die den Deploy-Schritt als offen markiert hatten. Nutzer hat sowohl den SSH-Zugriff als auch den Merge nach `main` explizit auf Nachfrage freigegeben.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   `main` enthält jetzt den kompletten Stand von `claude/session-continuation-x6322m` (inkl. `context.md`, `features.md`). Der Feature-Branch selbst wurde nicht gelöscht.
+*   Alle vier Prod-Container (`postgres`, `redis`, `backend`, `frontend`) laufen; Backend-Startup-Log zeigt alle Routen korrekt gemappt, keine Fehler.
+*   **Kein visueller Browser-Check des neuen "Zu hoch"-Toggle-Buttons durch den Nutzer selbst** — das bleibt offen, da 2FA/TOTP auf dem Prod-Account einen automatisierten Login-Check verhindert (siehe frühere Einträge). Infrastruktur-seitig (Container-Status, Migration, Routen) ist alles verifiziert.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Merge + Deploy) — [ ] Überprüfung erforderlich (finaler visueller Check des Toggle-Buttons durch den Nutzer)
+
+---
+
 ### 📋 Schritt-Log: "Zu hoch"-Flag auf Transaktionen und Fixkosten
 **Zeitstempel:** `2026-08-23 17:15`
 

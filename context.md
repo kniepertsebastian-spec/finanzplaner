@@ -96,7 +96,7 @@ Details siehe `features.md`. Kurzfassung nach Roadmap-Phasen:
   - [x] Monats-Fixkosten-Summe auf dem Dashboard
   - [x] Beleg-Upload (Invoices-Modul) mit 30-Tage-Auto-Löschung
   - [x] `avoidable`/`inefficient`-Flags auf Transaktionen und Fixkosten-Regeln
-  - [x] `tooExpensive` ("zu hoch")-Flag auf Transaktionen und Fixkosten-Regeln — **Code fertig, siehe Abschnitt 5 für Deploy-Status**
+  - [x] `tooExpensive` ("zu hoch")-Flag auf Transaktionen und Fixkosten-Regeln — Code fertig, in `main` gemerged und auf dem Mini-PC deployed (2026-08-23 19:55), Migration angewendet. Nur noch offen: visueller Check des Toggle-Buttons durch den Nutzer selbst (2FA verhindert automatisierten Login-Check).
   - [x] Transaktionen-Edit-UI (`/transactions` mit Bearbeiten-Formular)
   - [x] Spracheingabe ("Tippen-zum-Sprechen") für Quick-Add
   - [x] Mobile Navigation als Dropdown-Menü statt Zeile, Safe-Area-Support
@@ -106,11 +106,8 @@ Details siehe `features.md`. Kurzfassung nach Roadmap-Phasen:
 
 ## 5. Was im Code fertig ist, aber NOCH NICHT deployed
 
-- [ ] **`tooExpensive`-Flag (Migration `20260823171500_add_too_expensive_flag`).** Committed und gepusht auf Branch `claude/session-continuation-x6322m` (Commits `9b6c7ee`, `935cdae`), aber:
-  - [ ] noch nicht in `main` gemerged (kein PR bisher eröffnet — Nutzer hat nicht danach gefragt)
-  - [ ] noch nicht auf dem Mini-PC gepullt/gebaut/migriert
-  - [ ] noch kein visueller Check im echten Browser (dritter Icon-Toggle "Zu hoch" auf `/transactions` und im Fixkosten-Panel)
-  - Exakte Deploy-Schritte für den Mini-PC: siehe `doku/LOG_DOKUMENTATION.md`-Eintrag "Zu hoch-Flag" (2026-08-23 17:15) bzw. die dort verlinkte Anleitung. Kurzfassung: `git pull` → `docker compose -f docker-compose.prod.yml build backend frontend` → `docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy` → `docker compose -f docker-compose.prod.yml up -d backend frontend`.
+- Aktuell nichts bekannt. Der `tooExpensive`-Flag (Migration `20260823171500_add_too_expensive_flag`) wurde am 2026-08-23 19:55 nach `main` gemerged (`a3cd9b9..4113b83`) und auf dem Mini-PC deployed (Backend+Frontend neu gebaut, Migration angewendet, Container laufen). Details: `doku/LOG_DOKUMENTATION.md`-Eintrag "Zu hoch-Flag gemerged und auf dem Mini-PC deployed" (2026-08-23 19:55).
+  - [ ] Einzig noch offen: visueller Check des dritten Icon-Toggles ("Zu hoch") auf `/transactions` und im Fixkosten-Panel im echten Browser durch den Nutzer selbst — 2FA/TOTP auf dem Prod-Account verhindert einen automatisierten Login-Check von einer Session aus.
 
 **Prüfe bei Sessionstart immer per `git log --oneline -5` und `git status`, ob sich das seither geändert hat** (z. B. Nutzer hat inzwischen selbst gemerged/deployed) — diese Datei wird nicht automatisch synchron gehalten.
 
