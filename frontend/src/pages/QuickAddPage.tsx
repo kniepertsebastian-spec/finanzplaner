@@ -1,11 +1,15 @@
 import { isAxiosError } from 'axios';
 import clsx from 'clsx';
-import { useEffect, useState, type FormEvent } from 'react';
+import { Mic, MicOff } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { categoriesApi } from '../lib/api/categories';
 import { transactionsApi, type TransactionInput } from '../lib/api/transactions';
 import type { Category } from '../lib/api/types';
 import { addPendingTransaction, listWithCache } from '../lib/offlineDb';
 import { eurosToCents } from '../lib/money';
+import { matchCategoryId, parseVoiceTranscript } from '../lib/voiceParse';
+
+const SpeechRecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
 
 type Sign = 'expense' | 'income';
 type Status = 'idle' | 'saved' | 'queued-offline';
@@ -26,6 +30,45 @@ export function QuickAddPage() {
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [listening, setListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  const startListening = () => {
+    if (!SpeechRecognitionCtor) return;
+    setVoiceError(null);
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'de-DE';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript ?? '';
+      const { amountEuros, description: parsedDescription } = parseVoiceTranscript(transcript);
+      if (amountEuros) setAmount(amountEuros);
+      setDescription(parsedDescription);
+      if (categories) {
+        const matchedCategoryId = matchCategoryId(transcript, categories);
+        if (matchedCategoryId) setCategoryId(matchedCategoryId);
+      }
+    };
+    recognition.onerror = () => {
+      setVoiceError('Spracherkennung fehlgeschlagen — bitte Mikrofonzugriff erlauben und erneut versuchen.');
+      setListening(false);
+    };
+    recognition.onend = () => setListening(false);
+
+    recognitionRef.current = recognition;
+    setListening(true);
+    recognition.start();
+  };
+
+  const stopListening = () => {
+    recognitionRef.current?.stop();
+    setListening(false);
+  };
 
   useEffect(() => {
     listWithCache('categories', () => categoriesApi.list())
@@ -89,7 +132,26 @@ export function QuickAddPage() {
         onSubmit={handleSubmit}
         className="space-y-4 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
       >
-        <h2 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Transaktion hinzufügen</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Transaktion hinzufügen</h2>
+          {SpeechRecognitionCtor && (
+            <button
+              type="button"
+              onClick={listening ? stopListening : startListening}
+              aria-label={listening ? 'Spracheingabe stoppen' : 'Per Sprache ausfüllen'}
+              className={clsx(
+                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium',
+                listening
+                  ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                  : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300',
+              )}
+            >
+              {listening ? <MicOff size={14} /> : <Mic size={14} />}
+              {listening ? 'Hört zu…' : 'Sprechen'}
+            </button>
+          )}
+        </div>
+        {voiceError && <p className="text-sm text-red-600 dark:text-red-400">{voiceError}</p>}
 
         <div className="flex gap-2">
           <button
