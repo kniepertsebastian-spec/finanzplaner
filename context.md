@@ -1,163 +1,51 @@
-# context.md — Handoff für neue Claude-Sessions
+# context.md — Handoff für die Fortsetzung dieser Session
 
-**Zweck dieser Datei:** Ein neuer Claude Code Session-Start (v. a. eine frische Cloud-Session ohne Erinnerung an vorherige Chats) soll diese Datei lesen und **ohne Rückfragen** wissen: was ist das Projekt, was ist fertig, was ist offen, welche Umgebungs-Einschränkungen gelten. Bei Widerspruch zwischen dieser Datei und dem tatsächlichen Repo-Zustand (Code/Git) gilt der Repo-Zustand — dann diese Datei korrigieren.
+## Ziel
 
-**Lesereihenfolge beim Einstieg in einen neuen Schritt:**
-1. Diese Datei (`context.md`) — Überblick + Umgebungsfakten.
-2. `doku/LOG_DOKUMENTATION.md` — **nur den obersten (neuesten) Eintrag**, für den exakten letzten Schritt.
-3. `claude/roadmap.md` — Phasenplan, falls der nächste Schritt unklar ist.
-4. `features.md` — vollständige Feature-Liste als Ist-Zustand.
-5. `git log --oneline -5` und `git status` — Ground Truth, immer aktueller als jede Doku.
+Finanz-PWA (Single-User React/NestJS/Postgres-App, produktiv auf `https://finance.pwa-tree.de`) um einen konfigurierbaren Abrechnungszeitraum erweitern (`User.monthStartDay`, z. B. Gehalt am 23. statt am 1.) und diese Änderung vollständig auf dem Mini-PC deployen und verifizieren.
 
----
+## Aktueller Stand
 
-## 1. Was ist das Projekt
+- Feature vollständig implementiert, lokal verifiziert (Backend-Tests grün, Frontend-Typecheck grün, echter Browser-Test via Playwright) und committed/gepusht auf `main` (Commits `85942db`, `999533c`).
+- `claude/roadmap.md` wurde vom Nutzer selbst um Phasen 9–15 erweitert (separater Commit `78617b4`, nicht meine Autorschaft) — Phase 9 "Salden-Engine & Flexibler Gehaltszyklus" deckt sich mit diesem Feature (`salaryDayOfMonth` im Roadmap-Text = `monthStartDay` im Code, funktional identisch, nur anderer Feldname).
+- Deployment auf dem Mini-PC läuft: `git pull` erfolgt, `docker compose build backend frontend` lief beim Sessionende noch (Backend-Build ist der Flaschenhals). **Migration `20260823145352_add_month_start_day` wurde noch NICHT per `prisma migrate deploy` auf der Produktions-DB angewendet.**
+- 2FA/TOTP wurde vom Nutzer auf dem Prod-Account entfernt (Stand dieser Session) — automatisierte Login-Checks gegen die echte URL sind wieder möglich.
+- Der vorherige Schritt dieser Session ("zu hoch"/`tooExpensive`-Flag) ist bereits vollständig deployed und lief in einer früheren Cloud-Session ohne Docker/Browser-Zugriff — dort nur Build/Test-grün verifiziert, danach in dieser (lokalen, Docker-fähigen) Session gemerged und deployed.
 
-**Finanz-PWA** ("Finanzguru-Style ohne Bank-Pull"): persönliche Finanzverwaltungs-App für **einen einzigen Nutzer** (keine öffentliche Registrierung), manuelle Buchungserfassung statt Bank-Anbindung.
+## Offene TODOs
 
-- **Frontend:** React + Vite, PWA (installierbar, offline-fähig), Tailwind CSS, `react-router-dom` v7.
-- **Backend:** NestJS (TypeScript), REST-API.
-- **DB:** PostgreSQL via Prisma ORM 7 (Geldbeträge **immer** als Cent-Integer, nie Float).
-- **Cache/Rate-Limiting:** Redis.
-- **Auth:** Passkeys (WebAuthn) primär, Passwort+TOTP als Fallback, JWT in `HttpOnly`-Cookie.
-- **Deployment:** Docker Compose, produktiv auf einem privaten Mini-PC des Nutzers (siehe Abschnitt 3).
-- **Doku-Pflicht:** Nach jedem abgeschlossenen Arbeitsschritt einen neuen Eintrag **oben** in `doku/LOG_DOKUMENTATION.md` anlegen, Schema/Vorlage steht in `claude/doku.md`. Das ist eine verbindliche Workflow-Regel dieses Projekts, keine Empfehlung.
+1. Prüfen, ob der Backend-Image-Build auf dem Mini-PC inzwischen fertig ist: `ssh minipc "docker inspect finanzplaner-backend:latest --format '{{.Created}}'"` — muss neuer sein als `2026-08-23T19:53:20+02:00`.
+2. Migration anwenden: `ssh minipc "cd ~/finanzplaner && docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy"`.
+3. Container neu starten: `docker compose -f docker-compose.prod.yml up -d backend frontend`.
+4. Verifizieren (jetzt ohne 2FA-Hürde möglich): Login auf `https://finance.pwa-tree.de`, Einstellungen → Abrechnungszeitraum auf 23 setzen, prüfen dass Dashboard "Zeitraum: 23. Aug. – 22. Sept. 2026" (oder aktuelles Äquivalent) zeigt und die Fixkosten-Summe den nächsten Zeitraum korrekt benennt.
+5. Rest von Phase 9 (aus `claude/roadmap.md`, noch nicht begonnen): Startsaldo & Reconciliation, freies verfügbares Einkommen, Tages-Burn-Rate, Cashflow-Projektion.
 
----
+## Relevante Dateien/Pfade
 
-## 2. Repo-Struktur (wo liegt was)
+- `backend/prisma/schema.prisma` — `User.monthStartDay Int @default(1)` ergänzt (Zeile im `User`-Model).
+- `backend/prisma/migrations/20260823145352_add_month_start_day/` — die anzuwendende Migration.
+- `backend/src/users/{users.controller.ts,users.service.ts,dto/update-user.dto.ts}` — waren leere Stubs, jetzt `PATCH /users/me`.
+- `backend/src/auth/auth.service.ts` — `login()`/`me()` liefern jetzt `monthStartDay` mit.
+- `frontend/src/lib/financialPeriod.ts` — neuer zentraler Helfer (Zeitraum-Berechnung), ersetzt das gelöschte `frontend/src/lib/dateRange.ts` vollständig.
+- `frontend/src/pages/DashboardPage.tsx`, `frontend/src/pages/BudgetsPage.tsx` — auf die neuen Helfer umgestellt statt Kalendermonat.
+- `frontend/src/components/charts/IncomeExpenseChart.tsx` — Prop `daysInMonth` → `periodStart`+`daysInPeriod`, Tage-Zuordnung jetzt zeitraum- statt kalendertag-basiert.
+- `frontend/src/components/settings/MonthCycleSettings.tsx` — neues Settings-Panel zum Ändern des Starttags.
+- `context.md` (diese Datei), `doku/LOG_DOKUMENTATION.md`, `features.md` — bereits aktualisiert und committed.
+- `docker-compose.prod.yml` (Repo-Root) — NUR für den Mini-PC, unterscheidet sich vom lokalen `docker-compose.yml`.
 
-```
-/
-├── backend/                    NestJS-API
-│   ├── prisma/schema.prisma    DB-Schema (Quelle der Wahrheit für Datenmodell)
-│   ├── prisma/migrations/      chronologische SQL-Migrationen
-│   ├── src/<feature>/          je ein Modul: auth, transactions, categories,
-│   │                           budgets, recurring-transactions, invoices, users
-│   └── .env.example            Vorlage — ⚠️ enthält noch echt aussehende Werte, siehe TODO
-├── frontend/
-│   ├── src/pages/               eine Datei pro Route
-│   ├── src/components/          + components/settings/ für die Settings-Unterseiten
-│   ├── src/lib/api/             dünne Axios-Wrapper, ein Modul pro Backend-Ressource
-│   ├── src/lib/offlineDb.ts     IndexedDB-Cache + Offline-Warteschlange
-│   ├── src/sw.ts                Service Worker (Workbox)
-│   └── .env.example
-├── docker-compose.yml           LOKALE Entwicklung (Postgres/Redis/Backend/Frontend + Bookstack)
-├── docker-compose.prod.yml      NUR für den Mini-PC — anderer Aufbau, kein Host-Port, `edge`-Netzwerk
-├── doku/LOG_DOKUMENTATION.md    Chronologischer Änderungslog, NEUESTER Eintrag OBEN
-├── claude/roadmap.md            Phasenplan (Phase 1–8), Status Quo oben im Dokument
-├── claude/doku.md               Vorlage/Regeln für den Log-Eintrag
-└── features.md                 Ist-Zustand aller Features, kein Verlauf
-```
+## Entscheidungen & Begründungen
 
----
+- Feldname `monthStartDay` statt des in der Roadmap vom Nutzer verwendeten `salaryDayOfMonth` — bewusst neutraler gewählt, da der Starttag nicht zwingend an einen Gehaltseingang gebunden sein muss. Funktional identisch, falls Namenskonsistenz mit der Roadmap gewünscht ist, wäre das ein reines Rename (Migration + Suche/Ersetze), keine Logikänderung.
+- `Budget.month` bekam **keine** Schema-Änderung — das Feld war schon immer ein exakt abgeglichenes `DateTime`, es wird jetzt einfach ein anderer Wert hineingeschrieben (Zeitraum-Start statt immer der 1.). Bewusst keine Migration/Backfill für Alt-Daten, weil die Produktions-`Budget`-Tabelle zum Zeitpunkt der Änderung nachweislich 0 Zeilen enthielt.
+- Zeitraum-Verkettung (`getNext-`/`getPreviousFinancialPeriod`) rechnet ausschließlich mit reiner Integer-Monatsarithmetik, nicht mit "1ms abziehen und Datum neu einlesen" — siehe Gotchas.
 
-## 3. Umgebungs-/Zugriffsfakten — UNBEDINGT BEACHTEN, nicht neu herausfinden müssen
+## Bekannte Fallstricke / Gotchas
 
-Es gibt zwei grundverschiedene Session-Umgebungen, die an diesem Projekt arbeiten. **Vor Docker-/SSH-Aktionen immer prüfen, in welcher man sich befindet** (`docker ps` testen, `command -v ssh` testen) — nicht raten.
+- **Zeitzone bei Datums-Verkettung:** Ein erster Ansatz für `getNext-`/`getPreviousFinancialPeriod` (1ms von Start/Ende abziehen, dann per lokalen `Date`-Gettern neu auswerten) war in CEST/UTC+2 nachweislich fehlerhaft (lieferte denselben statt des Nachbar-Zeitraums). Falls an `financialPeriod.ts` weitergearbeitet wird: niemals eine selbst erzeugte UTC-Grenze erneut über `getFullYear()/getMonth()/getDate()` (lokale Getter) einlesen — nur `getUTCFullYear()` etc. verwenden, sobald ein Date bereits über `Date.UTC()` konstruiert wurde.
+- **Sessions-Neustart mittendrin:** In dieser Session ist der zugrunde liegende Prozess mindestens einmal neu gestartet (ein Hintergrundbefehl wurde als "stopped" ohne Ergebnis gemeldet). Dabei ging eine bereits vorgenommene, uncommittete Änderung an `schema.prisma` verloren (der Migrationsordner auf der Platte blieb aber erhalten) — bei Fortsetzung immer per `git status`/`git diff` und `npx prisma migrate status` prüfen, ob Code-Stand und DB-Migrationsstand noch zusammenpassen, nicht blind annehmen.
+- **Zwei grundverschiedene Session-Umgebungen** arbeiten an diesem Projekt: Cloud-Remote-Sessions haben **keinen** Docker-Daemon und **keinen** Netzwerkpfad ins private LAN (`192.168.178.0/24`) — dort ist kein `docker compose`, kein SSH zum Mini-PC (`minipc`-Alias, Key `~/.ssh/mini-pc-claude`, existiert nur lokal beim Nutzer) und kein Live-DB-Test möglich. Vor Docker-/SSH-Aktionen immer prüfen (`docker ps`, `command -v ssh`), nicht raten.
+- Migrations-Deploy-Befehl auf dem Mini-PC: `docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy` (nicht `exec`, falls der Backend-Container gerade neu gebaut aber noch nicht gestartet wurde).
 
-### a) Cloud-Remote-Session (z. B. diese hier, `claude.ai/code`)
-- Läuft in einem isolierten Container **ohne Docker-Daemon** (`docker ps` schlägt fehl: *"failed to connect to the docker API"*).
-- **Kein Netzwerkpfad ins private LAN des Nutzers** (`192.168.178.0/24`) — ein TCP-Connect zu `192.168.178.151:22` läuft in einen Timeout, unabhängig von SSH-Keys/Credentials. Es gibt keinen Tunnel/keine Route dorthin.
-- Kann also **nicht**: gegen eine echte Postgres/Redis-Instanz testen, `docker compose` ausführen, den Mini-PC per SSH erreichen. Live-Browser-Checks gegen `https://finance.pwa-tree.de` sind seit Entfernung von 2FA (2026-08-23) technisch wieder möglich, sofern die Cloud-Session Internetzugriff hat — betrifft nur den Login-Check selbst, nicht die übrigen Docker/LAN-Einschränkungen dieses Abschnitts.
-- Verifikation ist hier beschränkt auf: `npx prisma validate`/`format`, Backend `npm run build` + `npm test` (Jest mit gemocktem Prisma, braucht keine echte DB), Frontend `npx tsc --noEmit`. Das ist ausreichend und muss vor jedem Commit laufen — aber **ehrlich als "nicht live getestet" kennzeichnen**, nicht als vollständige Verifikation ausgeben.
-- Deployment auf den Mini-PC kann von hier aus **nicht** durchgeführt werden. Stattdessen: Schritte dokumentieren (siehe Abschnitt 5) und dem Nutzer für eine lokale/Mini-PC-Session übergeben.
+## NICHT relevant
 
-### b) Lokale Session (Nutzer-WSL-Klon oder direkt auf dem Mini-PC)
-- Hat Docker, kann `docker compose up -d --build` etc. ausführen.
-- SSH-Zugriff auf den Mini-PC: Host `pwa01`, IP `192.168.178.151`, User `claude`, lokaler Alias `minipc` (Key `~/.ssh/mini-pc-claude`, existiert nur auf der Maschine des Nutzers, **nicht** in einer Cloud-Session).
-- Produktions-Klon liegt auf dem Mini-PC unter `~/finanzplaner`.
-
-### Produktion
-- Live unter **`https://finance.pwa-tree.de`** (Cloudflare-Tunnel, Containername `finanzplaner-frontend` im `edge`-Docker-Netzwerk, kein Host-Port veröffentlicht).
-- 2FA/TOTP ist auf dem Prod-Account **seit 2026-08-23 deaktiviert** (Nutzer hat es selbst entfernt) — Login mit E-Mail+Passwort reicht aktuell wieder aus, automatisierte Checks sind möglich.
-- Compose-Datei dort: `docker-compose.prod.yml` (im Repo, Root-Verzeichnis) — **nicht** identisch mit dem lokalen `docker-compose.yml`.
-- Migration deployen (auf dem Mini-PC, nach `git pull` + Rebuild): 
-  ```
-  docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
-  ```
-- Secrets liegen ausschließlich in `.env`/`backend/.env` auf dem Mini-PC (chmod 600), nie im Git committed.
-
----
-
-## 4. Was ist fertig (✅ implementiert, Code committed)
-
-Details siehe `features.md`. Kurzfassung nach Roadmap-Phasen:
-
-- [x] Phase 1 — Infrastruktur, DB-Schema, Migrations-Setup
-- [x] Phase 2 — Auth: Passkeys, TOTP-Fallback, JWT-Cookie, Redis-Rate-Limiting
-- [x] Phase 3 — Transaktions-CRUD, Quick-Add, automatisierte Fixkosten-Buchungen, lernende Kategorisierung
-- [x] Phase 4 — Dashboard/Charts, Budget-CRUD, Restbudget-Prognose
-- [x] Phase 5 — PWA-Manifest, Service Worker, IndexedDB-Offline-Cache, Background-Sync
-- [x] Phase 6 — Settings-UI: Passkey-Verwaltung, TOTP-Enrollment, Fixkosten-Verwaltung, Kategorie-Verwaltung
-- [x] Zusatzfeatures (nach Phase 6, vor Phase 7 der ursprünglichen Roadmap):
-  - [x] Fixkosten mit echtem Fälligkeitsdatum (`nextDueDate`) statt Tag-im-Monat, frei wählbarer Rhythmus (`intervalMonths`)
-  - [x] Fixkosten bearbeiten (Edit-UI + Bugfix in `update()`)
-  - [x] Monats-Fixkosten-Summe auf dem Dashboard
-  - [x] Beleg-Upload (Invoices-Modul) mit 30-Tage-Auto-Löschung
-  - [x] `avoidable`/`inefficient`-Flags auf Transaktionen und Fixkosten-Regeln
-  - [x] `tooExpensive` ("zu hoch")-Flag auf Transaktionen und Fixkosten-Regeln — Code fertig, in `main` gemerged und auf dem Mini-PC deployed (2026-08-23 19:55), Migration angewendet. Nur noch offen: visueller Check des Toggle-Buttons durch den Nutzer selbst (2FA verhindert automatisierten Login-Check).
-  - [x] Transaktionen-Edit-UI (`/transactions` mit Bearbeiten-Formular)
-  - [x] Spracheingabe ("Tippen-zum-Sprechen") für Quick-Add
-  - [x] Mobile Navigation als Dropdown-Menü statt Zeile, Safe-Area-Support
-  - [x] Produktions-Deployment auf dem Mini-PC unter `finance.pwa-tree.de` eingerichtet
-  - [~] Konfigurierbarer Abrechnungszeitraum (`User.monthStartDay`, Phase 9 erste Teillieferung) — Code fertig, lokal verifiziert, Deployment auf dem Mini-PC im Gange (siehe Abschnitt 5)
-- [x] `claude/roadmap.md` um Phasen 9–15 erweitert (Nutzer-Planung, siehe Abschnitt 6)
-
----
-
-## 5. Was im Code fertig ist, aber NOCH NICHT deployed
-
-- **Konfigurierbarer Abrechnungszeitraum** (`User.monthStartDay`, Migration `20260823145352_add_month_start_day`, Commit `85942db`): lokal vollständig implementiert und verifiziert (Backend-Tests grün, Frontend-Typecheck grün, echter Browser-Test). Gepusht nach `main`, auf dem Mini-PC gepullt — Backend+Frontend-Rebuild und `prisma migrate deploy` liefen beim Schreiben dieses Eintrags noch. **Bei Sessionstart per `git log`/`docker ps`/`prisma migrate status` auf dem Mini-PC prüfen, ob das inzwischen fertig ist**, statt anzunehmen.
-- 2FA/TOTP auf dem Prod-Account wurde vom Nutzer inzwischen **entfernt** (Stand 2026-08-23, nach Abschluss des `tooExpensive`-Schritts) — automatisierte Login-Checks gegen `https://finance.pwa-tree.de` sind ab jetzt wieder möglich, sofern die Session Netzwerkzugriff auf die echte URL hat (Cloud-Sessions i. d. R. schon, nur kein Docker/LAN-Zugriff zum Mini-PC selbst).
-- Der `tooExpensive`-Flag ist vollständig deployed und (nach Entfernung von 2FA) mittlerweile auch visuell bestätigbar — kein offener Punkt mehr, sofern der nächste Log-Eintrag das nicht widerlegt.
-
-**Prüfe bei Sessionstart immer per `git log --oneline -5` und `git status`, ob sich das seither geändert hat** (z. B. Nutzer hat inzwischen selbst gemerged/deployed) — diese Datei wird nicht automatisch synchron gehalten.
-
----
-
-## 6. Was noch offen ist (Roadmap Phase 7–15, aus `claude/roadmap.md`)
-
-**Update 2026-08-23:** Der Nutzer hat `claude/roadmap.md` selbst um die Phasen 9–15 erweitert (Salden-Engine/Gehaltszyklus, virtuelle Töpfe/Vertragsmanagement, Smart-Import/OCR, UI-Redesign, Auswertungen/Tags/Push, Vertrags-Benchmark, Experten-Ratgeber). Phase 9s Kernstück (`monthStartDay`) ist als erste Teillieferung bereits umgesetzt (siehe Abschnitt 4/5) — Rest von Phase 9 (Startsaldo/Reconciliation, freies verfügbares Einkommen, Tages-Burn-Rate, Cashflow-Projektion) sowie Phasen 10–15 sind noch offen. Zwei Punkte wurden dem Nutzer gegenüber bereits als "vor dem Bauen klären" markiert, nicht als reine Technik-Aufgabe: OCR-Belegscan (Kosten/Abhängigkeit einer Cloud-OCR-API vs. mäßige Genauigkeit von In-Browser-OCR) und Phase 14s Marktvergleich (woher kommen echte Vergleichspreise — vermutlich erste Version als manuell gepflegte Schwellenwert-Tabelle, kein Live-Feed).
-
-### Phase 7 — Datenexport, DSGVO & Unit-Tests
-- [ ] CSV-Export aller Transaktionen/Budgets/Kategorien (Endpunkt + UI-Button)
-- [ ] JSON-Export (dito)
-- [ ] DSGVO-Account-Löschung (kaskadierendes Löschen aller Nutzerdaten in Postgres)
-- [ ] Frontend-Unit-Tests (Vitest/Jest) für Geldberechnungen (`money.ts`, `budgetCalc.ts`, Cent-Rundungen, Restbudget-Prognose) — **aktuell existiert kein Frontend-Testrunner überhaupt**, neue Frontend-Logik wird bisher nur manuell/per Playwright verifiziert
-- [ ] Fehler-Monitoring (Sentry o. ä.) für Frontend + Backend
-
-### Phase 8 — Systembereinigung & Deployment-Vorbereitung
-- [ ] `prisma.config.ts` um `migrations.seed` ergänzen, damit `npx prisma db seed` unter Prisma 7 nativ läuft (aktuell Workaround: `node dist/prisma/seed.js` bzw. `npx ts-node prisma/seed.ts`)
-- [ ] **`backend/.env.example` bereinigen** — enthält aktuell noch einen real aussehenden `JWT_SECRET`-Wert sowie `SEED_USER_EMAIL`/`SEED_USER_PASSWORD` mit der echten Nutzer-E-Mail und einem konkreten Passwort statt Platzhaltern. Sollte durch generische Platzhalter ersetzt werden.
-- [ ] Docker-Compose für Produktion weiter optimieren / Rebuild-Verhalten verifizieren
-- [ ] Caddyfile/Reverse-Proxy-Doku für HTTPS-Subdomain-Routing (aktuell läuft das über Cloudflare Tunnel + bestehendes Nginx im Frontend-Image, kein separater Caddy — evtl. nur noch Doku-Nacharbeit nötig, kein neuer Container)
-
-Keine anderen offenen Punkte aus dem Log bekannt — alle früher als "Nutzer-Aktion ausstehend" markierten Punkte (Cloudflare Public Hostname, Dockerfile-Fix committen, `frontend/.env.production` ins Repo) sind laut späteren Log-Einträgen erledigt.
-
----
-
-## 7. Architektur-Entscheidungen, die als getroffen gelten (nicht neu diskutieren)
-
-- Single-User-App, keine öffentliche Registrierung, kein Multi-Tenant-Konzept nötig.
-- Geldbeträge **immer** Cent-Integer, nie Float/Decimal.
-- Passkey ist der primäre Login-Weg, Passwort+TOTP ist der Fallback (kein Passkey-only-Zwang).
-- Ein einzelnes zustandsloses JWT in einem `HttpOnly`-Cookie, kein Refresh-Token-Konzept.
-- `avoidable` / `inefficient` / `tooExpensive` sind **drei unabhängige Booleans** auf `Transaction` und `RecurringTransaction` — bewusst kein gemeinsames Enum, da eine Buchung mehrere dieser Eigenschaften gleichzeitig haben kann.
-- Wiederkehrende Buchungen laufen über ein echtes `nextDueDate` (Kalenderdatum) + `intervalMonths` (Abstand) — nicht über einen reinen "Tag im Monat".
-- Belege (Invoices) liegen ausschließlich auf dem lokalen Dateisystem des Mini-PCs (kein Cloud-Storage), analog zum bestehenden Schwesterprojekt `fitnesstracker` auf derselben Maschine.
-- Kategorisierung lernt pro (normalisiertem) Beschreibungstext eine Regel (`CategoryRule`) — kein ML, reines Exact-Match-Lookup.
-
----
-
-## 8. Checkliste für den Start eines neuen Arbeitsschritts
-
-1. [ ] `git status` + `git log --oneline -5` — Ground Truth vor allem anderen.
-2. [ ] Neuesten Eintrag in `doku/LOG_DOKUMENTATION.md` lesen (ganz oben).
-3. [ ] Falls unklar, was als Nächstes ansteht: Abschnitt 5/6 dieser Datei bzw. `claude/roadmap.md` prüfen, sonst den Nutzer fragen statt zu raten.
-4. [ ] Feststellen, in welcher Umgebung man läuft (Cloud ohne Docker/LAN-Zugriff vs. lokal/Mini-PC) — siehe Abschnitt 3 — und die Erwartungen an Verifikation entsprechend ehrlich kommunizieren.
-5. [ ] Änderung umsetzen, dabei bestehende Muster wiederverwenden (z. B. neue Flags/CRUD-Felder exakt wie `avoidable`/`inefficient`/`tooExpensive` durchziehen: Schema → Migration → DTO → Service → Frontend-Typen → API-Modul → UI).
-6. [ ] Verifizieren, was in der jeweiligen Umgebung möglich ist (mindestens: Backend-Build+Tests, Frontend-Typecheck).
-7. [ ] Neuen Eintrag **oben** in `doku/LOG_DOKUMENTATION.md` gemäß Schema in `claude/doku.md`.
-8. [ ] Diese Datei (`context.md`) aktualisieren, falls sich Abschnitt 4/5/6 (Status) geändert hat.
-9. [ ] Committen + pushen auf den aktuellen Feature-Branch (nicht ungefragt auf `main`, nicht ungefragt einen PR eröffnen).
+- Alte Inhalte dieser Datei zur allgemeinen Projektübersicht (Tech-Stack, vollständige Repo-Struktur, Phasen 1–8-Historie) sind jetzt in `features.md` (Ist-Zustand) bzw. `claude/roadmap.md` (Planung) und `doku/LOG_DOKUMENTATION.md` (Verlauf) besser aufgehoben — bei Bedarf dort nachschlagen statt hier zu duplizieren.
