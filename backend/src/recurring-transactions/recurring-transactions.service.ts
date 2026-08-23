@@ -34,6 +34,7 @@ export class RecurringTransactionsService {
         active: dto.active ?? true,
         avoidable: dto.avoidable ?? false,
         inefficient: dto.inefficient ?? false,
+        tooExpensive: dto.tooExpensive ?? false,
       },
     });
   }

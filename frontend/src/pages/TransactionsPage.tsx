@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Flag, Pencil, Trash2, TrendingDown } from 'lucide-react';
+import { Flag, Pencil, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { categoriesApi } from '../lib/api/categories';
 import { transactionsApi } from '../lib/api/transactions';
@@ -87,6 +87,11 @@ export function TransactionsPage() {
     load();
   };
 
+  const handleToggleTooExpensive = async (t: Transaction) => {
+    await transactionsApi.update(t.id, { tooExpensive: !t.tooExpensive });
+    load();
+  };
+
   const handleDelete = async (t: Transaction) => {
     if (!window.confirm(`Buchung "${t.description}" wirklich löschen?`)) return;
     await transactionsApi.remove(t.id);
@@ -108,7 +113,7 @@ export function TransactionsPage() {
       <div>
         <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Transaktionen</h1>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          Markiere Buchungen als vermeidbar oder ineffizient (z. B. schlechte Bankgebühren).
+          Markiere Buchungen als vermeidbar, ineffizient (z. B. schlechte Bankgebühren) oder zu hoch.
         </p>
       </div>
 
@@ -274,6 +279,18 @@ export function TransactionsPage() {
                     )}
                   >
                     <TrendingDown size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleTooExpensive(t)}
+                    aria-label={t.tooExpensive ? 'Als zu hoch entfernen' : 'Als zu hoch markieren'}
+                    title="Zu hoch"
+                    className={clsx(
+                      'mr-2 rounded p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+                      t.tooExpensive ? 'text-purple-600 dark:text-purple-400' : 'text-neutral-500 dark:text-neutral-400',
+                    )}
+                  >
+                    <TrendingUp size={16} />
                   </button>
                   <button
                     type="button"

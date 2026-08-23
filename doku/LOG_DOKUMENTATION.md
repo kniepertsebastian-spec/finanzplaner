@@ -2,6 +2,29 @@
 
 ---
 
+### 📋 Schritt-Log: "Zu hoch"-Flag auf Transaktionen und Fixkosten
+**Zeitstempel:** `2026-08-23 17:15`
+
+#### 1. Was wurde getan?
+*   Nachgeholt: der vierte, beim Schritt "Monats-Fixkosten-Summe, Beleg-Upload, vermeidbar/ineffizient-Flags" bewusst zurückgestellte Punkt aus der ursprünglichen Anfrage — ein "zu hoch"-Flag, unabhängig von `avoidable`/`inefficient`.
+*   **`backend/prisma/schema.prisma`:** Neues Feld `tooExpensive Boolean @default(false)` auf `Transaction` und `RecurringTransaction` (dritter unabhängiger Boolean neben `avoidable`/`inefficient`, gleiches Muster). Migration `20260823171500_add_too_expensive_flag` (rein additiv, Default `false`, kein Backfill nötig).
+*   **Backend:** `CreateTransactionDto`/`CreateRecurringTransactionDto` um optionales `tooExpensive` ergänzt; `TransactionsService.create()`/`update()` sowie `RecurringTransactionsService.create()` reichen das Feld durch (`RecurringTransactionsService.update()` brauchte keine Änderung, da dort bereits das komplette DTO gespreadet wird).
+*   **Frontend:** `Transaction`/`RecurringTransaction`-Typen sowie die `*Input`-Typen (`transactions.ts`, `recurringTransactions.ts`) um `tooExpensive` ergänzt. In `TransactionsPage.tsx` und `RecurringTransactionsPanel.tsx` je ein dritter Icon-Toggle-Button (`TrendingUp`, lila eingefärbt wenn aktiv) neben den bestehenden Vermeidbar-/Ineffizient-Buttons ergänzt, inkl. `handleToggleTooExpensive()`. Hinweistext auf `/transactions` um "oder zu hoch" erweitert.
+*   **Verifiziert:** `npx prisma format` + `npx prisma validate` (Schema konsistent), Backend `npm run build` + `npm test` (14 Suiten/29 Tests grün), Frontend `tsc --noEmit` (0 Fehler).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag: Fortsetzung der zuvor zurückgestellten Punkte aus der Feature-Anfrage vom 23.08. (Monats-Summe, Beleg-Upload und vermeidbar/ineffizient waren bereits umgesetzt, das "zu hoch"-Flag blieb offen).
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Kein Docker/Browser-Test in dieser Session möglich:** Diese Session läuft in einer Cloud-Remote-Umgebung ohne laufenden Docker-Daemon (`docker ps` schlägt mit "no such file or directory" fehl) — anders als die vorherigen Schritte (lokaler WSL-Klon bzw. Mini-PC) konnte die Migration nicht gegen eine echte Postgres-Instanz angewendet und die neuen Buttons nicht im echten Browser durchgeklickt werden. Verifikation beschränkt sich auf Schema-Validierung sowie grüne Backend-Tests/Build und fehlerfreien Frontend-Typecheck.
+*   **Nutzer-Aktion erforderlich:** Committed und gepusht, aber noch nicht auf dem Mini-PC gepullt/deployed. Vor dem produktiven Einsatz: `git pull`, Backend + Frontend neu bauen, `npx prisma migrate deploy` ausführen (neue Migration `20260823171500_add_too_expensive_flag`), danach den neuen Toggle-Button auf `/transactions` und in den Fixkosten-Einstellungen visuell bestätigen.
+*   Keine Breaking Changes — neues Feld ist rein additiv mit Default `false`, bestehende Zeilen bleiben unverändert.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Code/Migration) — [ ] Überprüfung erforderlich (Migration deployen + visueller Check durch den Nutzer, da kein Docker in dieser Session verfügbar war)
+
+---
+
 ### 📋 Schritt-Log: Transaktionen-Edit + Spracheingabe für Quick-Add
 **Zeitstempel:** `2026-08-23 09:30`
 

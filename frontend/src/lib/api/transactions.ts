@@ -14,6 +14,7 @@ export interface TransactionInput {
   categoryId?: string;
   avoidable?: boolean;
   inefficient?: boolean;
+  tooExpensive?: boolean;
 }
 
 export const transactionsApi = {

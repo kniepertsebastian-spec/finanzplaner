@@ -23,4 +23,8 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsBoolean()
   inefficient?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  tooExpensive?: boolean;
 }

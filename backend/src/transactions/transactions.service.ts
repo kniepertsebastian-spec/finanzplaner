@@ -50,6 +50,7 @@ export class TransactionsService {
         date: dto.date ? new Date(dto.date) : undefined,
         avoidable: dto.avoidable,
         inefficient: dto.inefficient,
+        tooExpensive: dto.tooExpensive,
       },
     });
   }
@@ -95,6 +96,7 @@ export class TransactionsService {
         categoryId,
         avoidable: dto.avoidable,
         inefficient: dto.inefficient,
+        tooExpensive: dto.tooExpensive,
       },
     });
   }

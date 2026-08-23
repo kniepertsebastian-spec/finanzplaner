@@ -10,6 +10,7 @@ export interface RecurringTransactionInput {
   active?: boolean;
   avoidable?: boolean;
   inefficient?: boolean;
+  tooExpensive?: boolean;
 }
 
 export const recurringTransactionsApi = {

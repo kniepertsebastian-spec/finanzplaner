@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Flag, Pause, Pencil, Play, Trash2, TrendingDown } from 'lucide-react';
+import { Flag, Pause, Pencil, Play, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { categoriesApi } from '../../lib/api/categories';
 import { recurringTransactionsApi } from '../../lib/api/recurringTransactions';
@@ -109,6 +109,11 @@ export function RecurringTransactionsPanel() {
 
   const handleToggleInefficient = async (item: RecurringTransaction) => {
     await recurringTransactionsApi.update(item.id, { inefficient: !item.inefficient });
+    load();
+  };
+
+  const handleToggleTooExpensive = async (item: RecurringTransaction) => {
+    await recurringTransactionsApi.update(item.id, { tooExpensive: !item.tooExpensive });
     load();
   };
 
@@ -312,6 +317,20 @@ export function RecurringTransactionsPanel() {
                     )}
                   >
                     <TrendingDown size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleTooExpensive(item)}
+                    aria-label={item.tooExpensive ? 'Als zu hoch entfernen' : 'Als zu hoch markieren'}
+                    title="Zu hoch"
+                    className={clsx(
+                      'mr-2 rounded p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+                      item.tooExpensive
+                        ? 'text-purple-600 dark:text-purple-400'
+                        : 'text-neutral-500 dark:text-neutral-400',
+                    )}
+                  >
+                    <TrendingUp size={16} />
                   </button>
                   <button
                     type="button"

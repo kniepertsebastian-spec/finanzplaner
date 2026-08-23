@@ -32,6 +32,7 @@ export interface RecurringTransaction {
   active: boolean;
   avoidable: boolean;
   inefficient: boolean;
+  tooExpensive: boolean;
   lastRunAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -52,6 +53,7 @@ export interface Transaction {
   date: string;
   avoidable: boolean;
   inefficient: boolean;
+  tooExpensive: boolean;
   userId: string;
   categoryId: string;
 }

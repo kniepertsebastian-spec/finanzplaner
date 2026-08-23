@@ -47,12 +47,13 @@ model Authenticator {
 }
 
 model Transaction {
-  id          String   @id @default(uuid())
-  amount      Int // Stored in Cents
-  description String
-  date        DateTime @default(now())
-  avoidable   Boolean  @default(false) // user-flagged: this specific booking could have been avoided
-  inefficient Boolean  @default(false) // user-flagged: this specific booking was a bad deal (e.g. bad banking fees)
+  id           String   @id @default(uuid())
+  amount       Int // Stored in Cents
+  description  String
+  date         DateTime @default(now())
+  avoidable    Boolean  @default(false) // user-flagged: this specific booking could have been avoided
+  inefficient  Boolean  @default(false) // user-flagged: this specific booking was a bad deal (e.g. bad banking fees)
+  tooExpensive Boolean  @default(false) // user-flagged: this specific booking costs more than it should (overpriced)
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
@@ -112,6 +113,7 @@ model RecurringTransaction {
   active         Boolean   @default(true)
   avoidable      Boolean   @default(false) // user-flagged: this recurring rule could be cancelled/avoided
   inefficient    Boolean   @default(false) // user-flagged: this recurring rule is a bad deal (e.g. bad banking fees)
+  tooExpensive   Boolean   @default(false) // user-flagged: this recurring rule costs more than it should (overpriced)
   lastRunAt      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
