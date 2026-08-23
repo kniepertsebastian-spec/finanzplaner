@@ -2,6 +2,34 @@
 
 ---
 
+### 📋 Schritt-Log: Konfigurierbarer Abrechnungszeitraum (Phase 9, erste Teillieferung)
+**Zeitstempel:** `2026-08-23 15:10`
+
+#### 1. Was wurde getan?
+*   **Sessionwechsel/-Neustart mittendrin:** Ein vorheriger Hintergrundbefehl (`tsc --noEmit`) wurde als "stopped" ohne Abschlussprotokoll gemeldet — der zugrunde liegende Claude-Code-Prozess war offenbar zwischenzeitlich neu gestartet worden. Beim Wiedereinstieg festgestellt: `backend/prisma/schema.prisma` hatte das bereits begonnene `monthStartDay`-Feld verloren (vermutlich beim Neustart nicht persistiert), obwohl der zugehörige Migrationsordner auf der Platte noch vorhanden war — erneut ergänzt und mit `npx prisma migrate status` verifiziert, dass die lokale Dev-DB die Migration bereits kannte, nur die zwischenzeitlich von einer anderen (Cloud-)Session hinzugekommene `add_too_expensive_flag`-Migration fehlte noch — beides sauber nachgezogen.
+*   **Nutzeranfrage:** Gehalt kommt am 23. des Monats, nicht am 1. — der App-Monat soll vom 23. bis 22. des Folgemonats laufen, einstellbar (nicht hart codiert), falls sich das später ändert (Arbeitgeberwechsel).
+*   **`backend`:** `User.monthStartDay Int @default(1)` (Migration `20260823145352_add_month_start_day`, rein additiv). `PATCH /users/me` (neues `UsersController`/`UsersService`, vorher leere Stubs aus Phase 1) zum Ändern; `AuthService.login()`/`me()` liefern das Feld jetzt mit aus, damit das Frontend es ohne Zusatzaufruf kennt.
+*   **`frontend/src/lib/financialPeriod.ts`** (neu, ersetzt `dateRange.ts` vollständig — keine Restverwendung mehr, gelöscht): `getFinancialPeriod()` berechnet für ein `monthStartDay` und ein Referenzdatum den Zeitraum (inkl. Monatsende-Clamping, z. B. `monthStartDay=31` im Februar), plus `getNext-`/`getPreviousFinancialPeriod()`, `daysInFinancialPeriod()`, `dayOfFinancialPeriod()` (Ersatz für die alten `dayOfMonth`/`daysInMonth`), `financialPeriodLabel()`, `listFinancialPeriods()` (Fenster von Zeiträumen für die Budget-Auswahl).
+*   **Bug während der Verifikation gefunden und behoben:** Die erste Implementierung von `getNext-`/`getPreviousFinancialPeriod` bildete den Nachbar-Zeitraum, indem 1ms vom Start/Ende abgezogen und das Ergebnis erneut über lokale `Date`-Getter (`getFullYear`/`getMonth`/`getDate`) eingelesen wurde — das bricht in jeder Zeitzone mit Offset ≠ 0 (in CEST/UTC+2 durch einen expliziten Test bestätigt: eine UTC-Mitternacht-Grenze landet lokal auf demselben Kalendertag, wodurch der "vorherige" Zeitraum fälschlich wieder den aktuellen lieferte). Behoben durch Umstellung auf reine Integer-Monatsarithmetik für das Weiterschalten — lokale Getter werden jetzt nur noch genau einmal gelesen, am äußeren Einstiegspunkt (echtes "heute" vom Browser), alles Verkettete rechnet ausschließlich mit selbst erzeugten UTC-Werten.
+*   **`IncomeExpenseChart.tsx`:** weiterer, beim Umbau entdeckter Bug — das Chart ordnete Buchungen bisher über den reinen Kalendertag-im-Monat (`getDate()`) ein; bei einem Zeitraum, der zwei Kalendermonate überspannt (z. B. 23. Aug.–22. Sep.), wären September-Buchungen fälschlich auf Tag 1–22 statt 9–31 gelandet und hätten sich mit den echten frühen August-Tagen überlappt. Fix: neue Prop `periodStart`, Tage werden jetzt relativ zum Zeitraum-Start gezählt.
+*   **`DashboardPage.tsx`/`BudgetsPage.tsx`:** auf die neuen Helfer umgestellt. Budgets: `<input type="month">` (kann keinen Zeitraum abbilden, der nicht am 1. beginnt) ersetzt durch ein `<select>` mit den konkreten Zeiträumen (2 zurück, 6 voraus) inkl. Klartext-Label; `Budget.month` speichert jetzt das tatsächliche Zeitraum-Startdatum statt immer des 1. — keine Backend-Änderung nötig, da `Budget.month` schon immer ein exakt abgeglichenes `DateTime`-Feld war (Produktions-DB hatte zum Zeitpunkt der Änderung ohnehin 0 Budget-Zeilen, kein Migrations-/Altlasten-Problem).
+*   **`components/settings/MonthCycleSettings.tsx`** (neu, in Settings eingehängt): Zahlenfeld (1–31) mit Live-Vorschau des sich ergebenden Zeitraums, speichert über `PATCH /users/me`, ruft danach `AuthContext.refreshUser()` auf, damit Dashboard/Budgets sofort den neuen Zeitraum verwenden.
+*   **Verifiziert:** Backend `npm run build` + `npm test` (14 Suiten/29 Tests grün), Frontend `tsc --noEmit` (0 Fehler). Zeitraum-Arithmetik gezielt mit mehreren Fällen durchgetestet (23er-Anker, klassischer 1.-Anker, Clamping-Fall, Jahresgrenze, Verkettung prev/next — inkl. des oben beschriebenen, dabei gefundenen Bugs). Echter Browser-Test: Einstellungen → Starttag auf 23 gesetzt → Dashboard zeigt korrekt "Zeitraum: 23. Aug. – 22. Sept. 2026" und "Fixkosten 23. Sept. – 22. Okt. 2026"; Budgets-Dropdown zeigt die erwartete Kette 23.-Zeiträume. Danach zurück auf 1 gesetzt (lokaler Test-User).
+*   Committed (`85942db`), gepusht, auf dem Mini-PC gepullt; Backend+Frontend-Rebuild und `prisma migrate deploy` liefen zum Zeitpunkt dieses Log-Eintrags noch im Hintergrund (Produktions-Budget-Tabelle war zuvor als leer verifiziert — 0 Zeilen, keine Datenmigrationssorge).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag, exakt deckungsgleich mit dem inzwischen vom Nutzer selbst dokumentierten Phase-9-Punkt "Dynamischer Monatsstart" in `claude/roadmap.md` (`salaryDayOfMonth`) — als `monthStartDay` auf dem `User`-Modell umgesetzt statt als separates Feld, funktional identisch.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   `frontend/src/lib/dateRange.ts` vollständig entfernt (keine Restnutzung mehr im Code).
+*   Bestehende (in Produktion aktuell nicht vorhandene) Budget-Zeilen aus der Zeit vor dieser Änderung würden bei einem `monthStartDay`-Wechsel weg von `1` nicht automatisch einem der neuen Zeiträume zugeordnet — betrifft aktuell niemanden (0 Zeilen in Produktion), wäre aber bei zukünftiger Nutzung mit vielen historischen Budgets ein Punkt für eine echte Datenmigration.
+*   `claude/roadmap.md` wurde vom Nutzer selbst um die Phasen 9–15 erweitert (separat committed, `78617b4`) — dieser Schritt setzt den ersten (Kern-)Teil von Phase 9 um; Startsaldo/Reconciliation, freies verfügbares Einkommen, Tages-Burn-Rate und Cashflow-Projektion aus Phase 9 sind noch offen.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Code, lokal vollständig verifiziert) — [ ] Deployment auf dem Mini-PC lief zum Zeitpunkt dieses Eintrags noch (siehe nächster Log-Eintrag für Bestätigung)
+
+---
+
 ### 📋 Schritt-Log: "Zu hoch"-Flag gemerged und auf dem Mini-PC deployed
 **Zeitstempel:** `2026-08-23 19:55`
 

@@ -59,7 +59,7 @@ Es gibt zwei grundverschiedene Session-Umgebungen, die an diesem Projekt arbeite
 ### a) Cloud-Remote-Session (z. B. diese hier, `claude.ai/code`)
 - Läuft in einem isolierten Container **ohne Docker-Daemon** (`docker ps` schlägt fehl: *"failed to connect to the docker API"*).
 - **Kein Netzwerkpfad ins private LAN des Nutzers** (`192.168.178.0/24`) — ein TCP-Connect zu `192.168.178.151:22` läuft in einen Timeout, unabhängig von SSH-Keys/Credentials. Es gibt keinen Tunnel/keine Route dorthin.
-- Kann also **nicht**: gegen eine echte Postgres/Redis-Instanz testen, `docker compose` ausführen, den Mini-PC per SSH erreichen, Live-Browser-Checks gegen `https://finance.pwa-tree.de` machen (dort ist TOTP/2FA aktiv, ein automatisierter Login schlägt ohnehin fehl).
+- Kann also **nicht**: gegen eine echte Postgres/Redis-Instanz testen, `docker compose` ausführen, den Mini-PC per SSH erreichen. Live-Browser-Checks gegen `https://finance.pwa-tree.de` sind seit Entfernung von 2FA (2026-08-23) technisch wieder möglich, sofern die Cloud-Session Internetzugriff hat — betrifft nur den Login-Check selbst, nicht die übrigen Docker/LAN-Einschränkungen dieses Abschnitts.
 - Verifikation ist hier beschränkt auf: `npx prisma validate`/`format`, Backend `npm run build` + `npm test` (Jest mit gemocktem Prisma, braucht keine echte DB), Frontend `npx tsc --noEmit`. Das ist ausreichend und muss vor jedem Commit laufen — aber **ehrlich als "nicht live getestet" kennzeichnen**, nicht als vollständige Verifikation ausgeben.
 - Deployment auf den Mini-PC kann von hier aus **nicht** durchgeführt werden. Stattdessen: Schritte dokumentieren (siehe Abschnitt 5) und dem Nutzer für eine lokale/Mini-PC-Session übergeben.
 
@@ -70,7 +70,7 @@ Es gibt zwei grundverschiedene Session-Umgebungen, die an diesem Projekt arbeite
 
 ### Produktion
 - Live unter **`https://finance.pwa-tree.de`** (Cloudflare-Tunnel, Containername `finanzplaner-frontend` im `edge`-Docker-Netzwerk, kein Host-Port veröffentlicht).
-- 2FA/TOTP ist auf dem Prod-Account aktiv.
+- 2FA/TOTP ist auf dem Prod-Account **seit 2026-08-23 deaktiviert** (Nutzer hat es selbst entfernt) — Login mit E-Mail+Passwort reicht aktuell wieder aus, automatisierte Checks sind möglich.
 - Compose-Datei dort: `docker-compose.prod.yml` (im Repo, Root-Verzeichnis) — **nicht** identisch mit dem lokalen `docker-compose.yml`.
 - Migration deployen (auf dem Mini-PC, nach `git pull` + Rebuild): 
   ```
@@ -101,19 +101,24 @@ Details siehe `features.md`. Kurzfassung nach Roadmap-Phasen:
   - [x] Spracheingabe ("Tippen-zum-Sprechen") für Quick-Add
   - [x] Mobile Navigation als Dropdown-Menü statt Zeile, Safe-Area-Support
   - [x] Produktions-Deployment auf dem Mini-PC unter `finance.pwa-tree.de` eingerichtet
+  - [~] Konfigurierbarer Abrechnungszeitraum (`User.monthStartDay`, Phase 9 erste Teillieferung) — Code fertig, lokal verifiziert, Deployment auf dem Mini-PC im Gange (siehe Abschnitt 5)
+- [x] `claude/roadmap.md` um Phasen 9–15 erweitert (Nutzer-Planung, siehe Abschnitt 6)
 
 ---
 
 ## 5. Was im Code fertig ist, aber NOCH NICHT deployed
 
-- Aktuell nichts bekannt. Der `tooExpensive`-Flag (Migration `20260823171500_add_too_expensive_flag`) wurde am 2026-08-23 19:55 nach `main` gemerged (`a3cd9b9..4113b83`) und auf dem Mini-PC deployed (Backend+Frontend neu gebaut, Migration angewendet, Container laufen). Details: `doku/LOG_DOKUMENTATION.md`-Eintrag "Zu hoch-Flag gemerged und auf dem Mini-PC deployed" (2026-08-23 19:55).
-  - [ ] Einzig noch offen: visueller Check des dritten Icon-Toggles ("Zu hoch") auf `/transactions` und im Fixkosten-Panel im echten Browser durch den Nutzer selbst — 2FA/TOTP auf dem Prod-Account verhindert einen automatisierten Login-Check von einer Session aus.
+- **Konfigurierbarer Abrechnungszeitraum** (`User.monthStartDay`, Migration `20260823145352_add_month_start_day`, Commit `85942db`): lokal vollständig implementiert und verifiziert (Backend-Tests grün, Frontend-Typecheck grün, echter Browser-Test). Gepusht nach `main`, auf dem Mini-PC gepullt — Backend+Frontend-Rebuild und `prisma migrate deploy` liefen beim Schreiben dieses Eintrags noch. **Bei Sessionstart per `git log`/`docker ps`/`prisma migrate status` auf dem Mini-PC prüfen, ob das inzwischen fertig ist**, statt anzunehmen.
+- 2FA/TOTP auf dem Prod-Account wurde vom Nutzer inzwischen **entfernt** (Stand 2026-08-23, nach Abschluss des `tooExpensive`-Schritts) — automatisierte Login-Checks gegen `https://finance.pwa-tree.de` sind ab jetzt wieder möglich, sofern die Session Netzwerkzugriff auf die echte URL hat (Cloud-Sessions i. d. R. schon, nur kein Docker/LAN-Zugriff zum Mini-PC selbst).
+- Der `tooExpensive`-Flag ist vollständig deployed und (nach Entfernung von 2FA) mittlerweile auch visuell bestätigbar — kein offener Punkt mehr, sofern der nächste Log-Eintrag das nicht widerlegt.
 
 **Prüfe bei Sessionstart immer per `git log --oneline -5` und `git status`, ob sich das seither geändert hat** (z. B. Nutzer hat inzwischen selbst gemerged/deployed) — diese Datei wird nicht automatisch synchron gehalten.
 
 ---
 
-## 6. Was noch offen ist (Roadmap Phase 7 + 8, aus `claude/roadmap.md`)
+## 6. Was noch offen ist (Roadmap Phase 7–15, aus `claude/roadmap.md`)
+
+**Update 2026-08-23:** Der Nutzer hat `claude/roadmap.md` selbst um die Phasen 9–15 erweitert (Salden-Engine/Gehaltszyklus, virtuelle Töpfe/Vertragsmanagement, Smart-Import/OCR, UI-Redesign, Auswertungen/Tags/Push, Vertrags-Benchmark, Experten-Ratgeber). Phase 9s Kernstück (`monthStartDay`) ist als erste Teillieferung bereits umgesetzt (siehe Abschnitt 4/5) — Rest von Phase 9 (Startsaldo/Reconciliation, freies verfügbares Einkommen, Tages-Burn-Rate, Cashflow-Projektion) sowie Phasen 10–15 sind noch offen. Zwei Punkte wurden dem Nutzer gegenüber bereits als "vor dem Bauen klären" markiert, nicht als reine Technik-Aufgabe: OCR-Belegscan (Kosten/Abhängigkeit einer Cloud-OCR-API vs. mäßige Genauigkeit von In-Browser-OCR) und Phase 14s Marktvergleich (woher kommen echte Vergleichspreise — vermutlich erste Version als manuell gepflegte Schwellenwert-Tabelle, kein Live-Feed).
 
 ### Phase 7 — Datenexport, DSGVO & Unit-Tests
 - [ ] CSV-Export aller Transaktionen/Budgets/Kategorien (Endpunkt + UI-Button)

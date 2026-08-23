@@ -33,7 +33,7 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 - **Frei wählbarer Rhythmus:** monatlich, alle 2 Monate, vierteljährlich, halbjährlich, jährlich (`intervalMonths`).
 - **Automatisches Buchen:** täglicher Cron-Job bucht fällige Fixkosten automatisch als Transaktion und schiebt die nächste Fälligkeit weiter (inkl. Nachholen verpasster Buchungen und Monatsende-Clamping, z. B. 31. Jan. + 1 Monat → 28./29. Feb.).
 - **Gleiche Flags** wie bei Transaktionen: Vermeidbar, Ineffizient, Zu hoch — direkt auf der Regel.
-- **Dashboard-Kennzahl:** Summe aller aktiven Fixkosten-Ausgaben, die im nächsten Kalendermonat fällig werden.
+- **Dashboard-Kennzahl:** Summe aller aktiven Fixkosten-Ausgaben, die im nächsten Abrechnungszeitraum fällig werden (siehe unten — richtet sich nach dem konfigurierbaren Monatsstart, nicht zwingend nach dem Kalendermonat).
 
 ## 🗂️ Kategorien
 
@@ -42,11 +42,12 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 
 ## 📊 Budgets & Dashboard
 
-- **Monatsbudgets pro Kategorie:** Anlegen, Bearbeiten, Löschen.
+- **Konfigurierbarer Abrechnungszeitraum:** der "Finanzmonat" muss nicht am 1. beginnen — ein frei wählbarer Starttag (1–31, z. B. der Gehaltseingangstag) unter *Einstellungen* bestimmt den Zeitraum, den Dashboard, Budgets und die Fixkosten-Summe verwenden (Standard: 1 = klassischer Kalendermonat, unverändertes Verhalten). Änderbar jederzeit, mit Live-Vorschau des sich ergebenden Zeitraums.
+- **Budgets pro Kategorie und Zeitraum:** Anlegen, Bearbeiten, Löschen — Zeitraum-Auswahl per Dropdown (statt eines reinen Kalendermonat-Pickers), zeigt die konkreten Start-/Enddaten.
 - **Budget-Fortschrittsbalken** je Kategorie (Ist-Ausgaben vs. Budget).
-- **Dashboard-Kennzahlen:** Einnahmen, Ausgaben und Netto des laufenden Monats.
-- **Restbudget-Prognose:** lineare Hochrechnung des Restbudgets auf Basis der bisherigen Ausgaben im Monat.
-- **Zeitverlaufs-Chart** (Chart.js) für Einnahmen/Ausgaben über den Monat, hell-/dunkelmodus-fähig.
+- **Dashboard-Kennzahlen:** Einnahmen, Ausgaben und Netto des laufenden Zeitraums.
+- **Restbudget-Prognose:** lineare Hochrechnung des Restbudgets auf Basis der bisherigen Ausgaben im laufenden Zeitraum.
+- **Zeitverlaufs-Chart** (Chart.js) für Einnahmen/Ausgaben über den Zeitraum (auch wenn er zwei Kalendermonate überspannt), hell-/dunkelmodus-fähig.
 - Währungswerte werden intern durchgängig als Cent-Integer geführt (keine Rundungsfehler).
 
 ## 🧾 Rechnungen / Belege
