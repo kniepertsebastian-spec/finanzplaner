@@ -2,6 +2,27 @@
 
 ---
 
+### 📋 Schritt-Log: Abrechnungszeitraum-Feature auf dem Mini-PC deployed und live verifiziert
+**Zeitstempel:** `2026-08-23 23:40`
+
+#### 1. Was wurde getan?
+*   Fortsetzung des vorherigen Eintrags (Deployment lief dort noch im Hintergrund): Backend-Image-Build fertiggestellt, Migration `20260823145352_add_month_start_day` per `docker compose run --rm backend npx prisma migrate deploy` erfolgreich angewendet, Backend+Frontend-Container neu gestartet.
+*   **Kurzer 502 direkt nach dem Neustart** (`curl` auf `/api/auth/me` unmittelbar nach `docker compose up -d`) — Backend-Logs zeigten aber einen sauberen, fehlerfreien Boot ("Nest application successfully started", alle Routen inkl. `PATCH /users/me` gemappt). Erneuter `curl` wenige Sekunden später lieferte korrekt `401` (statt 502) — reiner Neustart-Timing-Effekt (nginx kurz ohne erreichbaren Backend-Upstream), kein echter Fehler.
+*   **Da der Nutzer 2FA/TOTP inzwischen entfernt hat, erstmals wieder ein vollständiger automatisierter Login-Test gegen die echte Produktions-URL** (`https://finance.pwa-tree.de`) mit den echten Zugangsdaten möglich: Login erfolgreich, Dashboard zeigt korrekt "Zeitraum: 01. Aug. – 31. Aug. 2026" (Default `monthStartDay=1` greift für Bestandsnutzer unverändert — bestätigt Abwärtskompatibilität mit echten Produktionsdaten: Einnahmen 3.000,00 €, Ausgaben 723,40 €, Fixkosten nächster Monat 1.818,00 €, alles korrekt berechnet), Einstellungen zeigen das neue "Abrechnungszeitraum"-Panel mit Vorschau "01. Aug. – 31. Aug. 2026".
+*   Dabei nebenbei festgestellt (nicht Teil dieser Änderung, nur beobachtet): Der Nutzer hat inzwischen selbst einen echten Passkey ("Basti", zuletzt genutzt 23.08.2026) registriert.
+
+#### 2. Warum wurde es getan?
+*   Abschluss des in den vorherigen beiden Einträgen begonnenen Abrechnungszeitraum-Features — Migration und Verifikation waren beim Sessionende zuvor noch offen.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Keine Datenverluste, keine unerwarteten Nebeneffekte — Migration rein additiv mit Default, bestehende Nutzerdaten (Transaktionen, Fixkosten, Kategorien) unangetastet und korrekt weiterhin funktionsfähig.
+*   `monthStartDay` steht für den Produktions-Account aktuell auf `1` (unverändert) — der Nutzer kann den Starttag jederzeit selbst über `/settings` anpassen.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Code, Deployment und Live-Verifikation vollständig)
+
+---
+
 ### 📋 Schritt-Log: Konfigurierbarer Abrechnungszeitraum (Phase 9, erste Teillieferung)
 **Zeitstempel:** `2026-08-23 15:10`
 

@@ -6,19 +6,16 @@ Finanz-PWA (Single-User React/NestJS/Postgres-App, produktiv auf `https://financ
 
 ## Aktueller Stand
 
-- Feature vollständig implementiert, lokal verifiziert (Backend-Tests grün, Frontend-Typecheck grün, echter Browser-Test via Playwright) und committed/gepusht auf `main` (Commits `85942db`, `999533c`).
+- Feature vollständig implementiert, lokal verifiziert (Backend-Tests grün, Frontend-Typecheck grün, echter Browser-Test via Playwright), **deployed auf dem Mini-PC und live gegen die echte Produktions-URL verifiziert** (Login + Dashboard + Settings-Panel bestätigt, echte Nutzerdaten korrekt berechnet). Commits `85942db`, `999533c`, `efadd73`, Deployment-Log-Eintrag "Abrechnungszeitraum-Feature auf dem Mini-PC deployed und live verifiziert" (23:40).
 - `claude/roadmap.md` wurde vom Nutzer selbst um Phasen 9–15 erweitert (separater Commit `78617b4`, nicht meine Autorschaft) — Phase 9 "Salden-Engine & Flexibler Gehaltszyklus" deckt sich mit diesem Feature (`salaryDayOfMonth` im Roadmap-Text = `monthStartDay` im Code, funktional identisch, nur anderer Feldname).
-- Deployment auf dem Mini-PC läuft: `git pull` erfolgt, `docker compose build backend frontend` lief beim Sessionende noch (Backend-Build ist der Flaschenhals). **Migration `20260823145352_add_month_start_day` wurde noch NICHT per `prisma migrate deploy` auf der Produktions-DB angewendet.**
-- 2FA/TOTP wurde vom Nutzer auf dem Prod-Account entfernt (Stand dieser Session) — automatisierte Login-Checks gegen die echte URL sind wieder möglich.
-- Der vorherige Schritt dieser Session ("zu hoch"/`tooExpensive`-Flag) ist bereits vollständig deployed und lief in einer früheren Cloud-Session ohne Docker/Browser-Zugriff — dort nur Build/Test-grün verifiziert, danach in dieser (lokalen, Docker-fähigen) Session gemerged und deployed.
+- Produktions-Account hat `monthStartDay` aktuell auf dem Default `1` — der Nutzer hat es selbst noch nicht auf 23 umgestellt, kann das aber jederzeit selbst über `/settings` tun.
+- 2FA/TOTP wurde vom Nutzer auf dem Prod-Account entfernt; er hat stattdessen einen echten Passkey registriert ("Basti", beobachtet am 23.08.2026 — reine Beobachtung, keine eigene Aktion).
 
 ## Offene TODOs
 
-1. Prüfen, ob der Backend-Image-Build auf dem Mini-PC inzwischen fertig ist: `ssh minipc "docker inspect finanzplaner-backend:latest --format '{{.Created}}'"` — muss neuer sein als `2026-08-23T19:53:20+02:00`.
-2. Migration anwenden: `ssh minipc "cd ~/finanzplaner && docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy"`.
-3. Container neu starten: `docker compose -f docker-compose.prod.yml up -d backend frontend`.
-4. Verifizieren (jetzt ohne 2FA-Hürde möglich): Login auf `https://finance.pwa-tree.de`, Einstellungen → Abrechnungszeitraum auf 23 setzen, prüfen dass Dashboard "Zeitraum: 23. Aug. – 22. Sept. 2026" (oder aktuelles Äquivalent) zeigt und die Fixkosten-Summe den nächsten Zeitraum korrekt benennt.
-5. Rest von Phase 9 (aus `claude/roadmap.md`, noch nicht begonnen): Startsaldo & Reconciliation, freies verfügbares Einkommen, Tages-Burn-Rate, Cashflow-Projektion.
+1. Diese Session ist inhaltlich abgeschlossen — kein unmittelbarer nächster Schritt aus dieser Arbeit offen.
+2. Falls fortgesetzt: Rest von Phase 9 (aus `claude/roadmap.md`, noch nicht begonnen): Startsaldo & Reconciliation, freies verfügbares Einkommen, Tages-Burn-Rate, Cashflow-Projektion.
+3. Alternativ mit dem Nutzer klären, ob als Nächstes eine andere Roadmap-Phase (7/8 oder 10–15) angegangen werden soll.
 
 ## Relevante Dateien/Pfade
 
