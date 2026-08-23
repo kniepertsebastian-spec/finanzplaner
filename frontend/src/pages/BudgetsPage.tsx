@@ -1,25 +1,31 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { budgetsApi } from '../lib/api/budgets';
 import { categoriesApi } from '../lib/api/categories';
 import type { Budget, Category } from '../lib/api/types';
-import { toMonthInputValue, toMonthISO } from '../lib/dateRange';
+import { financialPeriodLabel, listFinancialPeriods, type FinancialPeriod } from '../lib/financialPeriod';
 import { eurosToCents, formatCents } from '../lib/money';
 import { listWithCache } from '../lib/offlineDb';
 
-const monthFormatter = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' });
+const periodLabelFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
 
 export function BudgetsPage() {
+  const { user } = useAuth();
+  const monthStartDay = user?.monthStartDay ?? 1;
+
   const [budgets, setBudgets] = useState<Budget[] | null>(null);
   const [categories, setCategories] = useState<Category[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState('');
-  const [month, setMonth] = useState('');
+  const [periodStartISO, setPeriodStartISO] = useState('');
   const [amount, setAmount] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const periodOptions: FinancialPeriod[] = listFinancialPeriods(monthStartDay, new Date(), 2, 6);
 
   const load = () => {
     Promise.all([listWithCache('budgets', () => budgetsApi.list()), listWithCache('categories', () => categoriesApi.list())])
@@ -35,7 +41,7 @@ export function BudgetsPage() {
   const resetForm = () => {
     setEditingId(null);
     setCategoryId('');
-    setMonth('');
+    setPeriodStartISO('');
     setAmount('');
     setFormError(null);
   };
@@ -43,7 +49,7 @@ export function BudgetsPage() {
   const startEdit = (b: Budget) => {
     setEditingId(b.id);
     setCategoryId(b.categoryId);
-    setMonth(toMonthInputValue(b.month));
+    setPeriodStartISO(b.month);
     setAmount(String(b.amount / 100));
     setFormError(null);
   };
@@ -53,7 +59,7 @@ export function BudgetsPage() {
     setFormError(null);
     setSubmitting(true);
     try {
-      const dto = { categoryId, month: toMonthISO(month), amount: eurosToCents(amount) };
+      const dto = { categoryId, month: periodStartISO, amount: eurosToCents(amount) };
       if (editingId) {
         await budgetsApi.update(editingId, dto);
       } else {
@@ -113,14 +119,25 @@ export function BudgetsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Monat</label>
-            <input
-              type="month"
+            <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Zeitraum</label>
+            <select
               required
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
+              value={periodStartISO}
+              onChange={(e) => setPeriodStartISO(e.target.value)}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-            />
+            >
+              <option value="" disabled>
+                Wählen…
+              </option>
+              {periodOptions.map((p) => (
+                <option key={p.startISO} value={p.startISO}>
+                  {financialPeriodLabel(p)}
+                </option>
+              ))}
+              {editingId && !periodOptions.some((p) => p.startISO === periodStartISO) && periodStartISO && (
+                <option value={periodStartISO}>{periodLabelFormatter.format(new Date(periodStartISO))}</option>
+              )}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Betrag (€)</label>
@@ -160,7 +177,7 @@ export function BudgetsPage() {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
             <tr>
-              <th className="px-4 py-2 font-medium">Monat</th>
+              <th className="px-4 py-2 font-medium">Zeitraum</th>
               <th className="px-4 py-2 font-medium">Kategorie</th>
               <th className="px-4 py-2 font-medium">Betrag</th>
               <th className="px-4 py-2" />
@@ -170,7 +187,7 @@ export function BudgetsPage() {
             {budgets.map((b) => (
               <tr key={b.id} className="border-b border-neutral-100 last:border-0 dark:border-neutral-800">
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
-                  {monthFormatter.format(new Date(b.month))}
+                  {periodLabelFormatter.format(new Date(b.month))}
                 </td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {categoryById.get(b.categoryId)?.name ?? 'Unbekannt'}

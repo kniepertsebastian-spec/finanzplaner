@@ -45,12 +45,12 @@ export class AuthService {
     }
 
     this.issueJwtCookie(res, user.id);
-    return { id: user.id, email: user.email, totpEnabled: user.totpEnabled };
+    return { id: user.id, email: user.email, totpEnabled: user.totpEnabled, monthStartDay: user.monthStartDay };
   }
 
   async me(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    return { id: user.id, email: user.email, totpEnabled: user.totpEnabled };
+    return { id: user.id, email: user.email, totpEnabled: user.totpEnabled, monthStartDay: user.monthStartDay };
   }
 
   logout(res: Response) {

@@ -29,18 +29,24 @@ const INK = {
 
 interface IncomeExpenseChartProps {
   transactions: Transaction[];
-  daysInMonth: number;
+  periodStart: Date;
+  daysInPeriod: number;
   isDark: boolean;
 }
 
-export function IncomeExpenseChart({ transactions, daysInMonth, isDark }: IncomeExpenseChartProps) {
+export function IncomeExpenseChart({ transactions, periodStart, daysInPeriod, isDark }: IncomeExpenseChartProps) {
   const mode = isDark ? 'dark' : 'light';
-  const incomeByDay = new Array(daysInMonth).fill(0);
-  const expenseByDay = new Array(daysInMonth).fill(0);
+  const incomeByDay = new Array(daysInPeriod).fill(0);
+  const expenseByDay = new Array(daysInPeriod).fill(0);
 
+  // Day-of-period (1-indexed), not calendar day-of-month — a custom financial period (e.g.
+  // 23rd -> 22nd) spans two calendar months, so getDate() alone would misplace the second half.
+  const periodStartUTC = Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth(), periodStart.getUTCDate());
   for (const t of transactions) {
-    const day = new Date(t.date).getDate();
-    if (day < 1 || day > daysInMonth) continue;
+    const txDate = new Date(t.date);
+    const txUTC = Date.UTC(txDate.getFullYear(), txDate.getMonth(), txDate.getDate());
+    const day = Math.round((txUTC - periodStartUTC) / (24 * 60 * 60 * 1000)) + 1;
+    if (day < 1 || day > daysInPeriod) continue;
     if (t.amount >= 0) {
       incomeByDay[day - 1] += t.amount;
     } else {
@@ -48,7 +54,7 @@ export function IncomeExpenseChart({ transactions, daysInMonth, isDark }: Income
     }
   }
 
-  const labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
+  const labels = Array.from({ length: daysInPeriod }, (_, i) => String(i + 1));
 
   const data = {
     labels,
@@ -93,7 +99,7 @@ export function IncomeExpenseChart({ transactions, daysInMonth, isDark }: Income
     },
     scales: {
       x: {
-        title: { display: true, text: 'Tag des Monats', color: INK.muted[mode] },
+        title: { display: true, text: 'Tag im Zeitraum', color: INK.muted[mode] },
         ticks: { color: INK.muted[mode] },
         grid: { color: INK.grid[mode] },
       },

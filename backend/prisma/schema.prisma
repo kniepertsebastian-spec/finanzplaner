@@ -16,6 +16,7 @@ model User {
   passwordHash        String
   totpSecretEncrypted String?
   totpEnabled         Boolean  @default(false)
+  monthStartDay       Int      @default(1) // 1-31; day the user's financial month begins (e.g. 23 = salary day)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
