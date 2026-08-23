@@ -2,6 +2,33 @@
 
 ---
 
+### 📋 Schritt-Log: Monats-Fixkosten-Summe, Beleg-Upload, vermeidbar/ineffizient-Flags
+**Zeitstempel:** `2026-08-23 07:15`
+
+#### 1. Was wurde getan?
+*   Nutzer priorisierte drei der zuvor besprochenen Punkte: Monats-Summe der Fixkosten, Beleg-Upload mit Auto-Löschung, vermeidbar/ineffizient-Flags (auf Transaktionen **und** Fixkosten-Regeln, siehe frühere Rückfrage-Antwort "Both").
+*   **Dashboard:** Neue `StatTile` "Fixkosten [nächster Monat]" — Summe aller aktiven, negativen (Ausgaben-)Fixkosten-Regeln, deren `nextDueDate` in den nächsten Kalendermonat fällt (`upcomingFixedCosts()` in `budgetCalc.ts`, reine Funktion, per Unit-artigem Playwright-Test verifiziert statt Jest, da rein UI-getrieben).
+*   **Neues `invoices`-Modul (Backend):** `Invoice`-Model (Prisma), Multer-Diskspeicher unter `UPLOADS_DIR` (per Zufalls-UUID-Dateiname, `fileFilter` auf PDF/JPEG/PNG/HEIC, 10-MB-Limit) — nach dem Vorbild von `fitnesstracker`s `progressPhoto.service.ts` (gleiches Muster: `UPLOADS_DIR`-Env-Var, `randomUUID()`-Dateiname, `unlink().catch()` beim Löschen). Endpunkte: `POST /invoices` (Upload), `GET /invoices` (Liste), `GET /invoices/:id/file` (Stream, authentifiziert), `PATCH /invoices/:id` (Wichtig-Flag), `DELETE /invoices/:id`. Täglicher Cron (`EVERY_DAY_AT_2AM`) löscht Zeilen+Dateien älter als 30 Tage, bei denen `important=false` ist.
+*   **Neue `/invoices`-Seite (Frontend):** Upload per Datei-Input, Liste mit Dateiname (Link zum Ansehen/Download), Upload-Datum, Größe, "löscht in X Tagen" bzw. "Wichtig"-Badge, Stern-Toggle, Löschen.
+*   **`avoidable`/`inefficient`** (zwei unabhängige Booleans, nicht ein einzelnes Enum) auf `Transaction` **und** `RecurringTransaction` ergänzt. Icon-Toggle-Buttons (Flag=vermeidbar, TrendingDown=ineffizient) in `RecurringTransactionsPanel.tsx` sowie in einer **neuen** `TransactionsPage.tsx` (`/transactions`, Nav-Eintrag "Transaktionen") — Letztere war zwingende Voraussetzung, da es zuvor **keine** Seite gab, um einzelne Transaktionen überhaupt zu durchsuchen (Dashboard aggregiert nur, QuickAdd kann nur anlegen). Bewusst minimal gehalten (Liste + Flag-Toggle + Löschen, kein volles Bearbeiten), da nur das Flaggen angefragt war.
+*   **Nebenbei entdeckt und behoben:** `docker-compose.prod.yml` existierte bisher **nur** auf dem Mini-PC, war nie Teil des Git-Repos (keine Secrets darin, nur `${VAR:?}`-Referenzen — reines Versehen aus der ursprünglichen Ad-hoc-Erstellung). Jetzt erstmals committed, inkl. des neuen `uploads`-Named-Volumes für den Beleg-Upload-Pfad.
+*   **Tests:** Neue `invoices.service.spec.ts` (Retention-Logik: Cutoff-Berechnung, löscht nur `important=false` + älter als 30 Tage, keine Löschung wenn nichts fällig) und `invoices.controller.spec.ts` (Boilerplate). `npm run build` + `npm test` (Backend, 14 Suiten/29 Tests grün). `tsc --noEmit` (Frontend, 0 Fehler).
+*   **Verifiziert (echter Browser, lokal):** Alle drei Features per Playwright-Skript end-to-end durchgespielt — Fixkosten-Regel mit Fälligkeit nächsten Monat angelegt und als vermeidbar+ineffizient markiert (Icons korrekt eingefärbt), Dashboard zeigt korrekt "Fixkosten September 2026: 42,50 €", Transaktion über Quick-Add angelegt und auf `/transactions` geflaggt, Beleg hochgeladen/als wichtig markiert/gelöscht (Datei auf Platte korrekt angelegt und beim Löschen wieder entfernt, per `ls` bestätigt). Test-Daten restlos entfernt.
+*   **Produktions-Deployment:** Committed, gepusht (`d559b82`), auf dem Mini-PC gepullt (dabei den dortigen, jetzt redundanten uncommitteten `docker-compose.prod.yml`-Stand verworfen, siehe oben), Backend+Frontend neu gebaut, beide neuen Migrationen (`add-invoices`, `add-avoidable-inefficient-flags`) — beide rein additiv mit Defaults, kein Backfill nötig — in einem Rutsch angewendet, `uploads`-Volume automatisch angelegt. Alle vier Container laufen, neuer Asset-Hash (`index-C9HQZBq0.js`) bestätigt.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag mit expliziter Priorisierung dieser drei Punkte gegenüber dem vierten (zu-hoch-Flag), der noch offen bleibt.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Vollständiger End-to-End-Test gegen die echte Produktions-URL war diesmal nicht möglich:** Der Login-Check schlug fehl, weil auf dem Produktions-Account inzwischen TOTP (2FA) aktiviert ist (`POST /auth/login` liefert korrekt `"TOTP code required"`) — das automatisierte Playwright-Skript hat naturgemäß keinen gültigen Code. Deployment wurde stattdessen auf Infrastruktur-Ebene verifiziert (Container-Status, neuer Asset-Hash, erfolgreiche Migrationen) sowie vollständig **lokal** im echten Browser getestet. Der Nutzer wurde bewusst gebeten, den finalen visuellen Check selbst durchzuführen.
+*   `docker-compose.prod.yml` ist ab sofort Teil des Repos — künftige Änderungen daran (z. B. weitere Volumes) sollten wie jede andere Code-Änderung committed werden, nicht mehr direkt auf dem Mini-PC editiert.
+*   Beleg-Dateien liegen ausschließlich auf dem Mini-PC-Dateisystem (kein Cloud-Storage, passend zum bestehenden `fitnesstracker`-Präzedenzfall) — kein automatisches Offsite-Backup dieser Dateien vorhanden.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Backend/Deployment) — [ ] Überprüfung erforderlich (finaler visueller Check durch den Nutzer, da 2FA den automatisierten Prod-Test blockiert)
+
+---
+
 ### 📋 Schritt-Log: Fixkosten bearbeiten (Edit) + Bugfix in `update()`
 **Zeitstempel:** `2026-08-22 22:35`
 
