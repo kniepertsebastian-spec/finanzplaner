@@ -2,6 +2,30 @@
 
 ---
 
+### 📋 Schritt-Log: Transaktionen-Edit + Spracheingabe für Quick-Add
+**Zeitstempel:** `2026-08-23 09:30`
+
+#### 1. Was wurde getan?
+*   **Nutzer-Report "Einnahmen ändert sich nicht auf dem Dashboard" analysiert** (kein Cache-/Refresh-Bug): Produktionsdaten geprüft — Nutzer hatte die Fixkosten-Regel "Gehalt" von 3000€ auf 5000€ geändert, aber die bereits heute (23.08., 1 Uhr Cron) gebuchte Transaktion behält naturgemäß den alten Betrag (3000€), da eine Regel-Änderung nur zukünftige Buchungen betrifft. Dashboard zeigte also korrekt den tatsächlich gebuchten Betrag — dem Nutzer fehlte lediglich eine Möglichkeit, die bereits gebuchte Transaktion selbst zu korrigieren.
+*   **`TransactionsPage.tsx`:** Bearbeiten-Formular ergänzt (gleiches Muster wie `RecurringTransactionsPanel`/`BudgetsPage`: Stift-Button, Formular mit Betrag/Beschreibung/Kategorie/Datum, Speichern/Abbrechen). Backend-seitig war dafür nichts zu tun — `PATCH /transactions/:id` inkl. `date`-Konvertierung existierte bereits korrekt.
+*   **Sprich-Anfrage geklärt:** Nutzer wünschte sich ein Weck-Wort ("Hey App, füge hinzu…"), das automatisch erkannt wird. Per Rückfrage geklärt, dass echtes Always-on-Wake-Word in einer PWA nicht realisierbar ist (Browser entziehen Mikrofonzugriff außerhalb des aktiven Tabs, kein Hintergrund-Listening möglich — das bräuchte eine native App mit OS-Berechtigungen). Als Alternative "Tippen-zum-Sprechen" vorgeschlagen und vom Nutzer bestätigt.
+*   **`QuickAddPage.tsx`:** Mikrofon-Button (Web Speech API, `lang="de-DE"`) neu ergänzt — startet bei Klick eine einzelne Erkennung, füllt Betrag/Beschreibung/Kategorie automatisch aus dem Transkript, **kein Auto-Submit** (Nutzer prüft/korrigiert vor "Speichern", da Spracherkennung fehlerhaft transkribieren kann). `frontend/src/lib/voiceParse.ts` (neu, reine Funktionen): `parseVoiceTranscript()` extrahiert den Betrag per Regex (dt. Spracherkennung transkribiert gesprochene Zahlen bereits als Ziffern, z. B. "fünfzig Euro" → "50 Euro" im Transkript — kein Wort-Zahl-Parsing nötig), `matchCategoryId()` gleicht das Transkript gegen vorhandene Kategorienamen ab. `frontend/src/types/speech-recognition.d.ts` (neu) — minimale Ambient-Types, da die Web Speech API nicht Teil von TypeScripts Standard-DOM-Lib ist.
+*   **Verifiziert:** Backend-Build+Tests unverändert grün (keine Backend-Änderung für Voice/Edit nötig). Parser-Logik gegen mehrere realistische Transkripte durchgetestet (inkl. Grenzfall gesprochener Zahlwörter — degradiert sauber auf manuelle Eingabe). Echter Browser-Test für Transaktionen-Edit (Betrag 30€→50€ korrekt übernommen). Für die Sprememingabe: Da diese Sandbox-Umgebung bereits eine **native** `window.SpeechRecognition`-Implementierung mitbringt (kein Mikrofon vorhanden, daher in echten Tests nutzlos), wurde für den Verifikationstest gezielt sowohl `SpeechRecognition` als auch `webkitSpeechRecognition` mit einer Fake-Klasse überschrieben, die ein synthetisches Transkript liefert — bestätigt, dass die komplette Kette (Klick → Erkennung → Parsing → Formular-Befüllung inkl. Kategorie-Automatch) korrekt verdrahtet ist. Test-Daten entfernt.
+*   Committed, gepusht (`2e3c8bf` Transaktionen-Edit, `6a0f866` Spracheingabe), auf dem Mini-PC gepullt, Frontend neu gebaut und deployed (keine Migration nötig, reiner Frontend-Code).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag: Bug-Report zum Dashboard (führte zur Transaktionen-Edit-Funktion) sowie Wunsch nach Sprach-Erfassung für Quick-Add.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Der Mikrofon-Button wird nur angezeigt, wenn der Browser die Web Speech API unterstützt (`SpeechRecognitionCtor`-Check) — auf nicht unterstützten Browsern bleibt Quick-Add unverändert nutzbar, kein Fehlerzustand.
+*   Kein Wort-Zahl-Parsing ("fünfzig" statt "50") — falls die Spracherkennung eines Geräts tatsächlich Wortzahlen statt Ziffern transkribiert, bleibt das Betragsfeld leer und muss manuell ausgefüllt werden (kein Absturz, sauberer Fallback).
+*   Frontend hat weiterhin keinen eigenen Testrunner (Vitest/Jest) — die neue Parser-Logik wurde nur manuell/per Playwright verifiziert, nicht mit einem festen Unit-Test abgesichert (Phase 7 der Roadmap steht dafür weiterhin aus).
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen
+
+---
+
 ### 📋 Schritt-Log: Monats-Fixkosten-Summe, Beleg-Upload, vermeidbar/ineffizient-Flags
 **Zeitstempel:** `2026-08-23 07:15`
 
