@@ -101,9 +101,11 @@ export function DashboardPage() {
     ? `Bis zum nächsten Gehaltseingang am ${burnRateHorizonLabel} (${daysUntilNextIncome} Tage)`
     : `Keine geplante Einnahme gefunden — bis Ende des Zeitraums am ${burnRateHorizonLabel}`;
 
-  // Projection horizon: today through the end of the *next* financial period, so it reliably
-  // spans at least one full salary cycle even when checked late in the current one.
-  const cashflowHorizonDays = daysUntil(nextPeriod.end);
+  // Projection horizon: today through the end of the *current* financial period only. Extending
+  // into the next period made the chart span ~2 months right after payday (the whole remaining
+  // current period plus the entire next one), which buried the near-term picture the user
+  // actually wants right after Gehaltseingang.
+  const cashflowHorizonDays = daysUntil(period.end);
   const cashflowPoints = cashflowProjection(balance, recurring, cashflowHorizonDays);
   const shortfall = firstShortfall(cashflowPoints);
   const shortfallLabel = shortfall?.date.toLocaleDateString('de-DE', { timeZone: 'UTC' });
@@ -150,7 +152,7 @@ export function DashboardPage() {
       <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="mb-1 text-sm font-medium text-neutral-700 dark:text-neutral-300">Liquiditätsverlauf</h2>
         <p className="mb-4 text-xs text-neutral-400 dark:text-neutral-500">
-          Kontostand-Prognose bis {nextPeriod.end.toLocaleDateString('de-DE', { timeZone: 'UTC' })} auf Basis aktiver
+          Kontostand-Prognose bis {period.end.toLocaleDateString('de-DE', { timeZone: 'UTC' })} auf Basis aktiver
           wiederkehrender Buchungen — variable Ausgaben sind nicht enthalten.
         </p>
         {shortfall && (
