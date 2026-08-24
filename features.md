@@ -49,6 +49,7 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 - **Restbudget-Prognose:** lineare Hochrechnung des Restbudgets auf Basis der bisherigen Ausgaben im laufenden Zeitraum.
 - **Zeitverlaufs-Chart** (Chart.js) für Einnahmen/Ausgaben über den Zeitraum (auch wenn er zwei Kalendermonate überspannt), hell-/dunkelmodus-fähig.
 - Währungswerte werden intern durchgängig als Cent-Integer geführt (keine Rundungsfehler).
+- **Startsaldo & Saldo-Abgleich:** unter *Einstellungen* ein Startsaldo hinterlegbar (Kontostand vor der ersten erfassten Buchung); der berechnete Gesamtsaldo (Startsaldo + Summe aller Buchungen) wird dort angezeigt. "Saldo abgleichen": tatsächlichen Kontostand aus dem Online-Banking eintragen — bei einer Differenz wird automatisch eine Ausgleichsbuchung angelegt (Kategorie "Kontoabgleich"), bei Übereinstimmung passiert nichts.
 
 ## 🧾 Rechnungen / Belege
 

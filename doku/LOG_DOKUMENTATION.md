@@ -2,6 +2,28 @@
 
 ---
 
+### 📋 Schritt-Log: Startsaldo & Saldo-Abgleich auf dem Mini-PC deployed
+**Zeitstempel:** `2026-08-24 03:45`
+
+#### 1. Was wurde getan?
+*   Fortsetzung des vorherigen Eintrags (02:45): Nutzer hat den Deploy explizit freigegeben.
+*   `docker compose -f docker-compose.prod.yml build backend frontend` (neue Images, keine laufenden Container berührt), `docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate status` zur Kontrolle (bestätigt: 9 angewendet, genau `20260824010000_add_starting_balance_and_reconciliation` ausstehend — kein unerwarteter Drift), dann `... run --rm backend npx prisma migrate deploy` ("All migrations have been successfully applied"), dann `docker compose -f docker-compose.prod.yml up -d backend frontend`.
+*   **Verifiziert:** `docker ps` — alle vier Container laufen (`finanzplaner-postgres-1` weiterhin `healthy`, durchgehend ungestört seit dem Zwischenfall). Backend-Logs zeigen die zwei neuen Routen sauber gemappt (`GET /users/me/balance`, `POST /users/me/reconcile`) sowie `PATCH /users/me`, keine Fehler/Fatals im Log. `curl https://finance.pwa-tree.de/` → HTTP 200.
+*   `features.md` um den neuen Abschnitt "Startsaldo & Saldo-Abgleich" ergänzt (unter Budgets & Dashboard).
+
+#### 2. Warum wurde es getan?
+*   Direkte Nutzer-Freigabe nach Rückfrage, ob deployed werden soll (bewusst explizit gefragt statt automatisch deployed, wegen des Docker-Zwischenfalls weiter oben in dieser Session).
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Produktions-Account hat `startingBalance` aktuell auf dem Default `0` — der Nutzer hat noch keinen echten Startsaldo hinterlegt, kann das aber jederzeit selbst über `/settings` tun.
+*   Kein visueller Browser-Check dieser konkreten Teilscheibe im Log vermerkt — sollte bei Gelegenheit vom Nutzer selbst bestätigt werden (Settings → Startsaldo setzen, "Saldo abgleichen" mit einem abweichenden Betrag testen, Ausgleichsbuchung in `/transactions` prüfen).
+*   Rest von Phase 9 (`getBillingCycle` serverseitig, frei verfügbares Einkommen, Tages-Burn-Rate, Cashflow-Projektion) weiterhin offen.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Code/Migration/Deployment) — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer, siehe oben)
+
+---
+
 ### 📋 Schritt-Log: Startsaldo & Saldo-Abgleich (Phase 9, zweite Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-24 02:45`
 

@@ -6,17 +6,16 @@ Finanz-PWA (Single-User React/NestJS/Postgres-App, produktiv auf `https://financ
 
 ## Aktueller Stand
 
-- Feature vollständig implementiert und lokal verifiziert: Backend-Tests grün (`docker build --target builder` + `npm test` im daraus gebauten Image, 14 Suiten/35 Tests, vorher 29), Frontend-Typecheck+Build grün (`docker build ./frontend`, führt `tsc && vite build` aus). **Noch NICHT auf dem Mini-PC deployed** — weder Migration angewendet noch Backend-/Frontend-Container neu gebaut.
-- Committed auf `main` (lokal auf dem Mini-PC, `git push` noch nicht ausgeführt — siehe TODOs).
+- Feature vollständig implementiert, verifiziert (Backend-Tests grün: 14 Suiten/35 Tests, vorher 29; Frontend-Typecheck+Build grün) und **auf dem Mini-PC deployed** — Migration angewendet, Backend+Frontend neu gebaut/gestartet, neue Routen (`GET /users/me/balance`, `POST /users/me/reconcile`) bestätigt gemappt, keine Fehler im Log, `https://finance.pwa-tree.de/` → HTTP 200. Deployment-Log-Eintrag "Startsaldo & Saldo-Abgleich auf dem Mini-PC deployed" (03:45).
+- Committed und gepusht auf `origin/main` (Commits `cf06e9d`, `94af613`).
 - Während dieser Session gab es einen **Docker-Zwischenfall**: `docker compose -f docker-compose.yml up -d postgres redis` (Dev-Compose) wurde versehentlich im `~/finanzplaner`-Verzeichnis ausgeführt und hat dabei kurzzeitig die **Prod**-Container `finanzplaner-postgres-1`/`finanzplaner-redis-1` ersetzt (gleicher impliziter Compose-Projektname wie `docker-compose.prod.yml`, gleiche Volume-Namen). Kein Datenverlust (gleiche Volumes), aber kurzer Redis-Verbindungsausfall im Backend. Vollständig behoben (Details + Lehre daraus: `doku/LOG_DOKUMENTATION.md`, Eintrag "Startsaldo & Saldo-Abgleich … Docker-Zwischenfall"). **Deshalb wurde die Migration für dieses Feature von Hand geschrieben statt per `prisma migrate dev` generiert** — um keine Dev-DB in diesem Verzeichnis erneut hochfahren zu müssen.
 
 ## Offene TODOs
 
-1. **Nächster Schritt (braucht Nutzer-Freigabe, nicht ungefragt ausführen):** Auf dem Mini-PC deployen — `docker compose -f docker-compose.prod.yml build backend frontend`, dann `docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy` (wendet `20260824010000_add_starting_balance_and_reconciliation` an), dann `docker compose -f docker-compose.prod.yml up -d backend frontend`. Danach Container-Status/Logs prüfen wie in früheren Deploy-Schritten.
-2. Migration vor dem Anwenden idealerweise kurz gegenprüfen (`npx prisma migrate status`/`diff` gegen die Prod-DB) — reine Vorsichtsmaßnahme nach dem Docker-Zwischenfall, kein bekanntes konkretes Risiko (rein additiv).
-3. `git push` auf `origin/main` (Repo-Schreibzugriff auf dem Mini-PC wurde in dieser Session vom Nutzer freigeschaltet — Deploy-Key-Schreibrechte aktiv).
-4. Danach visueller Check durch den Nutzer selbst: `/settings` → Startsaldo setzen, "Saldo abgleichen" mit einem abweichenden Betrag testen, prüfen ob die Ausgleichsbuchung korrekt in `/transactions` auftaucht.
-5. Rest von Phase 9 danach: `getBillingCycle`-Helfer serverseitig, "frei verfügbares Einkommen", Tages-Burn-Rate, Cashflow-Projektion (noch nicht begonnen).
+1. Diese Session ist inhaltlich abgeschlossen — kein unmittelbarer nächster Schritt aus dieser Arbeit offen.
+2. Visueller Check durch den Nutzer selbst steht noch aus: `/settings` → Startsaldo setzen, "Saldo abgleichen" mit einem abweichenden Betrag testen, prüfen ob die Ausgleichsbuchung korrekt in `/transactions` auftaucht.
+3. Falls fortgesetzt: Rest von Phase 9 (noch nicht begonnen) — `getBillingCycle`-Helfer serverseitig, "frei verfügbares Einkommen", Tages-Burn-Rate, Cashflow-Projektion.
+4. Alternativ mit dem Nutzer klären, ob als Nächstes eine andere Roadmap-Phase (7/8 oder 10–15) angegangen werden soll.
 
 ## Relevante Dateien/Pfade
 
