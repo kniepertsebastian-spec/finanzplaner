@@ -2,6 +2,32 @@
 
 ---
 
+### 📋 Schritt-Log: Frei verfügbares Einkommen & Tagesbudget (Phase 9, dritte Teilscheibe)
+**Zeitstempel:** `2026-08-24 04:20`
+
+#### 1. Was wurde getan?
+*   Nutzer wählte als nächsten Schritt die Fortsetzung von Roadmap-Phase 9. Umgesetzt: "Frei verfügbares Einkommen" und "Tages-Burn-Rate" — zwei neue Dashboard-Kennzahlen.
+*   **Erkenntnis vor der Umsetzung:** Der dritte Roadmap-Punkt "Zyklus-Helfer (`getBillingCycle`)" ist inhaltlich bereits durch `frontend/src/lib/financialPeriod.ts` abgedeckt (aus der ersten Teilscheibe) — Dashboard/Budgets filtern bereits auf das flexible Zeitfenster. Kein neuer Helfer nötig, kein Duplikat einer zweiten Zyklus-Logik im Backend angelegt.
+*   **Architektur-Entscheidung:** Anders als der Startsaldo (der eine All-Time-Summe über alle Transaktionen brauchte, die das Dashboard nicht ohnehin lädt — daher Backend-Endpunkt `getBalance`) lassen sich diese beiden neuen Kennzahlen komplett aus bereits vom Dashboard geladenen Daten berechnen (`recurring`, plus der in der vorherigen Teilscheibe ergänzte `GET /users/me/balance`-Aufruf). Konsequent im bestehenden Frontend-Muster umgesetzt (`frontend/src/lib/budgetCalc.ts`, reine Funktionen, exakt wie `upcomingFixedCosts`/`monthlyTotals`/`projectRemainingBudget`) statt eines neuen Backend-Endpunkts — keine doppelte Zyklus-Logik in zwei Sprachen.
+*   **`budgetCalc.ts`:** `availableIncome(balanceCents, outstandingFixedCostsCents)` = Gesamtsaldo − ausstehende Fixkosten (Rücklagen aus der Roadmap-Formel bewusst weggelassen — "virtuelle Töpfe" existieren erst ab Phase 10, kein Platzhalter-Feld dafür angelegt). `nextIncomeDueDate()` findet die früheste aktive, positive (Einnahme-)Fixkosten-Regel mit `nextDueDate >= heute`. `daysUntil()` (mindestens 1 Tag, verhindert Division durch 0). `dailyBurnRate()` = frei verfügbares Einkommen / Tage bis zur nächsten Einnahme — bewusst **ohne** Untergrenze bei 0, ein negativer Wert ist das eigentliche Warnsignal (droht überzogen zu werden, bevor Gehalt kommt).
+*   **Zeitzone:** `nextIncomeDueDate`/`daysUntil` vergleichen ausschließlich über `.getTime()`, niemals über lokale `Date`-Getter auf einem bereits UTC-verankerten `nextDueDate`-Wert — exakt der in `context.md` dokumentierte Fallstrick aus der ersten Teilscheibe.
+*   **`DashboardPage.tsx`:** Neue Zwei-Spalten-Zeile mit `StatTile`s "Frei verfügbar" und "Tagesbudget" (rot eingefärbt bei negativem Wert, gleiches Muster wie die bestehende Restbudget-Prognose-Kachel). Tagesbudget-Kachel zeigt als Untertext entweder das Datum der nächsten gefundenen Einnahme + Tage bis dahin, oder einen Hinweis, dass keine Einnahme-Regel gefunden wurde (Fallback-Horizont: Ende des aktuellen Zeitraums). Lädt jetzt zusätzlich `usersApi.getBalance()` parallel zu den bestehenden Dashboard-Daten.
+*   **Verifiziert:** `docker build ./frontend` (führt `tsc && vite build` aus) — baut fehlerfrei durch, keine Typfehler. Kein Docker-Dev-Stack berührt (Lehre aus der vorherigen Teilscheibe befolgt). Keine Backend-Änderung, keine neue Migration — reine Frontend-Logik + ein bereits bestehender API-Aufruf. Kein dedizierter Unit-Test (Frontend hat weiterhin keinen Testrunner, Phase 7 weiterhin offen) — wie bei den bisherigen reinen `budgetCalc.ts`-Ergänzungen in früheren Schritten nur per Typecheck + Code-Review verifiziert, kein Live-Browser-Test möglich (Passkey-Login lässt sich nicht automatisieren).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag: Fortsetzung von Roadmap-Phase 9 nach der Startsaldo/Reconciliation-Teilscheibe.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Keine Breaking Changes, keine Migration — rein additive Frontend-Logik plus ein zusätzlicher (bereits bestehender) API-Aufruf beim Laden des Dashboards.
+*   "Frei verfügbares Einkommen" berücksichtigt aktuell **keine** Rücklagen (virtuelle Töpfe existieren noch nicht) — sobald Phase 10 das umsetzt, muss die Formel um einen Abzugsterm erweitert werden.
+*   Rest von Phase 9 danach nur noch: Cashflow-Projektion (tagesgenauer Liquiditätsverlauf mit optischer Warnung) — spürbar größerer Umfang (neue Chart-Komponente), bewusst als eigene, separate Teilscheibe zurückgestellt statt hier mit reingepackt.
+*   Code committed, aber noch **nicht** auf dem Mini-PC deployed (kein Backend-Rebuild nötig, nur Frontend — steht als nächster Schritt aus, nach Nutzer-Freigabe).
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Code) — [ ] Deployment auf den Mini-PC steht noch aus
+
+---
+
 ### 📋 Schritt-Log: Startsaldo & Saldo-Abgleich auf dem Mini-PC deployed
 **Zeitstempel:** `2026-08-24 03:45`
 
