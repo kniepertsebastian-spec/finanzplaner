@@ -1,4 +1,4 @@
-import { AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Flag, TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BudgetProgressBar } from '../components/BudgetProgressBar';
 import { CashflowChart } from '../components/charts/CashflowChart';
@@ -26,6 +26,7 @@ import {
   nextIncomeDueDate,
   priceIncreaseRules,
   projectRemainingBudget,
+  savingsPotential,
   savingsRate,
   spentForCategory,
   upcomingFixedCosts,
@@ -134,6 +135,10 @@ export function DashboardPage() {
 
   const cancellationNotices = contractsNeedingCancellationNotice(recurring);
   const increasedRules = priceIncreaseRules(recurring);
+  const savings = savingsPotential(transactions, recurring);
+  const hasSavingsPotential = [savings.avoidable, savings.inefficient, savings.tooExpensive].some(
+    (f) => f.transactionCents > 0 || f.recurringMonthlyCents > 0,
+  );
 
   return (
     <div className="space-y-6">
@@ -246,6 +251,34 @@ export function DashboardPage() {
               Einstellungen → Kategorien als Bedarf/Wunsch/Sparen einordnen.
             </p>
           )}
+        </div>
+      )}
+
+      {hasSavingsPotential && (
+        <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Einsparpotenzial</h2>
+          {(
+            [
+              { label: 'Vermeidbar', Icon: Flag, data: savings.avoidable, colorClass: 'text-amber-600 dark:text-amber-400' },
+              { label: 'Ineffizient', Icon: TrendingDown, data: savings.inefficient, colorClass: 'text-red-600 dark:text-red-400' },
+              { label: 'Zu hoch', Icon: TrendingUp, data: savings.tooExpensive, colorClass: 'text-purple-600 dark:text-purple-400' },
+            ]
+          )
+            .filter((row) => row.data.transactionCents > 0 || row.data.recurringMonthlyCents > 0)
+            .map((row) => (
+              <div key={row.label} className="flex items-start justify-between gap-3 text-sm">
+                <span className={`flex items-center gap-1.5 font-medium ${row.colorClass}`}>
+                  <row.Icon size={14} />
+                  {row.label}
+                </span>
+                <span className="text-right text-neutral-600 dark:text-neutral-300">
+                  {row.data.transactionCents > 0 && <div>{formatCents(row.data.transactionCents)} im Zeitraum</div>}
+                  {row.data.recurringMonthlyCents > 0 && (
+                    <div>~{formatCents(row.data.recurringMonthlyCents)} / Monat aus Fixkosten</div>
+                  )}
+                </span>
+              </div>
+            ))}
         </div>
       )}
 

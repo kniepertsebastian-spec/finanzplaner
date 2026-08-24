@@ -26,6 +26,7 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
   - 🚩 **Vermeidbar** — diese Buchung hätte vermieden werden können.
   - 📉 **Ineffizient** — schlechtes Geschäft (z. B. schlechte Bankgebühren).
   - 📈 **Zu hoch** — Betrag ist überteuert/zu hoch.
+- **Einsparpotenzial-Auswertung:** Dashboard-Karte, die die drei Flags aggregiert — je Flag getrennt die Summe der markierten Buchungen im laufenden Zeitraum und der monatliche Durchschnittsbetrag markierter aktiver Fixkosten (Jahres-/Quartalsregeln auf Monatsbasis umgerechnet, damit eine jährliche Kfz-Steuer nicht 12× so dringend wirkt wie eine monatliche Regel). Nur sichtbar, wenn tatsächlich etwas markiert ist.
 - **Offline-Fähigkeit:** Neue Buchungen werden bei fehlender Verbindung lokal in IndexedDB zwischengespeichert und automatisch synchronisiert, sobald die App wieder online ist (Background Sync).
 - **Split-Transaktionen:** eine einzelne Buchung (z. B. ein Supermarkt-Einkauf) auf mehrere Kategorien aufteilen — unter *Transaktionen* per "Buchung aufteilen" mit beliebig vielen Betrag/Kategorie-Zeilen (mindestens 2) plus laufender Summenanzeige. Alle entstehenden Buchungen teilen sich Beschreibung und Datum, bleiben danach aber unabhängig voneinander bearbeitbar; ein kleines Symbol markiert Zeilen aus einer Aufteilung in der Liste (Tooltip zeigt die übrigen Teile).
 

@@ -259,3 +259,40 @@ export function priceIncreaseRules(recurring: RecurringTransaction[]): PriceIncr
     )
     .map((r) => ({ recurring: r, previousAmount: r.previousAmount as number }));
 }
+
+type SpendingFlag = 'avoidable' | 'inefficient' | 'tooExpensive';
+
+export interface FlagPotential {
+  transactionCents: number; // sum of flagged, expense transactions passed in (caller decides the period)
+  recurringMonthlyCents: number; // active flagged recurring expenses, normalized to a monthly equivalent
+}
+
+export interface SavingsPotential {
+  avoidable: FlagPotential;
+  inefficient: FlagPotential;
+  tooExpensive: FlagPotential;
+}
+
+function flagPotential(transactions: Transaction[], recurring: RecurringTransaction[], flag: SpendingFlag): FlagPotential {
+  const transactionCents = transactions
+    .filter((t) => t[flag] && t.amount < 0)
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  const recurringMonthlyCents = recurring
+    .filter((r) => r[flag] && r.active && r.amount < 0)
+    .reduce((sum, r) => sum + Math.round(Math.abs(r.amount) / Math.max(1, r.intervalMonths)), 0);
+  return { transactionCents, recurringMonthlyCents };
+}
+
+// Aggregates the three independent spending flags (Vermeidbar/Ineffizient/Zu hoch) across both
+// variable transactions (caller passes whichever period they want summed) and active recurring
+// rules (normalized to a monthly equivalent via intervalMonths — a flagged yearly car-tax rule
+// isn't "12x" as urgent as a flagged monthly one). Kept as two separate figures per flag rather
+// than one blended sum: "already spent this period" and "estimated ongoing per month" answer
+// different questions and summing them would overstate the number without adding insight.
+export function savingsPotential(transactions: Transaction[], recurring: RecurringTransaction[]): SavingsPotential {
+  return {
+    avoidable: flagPotential(transactions, recurring, 'avoidable'),
+    inefficient: flagPotential(transactions, recurring, 'inefficient'),
+    tooExpensive: flagPotential(transactions, recurring, 'tooExpensive'),
+  };
+}

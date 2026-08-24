@@ -2,6 +2,27 @@
 
 ---
 
+### 📋 Schritt-Log: Flag-Auswertung / Einsparpotenzial (Phase 13, zweite Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 04:45`
+
+#### 1. Was wurde getan?
+*   Fortsetzung von Phase 13. Zweite Teilscheibe: "Flag-Auswertung — Aggregiertes Einsparpotenzial-Dashboard für die Flags Vermeidbar, Ineffizient und Zu hoch". Gewählt, weil vollständig aus bereits vorhandenen Daten berechenbar (die drei Flags existieren längst auf `Transaction` und `RecurringTransaction`) — keine Schema-Änderung, kein neuer Endpunkt nötig.
+*   **`budgetCalc.ts`:** `savingsPotential(transactions, recurring)` — für jede der drei Flags getrennt zwei Werte: `transactionCents` (Summe markierter Ausgaben-Transaktionen aus der übergebenen — hier: zeitraum-gefilterten — Liste) und `recurringMonthlyCents` (Summe markierter, aktiver Fixkosten-Ausgaben, **auf einen Monatsdurchschnitt normalisiert** über `Math.round(Math.abs(amount) / intervalMonths)` — eine markierte jährliche Kfz-Steuer wirkt so nicht fälschlich 12× so bedeutsam wie eine markierte monatliche Regel). Bewusst **kein** blendeter Gesamtwert aus beiden — "im Zeitraum bereits ausgegeben" und "geschätzt laufend pro Monat" beantworten unterschiedliche Fragen, ein erzwungener Summenwert hätte Genauigkeit vorgetäuscht, die nicht da ist.
+*   **`DashboardPage.tsx`:** neue Karte "Einsparpotenzial" (nach der 50/30/20-Karte, vor Rücklagen), nur sichtbar wenn mindestens eine der drei Flag-Kategorien tatsächlich etwas beiträgt. Pro Flag: Icon + Farbe **identisch** zu den bereits etablierten Flag-Farben/-Icons aus `RecurringTransactionsPanel.tsx`/`TransactionsPage.tsx` (Vermeidbar = `Flag`/Amber, Ineffizient = `TrendingDown`/Rot, Zu hoch = `TrendingUp`/Lila) — bewusst keine neuen Farben für dieselbe Bedeutung erfunden (feste kategoriale Farbzuordnung, konsistent mit der `dataviz`-Skill-Regel "assign categorical hues in fixed order, never cycled").
+*   **Verifiziert:** kein Backend-Code betroffen (rein Frontend-Berechnung über bereits geladene Daten). Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei (weiterhin nur die unkritische Vite-Chunk-Size-Warnung). Visuell per isoliertem HTML-Nachbau + Playwright-Screenshot geprüft (Layout mit gemischten ein-/zweizeiligen Werten pro Flag-Zeile).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag ("phase 13" — Fortsetzung nach der ersten Teilscheibe Sparquote/50-30-20).
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — reine Frontend-Berechnung, nutzt ausschließlich bereits geladene `transactions`/`recurring`-Daten.
+*   Rest von Phase 13 weiterhin offen: Sankey-Diagramm, Tags, Steuer-Marker, Web Push, App Shortcuts, Batch-Bearbeitung.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer, idealerweise mit ein paar markierten Buchungen/Regeln zum Testen)
+
+---
+
 ### 📋 Schritt-Log: Sparquote & 50/30/20-Regel (Phase 13, erste Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 04:10`
 
