@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BudgetProgressBar } from '../components/BudgetProgressBar';
+import { CashflowChart } from '../components/charts/CashflowChart';
 import { IncomeExpenseChart } from '../components/charts/IncomeExpenseChart';
 import { StatTile } from '../components/StatTile';
 import { useAuth } from '../context/AuthContext';
@@ -12,8 +13,10 @@ import type { Budget, Category, RecurringTransaction, Transaction } from '../lib
 import { usersApi } from '../lib/api/users';
 import {
   availableIncome,
+  cashflowProjection,
   dailyBurnRate,
   daysUntil,
+  firstShortfall,
   monthlyTotals,
   nextIncomeDueDate,
   projectRemainingBudget,
@@ -98,6 +101,13 @@ export function DashboardPage() {
     ? `Bis zum nächsten Gehaltseingang am ${burnRateHorizonLabel} (${daysUntilNextIncome} Tage)`
     : `Keine geplante Einnahme gefunden — bis Ende des Zeitraums am ${burnRateHorizonLabel}`;
 
+  // Projection horizon: today through the end of the *next* financial period, so it reliably
+  // spans at least one full salary cycle even when checked late in the current one.
+  const cashflowHorizonDays = daysUntil(nextPeriod.end);
+  const cashflowPoints = cashflowProjection(balance, recurring, cashflowHorizonDays);
+  const shortfall = firstShortfall(cashflowPoints);
+  const shortfallLabel = shortfall?.date.toLocaleDateString('de-DE', { timeZone: 'UTC' });
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-neutral-500 dark:text-neutral-400">Zeitraum: {periodLabel}</p>
@@ -135,6 +145,21 @@ export function DashboardPage() {
           Einnahmen &amp; Ausgaben im Zeitverlauf
         </h2>
         <IncomeExpenseChart transactions={transactions} periodStart={period.start} daysInPeriod={days} isDark={isDark} />
+      </div>
+
+      <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <h2 className="mb-1 text-sm font-medium text-neutral-700 dark:text-neutral-300">Liquiditätsverlauf</h2>
+        <p className="mb-4 text-xs text-neutral-400 dark:text-neutral-500">
+          Kontostand-Prognose bis {nextPeriod.end.toLocaleDateString('de-DE', { timeZone: 'UTC' })} auf Basis aktiver
+          wiederkehrender Buchungen — variable Ausgaben sind nicht enthalten.
+        </p>
+        {shortfall && (
+          <p className="mb-4 rounded-md bg-[#d03b3b]/10 px-3 py-2 text-sm text-[#d03b3b] dark:bg-[#e0554f]/10 dark:text-[#e0554f]">
+            ⚠ Drohende Unterdeckung: Der Kontostand rutscht laut Prognose am {shortfallLabel} ins Minus (
+            {formatCents(shortfall.balanceCents)}).
+          </p>
+        )}
+        <CashflowChart points={cashflowPoints} isDark={isDark} />
       </div>
 
       {budgets.length === 0 ? (

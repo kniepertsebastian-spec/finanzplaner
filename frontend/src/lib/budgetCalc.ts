@@ -77,3 +77,68 @@ export function daysUntil(target: Date, referenceDate: Date = new Date()): numbe
 export function dailyBurnRate(availableIncomeCents: number, daysUntilNextIncome: number): number {
   return Math.round(availableIncomeCents / daysUntilNextIncome);
 }
+
+export interface CashflowPoint {
+  date: Date;
+  balanceCents: number;
+}
+
+// Adds `months` to a UTC-midnight timestamp, clamping the day-of-month to the target month's
+// length (e.g. 31 Jan + 1 month -> 28/29 Feb, not 3 Mar) — same clamping rule as
+// financialPeriod.ts's periodStartDate, needed here so a recurring rule due on the 31st doesn't
+// drift forward across months with fewer days.
+function addMonthsClamped(utcMs: number, months: number): number {
+  const d = new Date(utcMs);
+  const year = d.getUTCFullYear();
+  const day = d.getUTCDate();
+  const targetIndex = d.getUTCMonth() + months;
+  const targetYear = year + Math.floor(targetIndex / 12);
+  const targetMonth = ((targetIndex % 12) + 12) % 12;
+  const daysInTargetMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  return Date.UTC(targetYear, targetMonth, Math.min(day, daysInTargetMonth));
+}
+
+// Day-by-day projected running balance from today through `horizonDays` days out, applying every
+// active recurring rule's occurrences (starting at its nextDueDate, then repeating every
+// intervalMonths) that fall in that window. Only committed recurring cashflows are known ahead of
+// time — variable day-to-day spending isn't — so this deliberately has the same scope as
+// availableIncome()/dailyBurnRate(), not a full spend forecast.
+export function cashflowProjection(
+  startBalanceCents: number,
+  recurring: RecurringTransaction[],
+  horizonDays: number,
+  referenceDate: Date = new Date(),
+): CashflowPoint[] {
+  const todayUTC = Date.UTC(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const horizonEndUTC = todayUTC + horizonDays * 24 * 60 * 60 * 1000;
+
+  const amountByDayIndex = new Map<number, number>();
+  for (const r of recurring.filter((r) => r.active)) {
+    const interval = Math.max(1, r.intervalMonths);
+    const due = new Date(r.nextDueDate);
+    let dueUTC = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
+    // nextDueDate should already be >= today, but guard against stale data just in case.
+    while (dueUTC < todayUTC) {
+      dueUTC = addMonthsClamped(dueUTC, interval);
+    }
+    while (dueUTC <= horizonEndUTC) {
+      const dayIndex = Math.round((dueUTC - todayUTC) / (24 * 60 * 60 * 1000));
+      amountByDayIndex.set(dayIndex, (amountByDayIndex.get(dayIndex) ?? 0) + r.amount);
+      dueUTC = addMonthsClamped(dueUTC, interval);
+    }
+  }
+
+  const points: CashflowPoint[] = [];
+  let runningBalance = startBalanceCents;
+  for (let dayIndex = 0; dayIndex <= horizonDays; dayIndex++) {
+    runningBalance += amountByDayIndex.get(dayIndex) ?? 0;
+    points.push({ date: new Date(todayUTC + dayIndex * 24 * 60 * 60 * 1000), balanceCents: runningBalance });
+  }
+  return points;
+}
+
+// First point where the projected balance dips below zero, or null if the projection stays
+// non-negative throughout the horizon — drives the Dashboard's Unterdeckung warning.
+export function firstShortfall(points: CashflowPoint[]): CashflowPoint | null {
+  return points.find((p) => p.balanceCents < 0) ?? null;
+}
