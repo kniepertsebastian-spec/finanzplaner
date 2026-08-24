@@ -2,6 +2,32 @@
 
 ---
 
+### 📋 Schritt-Log: Preiserhöhungs-Erkennung (Phase 10, dritte/letzte Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 00:05`
+
+#### 1. Was wurde getan?
+*   Fortsetzung von Phase 10, nachdem der Nutzer den Mini-PC-Deploy der ersten beiden Teilscheiben (virtuelle Töpfe, Vertragsmetadaten) erfolgreich selbst durchgeführt hat (Docker-Gruppenmitgliedschaft repariert, root-`.env` aus den laufenden Containern wiederhergestellt, `git pull` + Backend-/Frontend-Rebuild + `prisma migrate deploy` für beide ausstehenden Migrationen). Da diese Session weiterhin keinen Docker-/SSH-Zugriff auf den Mini-PC hat, wurde auf Nutzerwunsch der Branch dieser Session per Fast-Forward direkt auf `main` gepusht, damit der Nutzer ohne Branch-Wechsel weiter `git pull` auf `main` nutzen kann (Abweichung vom reinen Feature-Branch-Workflow dieser Session, mit Nutzer abgestimmt).
+*   **`RecurringTransaction`** um `previousAmount` (Int?, nullable) erweitert — Snapshot des `amount`-Werts unmittelbar vor der letzten Änderung. Migration `20260825000000_add_previous_amount` von Hand geschrieben (weiterhin kein Docker/Postgres in dieser Session verfügbar).
+*   **`RecurringTransactionsService.update()`:** liest jetzt die bestehende Entity (statt sie nur für den Ownership-Check zu verwerfen) und setzt `previousAmount` auf den alten `amount`-Wert, sobald sich `amount` im Update tatsächlich ändert (Vergleich `dto.amount !== existing.amount`). Keine Änderung an `amount` (z. B. reines Pausieren/Umbenennen) lässt `previousAmount` unangetastet.
+*   **Neuer Endpunkt `POST /recurring-transactions/:id/dismiss-price-increase`** (`dismissPriceIncrease()`) — setzt `previousAmount` gezielt auf `null` zurück, um den Hinweis zu bestätigen/auszublenden. Bewusst als eigener Endpunkt statt über den generischen `PATCH`-Update-Pfad gelöst, um nicht erneut in das bereits bekannte "leeres Feld = unverändert, nicht löschen"-Problem zu laufen (siehe vorherige Teilscheibe zu Vertragsdaten).
+*   **`budgetCalc.ts`:** neue Funktion `priceIncreaseRules(recurring)` — findet aktive Ausgaben-Regeln (`amount < 0`), bei denen der Betrag dem Betrag nach höher ist als der gespeicherte `previousAmount`. Einnahme-Regeln bewusst ausgeschlossen (steigendes Einkommen ist keine Warnung).
+*   **`DashboardPage.tsx`:** neuer lila Warn-Banner "📈 Preiserhöhungen erkannt" (unterhalb des Kündigungswecker-Banners), listet betroffene Regeln mit altem → neuem Betrag.
+*   **`RecurringTransactionsPanel.tsx`:** Badge "erhöht" direkt in der Betrag-Spalte der Fixkosten-Tabelle bei betroffenen Zeilen (Tooltip mit altem → neuem Betrag), mit ×-Button zum Bestätigen/Ausblenden (ruft den neuen Dismiss-Endpunkt auf).
+*   **Verifiziert:** Backend — `npm run build` fehlerfrei, `npm test` → 16 Suites / 48 Tests grün (3 bestehende `update()`-Tests an das neue `previousAmount: undefined`-Feld angepasst, 2 neue Tests für die Preiserhöhungs-Snapshot-Logik, 1 neuer Test für `dismissPriceIncrease()`). Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei. Weiterhin kein Docker in dieser Session, Verifikation komplett über lokal installierte `node_modules`.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag ("continue"), letzter offener Punkt aus Roadmap-Phase 10. Damit ist Phase 10 (Virtuelle Töpfe, Vertragsmetadaten/Kündigungswecker, Preiserhöhungs-Erkennung) code-seitig vollständig abgeschlossen.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Migration nötig** — eine neue, nullable/additive Spalte auf `RecurringTransaction`. Keine bestehenden Daten betroffen.
+*   **Bewusste Design-Entscheidung:** Preiserhöhungen werden nur bei *manuellen* Betragsänderungen durch den Nutzer erkannt, nicht automatisch aus Banking-Daten abgeleitet (die App hat keinen Bank-Zugriff, siehe Projektname "ohne Bank-Pull"). Der Nutzer muss den neuen Betrag also selbst in die Regel eintragen, damit die Erkennung greift — das ist der erwartete Workflow (Fixkosten-Regel wird ohnehin bei einer echten Preiserhöhung angepasst).
+*   **Nicht deployed** — kein Docker-Daemon, kein SSH-Zugriff in dieser Session. Deployment (Backend-Rebuild + `prisma migrate deploy` für die neue Migration) steht aus.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed — [ ] Push auf `main`/Branch noch zu bestätigen (siehe Git-Log) — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer nach Deployment)
+
+---
+
 ### 📋 Schritt-Log: Vertragsmetadaten & Kündigungswecker (Phase 10, zweite Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-24 23:10`
 

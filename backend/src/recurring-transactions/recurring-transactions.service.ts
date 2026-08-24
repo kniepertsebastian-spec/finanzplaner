@@ -58,16 +58,18 @@ export class RecurringTransactionsService {
   }
 
   async update(userId: string, id: string, dto: UpdateRecurringTransactionDto) {
-    await this.findOne(userId, id);
+    const existing = await this.findOne(userId, id);
     if (dto.categoryId) {
       await this.assertCategoryOwnership(userId, dto.categoryId);
     }
+    const amountChanged = dto.amount !== undefined && dto.amount !== existing.amount;
     return this.prisma.recurringTransaction.update({
       where: { id },
       data: {
         ...dto,
         nextDueDate: dto.nextDueDate ? new Date(dto.nextDueDate) : undefined,
         contractEndDate: dto.contractEndDate ? new Date(dto.contractEndDate) : undefined,
+        previousAmount: amountChanged ? existing.amount : undefined,
       },
     });
   }
@@ -75,6 +77,11 @@ export class RecurringTransactionsService {
   async remove(userId: string, id: string) {
     await this.findOne(userId, id);
     await this.prisma.recurringTransaction.delete({ where: { id } });
+  }
+
+  async dismissPriceIncrease(userId: string, id: string) {
+    await this.findOne(userId, id);
+    return this.prisma.recurringTransaction.update({ where: { id }, data: { previousAmount: null } });
   }
 
   private static dateOnly(date: Date): number {

@@ -43,6 +43,7 @@ export interface RecurringTransaction {
   contractNumber: string | null;
   contractEndDate: string | null; // minimum term end date; contract auto-renews if not cancelled in time
   cancellationPeriodDays: number | null; // days' notice required before contractEndDate to cancel
+  previousAmount: number | null; // snapshot of `amount` before the last change; drives the price-increase indicator
 }
 
 export interface SavingsPot {

@@ -21,6 +21,7 @@ import {
   firstShortfall,
   monthlyTotals,
   nextIncomeDueDate,
+  priceIncreaseRules,
   projectRemainingBudget,
   spentForCategory,
   upcomingFixedCosts,
@@ -117,6 +118,7 @@ export function DashboardPage() {
   const shortfallLabel = shortfall?.date.toLocaleDateString('de-DE', { timeZone: 'UTC' });
 
   const cancellationNotices = contractsNeedingCancellationNotice(recurring);
+  const increasedRules = priceIncreaseRules(recurring);
 
   return (
     <div className="space-y-6">
@@ -137,6 +139,23 @@ export function DashboardPage() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {increasedRules.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-purple-400/30 bg-purple-400/10 p-4 dark:border-purple-400/20">
+          <h2 className="text-sm font-medium text-purple-700 dark:text-purple-400">📈 Preiserhöhungen erkannt</h2>
+          <ul className="space-y-1 text-sm text-purple-700 dark:text-purple-400">
+            {increasedRules.map(({ recurring: r, previousAmount }) => (
+              <li key={r.id}>
+                <span className="font-medium">{r.description}</span>: {formatCents(previousAmount)} →{' '}
+                {formatCents(r.amount)}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-purple-700/70 dark:text-purple-400/70">
+            Zu prüfen und ggf. zu bestätigen unter Einstellungen → Fixkosten.
+          </p>
         </div>
       )}
 

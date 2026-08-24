@@ -127,6 +127,11 @@ model RecurringTransaction {
   contractEndDate        DateTime? // minimum term end date; the contract auto-renews if not cancelled in time
   cancellationPeriodDays Int? // how many days' notice is required before contractEndDate to cancel
 
+  // Price-increase tracking: snapshot of `amount` right before the user last changed it (set by
+  // the service on update, not user-editable directly). Cleared back to null via the dedicated
+  // dismiss endpoint once the user has acknowledged the increase.
+  previousAmount Int?
+
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -178,3 +178,20 @@ export function contractsNeedingCancellationNotice(
   }
   return notices.sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
 }
+
+export interface PriceIncrease {
+  recurring: RecurringTransaction;
+  previousAmount: number;
+}
+
+// Active expense rules (amount < 0) whose current amount costs more than the snapshotted
+// `previousAmount` — i.e. the recurring cost was raised since the user last confirmed it (e.g.
+// after a provider's price-increase notice). Income rules are out of scope: a rising income isn't
+// a warning. Cleared per-rule via the dismiss-price-increase endpoint, not by this function.
+export function priceIncreaseRules(recurring: RecurringTransaction[]): PriceIncrease[] {
+  return recurring
+    .filter(
+      (r) => r.active && r.amount < 0 && r.previousAmount != null && Math.abs(r.amount) > Math.abs(r.previousAmount),
+    )
+    .map((r) => ({ recurring: r, previousAmount: r.previousAmount as number }));
+}

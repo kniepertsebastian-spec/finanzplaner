@@ -36,4 +36,9 @@ export class RecurringTransactionsController {
   remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.recurringTransactionsService.remove(user.id, id);
   }
+
+  @Post(':id/dismiss-price-increase')
+  dismissPriceIncrease(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.recurringTransactionsService.dismissPriceIncrease(user.id, id);
+  }
 }

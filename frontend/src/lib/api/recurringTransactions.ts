@@ -23,4 +23,6 @@ export const recurringTransactionsApi = {
   update: (id: string, dto: Partial<RecurringTransactionInput>) =>
     apiClient.patch<RecurringTransaction>(`/recurring-transactions/${id}`, dto).then((r) => r.data),
   remove: (id: string) => apiClient.delete(`/recurring-transactions/${id}`).then((r) => r.data),
+  dismissPriceIncrease: (id: string) =>
+    apiClient.post<RecurringTransaction>(`/recurring-transactions/${id}/dismiss-price-increase`).then((r) => r.data),
 };

@@ -2,58 +2,54 @@
 
 ## Ziel
 
-Finanz-PWA (Single-User React/NestJS/Postgres-App, produktiv auf `https://finance.pwa-tree.de`) um Vertragsmetadaten und einen Kündigungswecker erweitern — zweite Teilscheibe von Roadmap-Phase 10, direkt nach den virtuellen Töpfen (erste Teilscheibe).
+Finanz-PWA (Single-User React/NestJS/Postgres-App, produktiv auf `https://finance.pwa-tree.de`) um eine Preiserhöhungs-Erkennung für Fixkosten erweitern — dritte und letzte Teilscheibe von Roadmap-Phase 10, nach virtuellen Töpfen (Teilscheibe 1) und Vertragsmetadaten/Kündigungswecker (Teilscheibe 2). **Phase 10 ist damit code-seitig vollständig.**
 
 ## Aktueller Stand
 
 - Feature vollständig implementiert und lokal verifiziert:
-  - Backend: `npm run build` fehlerfrei, `npm test` → 16 Suites / 45 Tests grün.
+  - Backend: `npm run build` fehlerfrei, `npm test` → 16 Suites / 48 Tests grün.
   - Frontend: `npx tsc --noEmit` fehlerfrei, `npm run build` (`tsc && vite build`) fehlerfrei.
-- **Kein Docker in dieser Session verfügbar** (weder Daemon noch `ssh` zum Mini-PC) — wie in der vorherigen Teilscheibe lief die Verifikation über lokal per `npm install` erzeugte `node_modules`. Migration `20260824230000_add_contract_metadata` von Hand geschrieben, nicht per `prisma migrate dev` gegen eine echte DB generiert.
-- **Noch NICHT auf dem Mini-PC deployed.** Es stehen inzwischen **zwei** Migrationen aus (`add_savings_pots` aus der letzten Teilscheibe + `add_contract_metadata` aus dieser), zusätzlich ein Backend- und Frontend-Rebuild.
-- Der Nutzer kümmert sich parallel selbst um die Mini-PC-Deploy-Voraussetzungen (Docker-Gruppenmitgliedschaft ohne `sudo`, Wiederherstellung der root-`.env` mit `POSTGRES_USER`/`PASSWORD`/`DB`/`DATABASE_URL` — diese Werte müssen aus den bereits laufenden Containern ausgelesen werden, nicht neu erfunden, sonst driftet Postgres von der bestehenden Datenvolume auseinander).
-- Committed (siehe `git log`). **Push auf den Remote-Branch steht noch aus** — bitte vor Sitzungsende nachholen, falls noch nicht geschehen (Branch: `claude/remote-control-finanzplaner-gbmdlb`, kein Push auf `main` ohne Rückfrage — abweichend vom Muster früherer Sessions, die direkt auf `main` gepusht haben; siehe letzte Nutzer-Interaktion zu diesem Thema).
+- **Kein Docker in dieser Session verfügbar** (weiterhin weder Daemon noch SSH zum Mini-PC) — Verifikation lief wie in den beiden vorherigen Teilscheiben über lokal per `npm install` erzeugte `node_modules`. Migration `20260825000000_add_previous_amount` von Hand geschrieben.
+- Die ersten beiden Teilscheiben (virtuelle Töpfe, Vertragsmetadaten) sind **bereits auf dem Mini-PC deployed und verifiziert** — der Nutzer hat das selbst durchgeführt (Docker-Gruppenmitgliedschaft repariert, root-`.env` aus laufenden Containern wiederhergestellt).
+- **Diese dritte Teilscheibe ist NOCH NICHT deployed.**
+- **Branch-Hinweis:** Auf Nutzerwunsch wurde der Branch dieser Session per Fast-Forward direkt auf `main` gepusht (nicht nur auf den eigentlichen Feature-Branch `claude/remote-control-finanzplaner-gbmdlb`), damit der Nutzer ohne Branch-Wechsel `git pull` auf `main` nutzen kann — passend zum Muster früherer Sessions. Diesen aktuellen Commit ebenso behandeln, falls noch nicht gepusht (siehe `git log`/`git status` beim Sitzungsstart prüfen).
 
 ## Offene TODOs
 
-1. **Deployment auf dem Mini-PC steht aus**, inkl. Backend + zwei Migrationen:
+1. **Deployment auf dem Mini-PC steht aus:**
    ```
    git pull
    docker compose -f docker-compose.prod.yml build backend frontend
    docker compose -f docker-compose.prod.yml up -d backend frontend
    docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
    ```
-2. Visueller Check durch den Nutzer nach dem Deployment:
-   - *Einstellungen* → Fixkosten-Formular → neuer Abschnitt "Vertragsdaten" (Vertragsnummer/Mindestlaufzeit-Ende/Kündigungsfrist).
-   - Dashboard → bei mindestens einer betroffenen Regel: gelber Warn-Banner "⏰ Kündigungsfrist läuft bald ab" ganz oben.
-   - Aus der vorherigen Teilscheibe weiterhin offen: *Einstellungen* → "Virtuelle Töpfe", Dashboard → "Rücklagen"-Karte.
-3. **Bekannte UI-Lücke** (bewusst zurückgestellt, siehe `doku/LOG_DOKUMENTATION.md`): einmal gesetzte `contractEndDate`/`cancellationPeriodDays` lassen sich über das Formular nicht wieder löschen (leeres Feld = "unverändert", nicht "löschen"). Workaround: Regel pausieren (`active: false`). Falls das den Nutzer stört, wäre eine echte Clear-Funktion die nächste kleine Ergänzung.
-4. Rest von Phase 10 (noch nicht begonnen): **Preiserhöhungs-Erkennung** (automatischer Indikator bei Erhöhungen wiederkehrender Beträge im Zyklusvergleich) — deutlich größerer Scope, braucht einen Vergleich historischer Beträge über mehrere Zyklen (z. B. Snapshot bei jedem `runDueRecurringTransactions`-Lauf oder Ableitung aus den gebuchten `Transaction`-Historien pro Regel).
-5. Falls in einer künftigen Session wieder ein Mini-PC-Deploy ansteht: vorab prüfen, ob `docker`-Daemon bzw. SSH-Zugang in der jeweiligen Umgebung überhaupt verfügbar sind — war in den letzten drei Sessions nicht der Fall.
+2. Visueller Check durch den Nutzer nach dem Deployment: unter *Einstellungen* → Fixkosten den Betrag einer aktiven Ausgaben-Regel erhöhen, speichern, dann prüfen: lila "erhöht"-Badge in der Tabelle (mit Tooltip alt→neu) und lila Dashboard-Banner "📈 Preiserhöhungen erkannt". Danach das ×-Symbol am Badge klicken → Hinweis muss verschwinden.
+3. **Phase 10 ist damit vollständig.** Nächster Schritt mit dem Nutzer klären: Phase 11 (Smarte Datenerfassung & Import: CSV-Import, OCR-Belegscan, Split-Transaktionen, Währungsumrechner) oder etwas anderes aus der Roadmap.
+4. Falls in einer künftigen Session wieder ein Mini-PC-Deploy ansteht: vorab prüfen, ob `docker`-Daemon bzw. SSH-Zugang in der jeweiligen Umgebung überhaupt verfügbar sind — war in den letzten drei Sessions durchgehend nicht der Fall; dieses Environment hat außerdem keinen `ssh`-Client installiert und keine Route ins private LAN des Nutzers (per `/dev/tcp`-Test bestätigt).
 
 ## Relevante Dateien/Pfade
 
-- `backend/prisma/schema.prisma` — `RecurringTransaction` um `contractNumber`, `contractEndDate`, `cancellationPeriodDays` erweitert.
-- `backend/prisma/migrations/20260824230000_add_contract_metadata/migration.sql` — von Hand geschrieben.
-- `backend/src/recurring-transactions/dto/create-recurring-transaction.dto.ts`, `recurring-transactions.service.ts` — neue Felder, `contractEndDate`-Konvertierung in `create()` und `update()`.
-- `frontend/src/lib/api/types.ts` (`RecurringTransaction`), `frontend/src/lib/api/recurringTransactions.ts` (`RecurringTransactionInput`) — neue Felder.
-- `frontend/src/lib/budgetCalc.ts` — neu: `contractsNeedingCancellationNotice()`, Typ `CancellationNotice`.
-- `frontend/src/pages/DashboardPage.tsx` — neuer Warn-Banner ganz oben.
-- `frontend/src/components/settings/RecurringTransactionsPanel.tsx` — neuer optionaler Formularabschnitt "Vertragsdaten".
+- `backend/prisma/schema.prisma` — `RecurringTransaction` um `previousAmount` (Int?) erweitert.
+- `backend/prisma/migrations/20260825000000_add_previous_amount/migration.sql` — von Hand geschrieben.
+- `backend/src/recurring-transactions/recurring-transactions.service.ts` — `update()` snapshottet `previousAmount` bei Betragsänderung; neue Methode `dismissPriceIncrease()`.
+- `backend/src/recurring-transactions/recurring-transactions.controller.ts` — neuer Endpunkt `POST :id/dismiss-price-increase`.
+- `frontend/src/lib/api/types.ts` (`previousAmount` auf `RecurringTransaction`), `frontend/src/lib/api/recurringTransactions.ts` (`dismissPriceIncrease()`).
+- `frontend/src/lib/budgetCalc.ts` — neu: `priceIncreaseRules()`, Typ `PriceIncrease`.
+- `frontend/src/pages/DashboardPage.tsx` — neuer lila Warn-Banner unterhalb des Kündigungswecker-Banners.
+- `frontend/src/components/settings/RecurringTransactionsPanel.tsx` — "erhöht"-Badge mit Dismiss-Button in der Fixkosten-Tabelle.
 
 ## Entscheidungen & Begründungen
 
-- **Warnfenster fest auf 30 Tage** (`contractsNeedingCancellationNotice(recurring, windowDays = 30, ...)`) — kein UI zum Konfigurieren, um den Scope klein zu halten; als Parameter mit Default umgesetzt, falls später doch konfigurierbar gemacht werden soll.
-- **Bereits verstrichene Kündigungs-Deadlines werden weiterhin angezeigt**, nicht herausgefiltert — wenn der Nutzer die Frist verpasst hat, soll die App das gerade dann noch deutlich zeigen, statt stillschweigend zu verschwinden.
-- **Preiserhöhungs-Erkennung bewusst nicht in dieser Teilscheibe** — braucht eine Historie vergangener Beträge pro Regel (aktuell wird bei jedem Lauf nur der aktuelle `amount` überschrieben, es gibt keinen Snapshot-Verlauf). Das ist ein eigenständiges Datenmodell-Thema und wurde als eigene, spätere Teilscheibe zurückgestellt statt hier mit reingepackt.
-- **Keine Clear-Funktion für die drei neuen Felder** (siehe TODO 3) — die Formular-Semantik "leeres Feld = unverändert" ist konsistent mit dem Rest des Formulars (z. B. wird auch `active` nie über ein leeres Feld zurückgesetzt), eine echte Lösch-Funktion hätte zusätzliche DTO-Semantik (`null` vs. `undefined` unterscheiden) gebraucht.
+- **Erkennung nur bei manueller Betragsänderung durch den Nutzer**, nicht automatisch aus Bank-/Transaktionsdaten abgeleitet — die App hat bewusst keinen Bank-Pull (siehe Projekttitel in `claude/roadmap.md`). Der erwartete Workflow: Anbieter kündigt Preiserhöhung an → Nutzer trägt den neuen Betrag in die Fixkosten-Regel ein → App merkt sich automatisch den alten Wert und zeigt den Hinweis.
+- **Eigener Dismiss-Endpunkt (`POST :id/dismiss-price-increase`) statt Löschen über den generischen `PATCH`-Pfad** — vermeidet dieselbe "leeres Feld = unverändert, nicht löschen"-Falle wie bei den Vertragsdaten-Feldern der vorherigen Teilscheibe (dort bewusst nicht gelöst; hier von Anfang an sauber gelöst, weil ein einzelnes Feld mit klarer Zurücksetzen-Semantik).
+- **Nur Ausgaben-Regeln (`amount < 0`)** — ein steigendes Einkommen ist kein Warnsignal, daher aus `priceIncreaseRules()` ausgeschlossen.
+- **`previousAmount` wird bei jeder Betragsänderung überschrieben**, nicht nur einmalig gesetzt — jede neue Änderung nach einem Dismiss erzeugt wieder einen frischen Vergleichswert; es gibt keine tiefere Historie über mehr als einen Schritt zurück (bewusst einfach gehalten, entspricht dem Roadmap-Wortlaut "im Zyklusvergleich", nicht einer vollständigen Preis-Historie).
 
 ## Bekannte Fallstricke / Gotchas
 
 - **Docker-Projektname-Kollision** (weiterhin gültig, siehe frühere Einträge): niemals `docker compose -f docker-compose.yml up` auf dem Mini-PC ohne `-p <anderer-projektname>`.
-- **Diese Session hatte weder Docker-Daemon noch SSH-Zugang** — Verifikation lief über lokales `npm install` statt `docker build`. Gleicher Hinweis wie in der vorherigen Teilscheibe: im Zweifel vor dem Mini-PC-Deploy zusätzlich `docker build` durchführen, wenn eine Umgebung es zulässt.
-- **Root-`.env` auf dem Mini-PC** (`~/finanzplaner/.env`, neben `docker-compose.prod.yml`) muss `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`/`DATABASE_URL` enthalten — separat von `backend/.env` (das über `env_file:` eingebunden wird und JWT_SECRET etc. enthält). Falls diese root-`.env` fehlt: Werte aus den laufenden Containern auslesen (`docker exec <postgres_container> env | grep POSTGRES`), niemals neu erfinden — Postgres übernimmt `POSTGRES_USER`/`PASSWORD`/`DB` nur bei der Erstinitialisierung eines leeren Datenverzeichnisses, abweichende Werte brechen den Zugriff auf die bestehende Volume.
-- **Zwei ausstehende Migrationen** vor dem nächsten `prisma migrate deploy`: `20260824220000_add_savings_pots` und `20260824230000_add_contract_metadata` — beide additiv/nullable, kein Datenverlust-Risiko, aber beide müssen durch sein, bevor die jeweiligen neuen Endpunkte/Felder produktiv genutzt werden.
+- **Diese Session hatte weder Docker-Daemon noch SSH-Zugang** (bestätigt: kein `ssh`-Binary, `/dev/tcp`-Verbindungsversuch zur privaten LAN-IP des Mini-PCs läuft in einen Timeout — keine Netzwerkroute aus dieser Cloud-Umgebung ins Heimnetz des Nutzers, unabhängig von Zugangsdaten). Verifikation lief über lokales `npm install` statt `docker build`.
+- **Drei Migrationen liegen inzwischen additiv aufeinander** seit Beginn von Phase 10: `add_savings_pots`, `add_contract_metadata`, `add_previous_amount` — alle nullable/additiv, kein Datenverlust-Risiko, aber `prisma migrate deploy` muss nach jedem Pull erneut laufen, bis alle durch sind.
 - Migrations-Deploy-Befehl auf dem Mini-PC: `docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy`.
 
 ## NICHT relevant

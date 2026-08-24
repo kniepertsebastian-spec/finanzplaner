@@ -1,9 +1,10 @@
 import clsx from 'clsx';
-import { Flag, Pause, Pencil, Play, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowUpCircle, Flag, Pause, Pencil, Play, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { categoriesApi } from '../../lib/api/categories';
 import { recurringTransactionsApi } from '../../lib/api/recurringTransactions';
 import type { Category, RecurringTransaction } from '../../lib/api/types';
+import { priceIncreaseRules } from '../../lib/budgetCalc';
 import { eurosToCents, formatCents } from '../../lib/money';
 
 type Sign = 'expense' | 'income';
@@ -135,6 +136,11 @@ export function RecurringTransactionsPanel() {
     load();
   };
 
+  const handleDismissPriceIncrease = async (id: string) => {
+    await recurringTransactionsApi.dismissPriceIncrease(id);
+    load();
+  };
+
   if (error) {
     return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
   }
@@ -144,6 +150,7 @@ export function RecurringTransactionsPanel() {
   }
 
   const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const priceIncreaseByRuleId = new Map(priceIncreaseRules(items).map((p) => [p.recurring.id, p.previousAmount]));
 
   return (
     <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
@@ -343,7 +350,27 @@ export function RecurringTransactionsPanel() {
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {categoryById.get(item.categoryId)?.name ?? 'Unbekannt'}
                 </td>
-                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{formatCents(item.amount)}</td>
+                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
+                  {formatCents(item.amount)}
+                  {priceIncreaseByRuleId.has(item.id) && (
+                    <span
+                      title={`Preiserhöhung: ${formatCents(priceIncreaseByRuleId.get(item.id)!)} → ${formatCents(item.amount)}`}
+                      className="ml-2 inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-400"
+                    >
+                      <ArrowUpCircle size={12} />
+                      erhöht
+                      <button
+                        type="button"
+                        onClick={() => handleDismissPriceIncrease(item.id)}
+                        aria-label="Preiserhöhungs-Hinweis bestätigen"
+                        title="Bestätigen"
+                        className="ml-0.5 hover:text-purple-900 dark:hover:text-purple-200"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-2 text-right">
                   <button
                     type="button"

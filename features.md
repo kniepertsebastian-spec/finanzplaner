@@ -36,6 +36,7 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 - **Dashboard-Kennzahl:** Summe aller aktiven Fixkosten-Ausgaben, die im nächsten Abrechnungszeitraum fällig werden (siehe unten — richtet sich nach dem konfigurierbaren Monatsstart, nicht zwingend nach dem Kalendermonat).
 - **Vertragsmetadaten (optional):** Vertragsnummer, Mindestlaufzeit-Ende und benötigte Kündigungsfrist (in Tagen) pro Regel hinterlegbar — für Verträge mit fester Laufzeit (Internet, Versicherungen, Mobilfunk).
 - **Kündigungswecker:** Warn-Banner auf dem Dashboard, sobald die Kündigungsfrist einer aktiven Regel mit hinterlegten Vertragsdaten innerhalb der nächsten 30 Tage abläuft (Formel: Mindestlaufzeit-Ende − Kündigungsfrist), inkl. Datum der spätestmöglichen Kündigung und des Verlängerungsdatums bei Nichtstun.
+- **Preiserhöhungs-Erkennung:** Sobald der Betrag einer aktiven Fixkosten-Ausgabe manuell erhöht wird (z. B. nach einer Preiserhöhungs-Ankündigung des Anbieters), merkt sich die Regel den vorherigen Betrag automatisch. Lila Warn-Banner auf dem Dashboard ("📈 Preiserhöhungen erkannt") sowie ein Badge direkt in der Fixkosten-Liste unter *Einstellungen* zeigen alt → neu; ein Klick auf das ×-Symbol am Badge bestätigt die Erhöhung und blendet den Hinweis wieder aus.
 
 ## 🗂️ Kategorien
 

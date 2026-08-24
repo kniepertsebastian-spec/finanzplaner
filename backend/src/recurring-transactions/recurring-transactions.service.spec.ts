@@ -93,7 +93,7 @@ describe('RecurringTransactionsService', () => {
 
       expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
         where: { id: 'rec-1' },
-        data: { nextDueDate: new Date('2026-09-01'), contractEndDate: undefined },
+        data: { nextDueDate: new Date('2026-09-01'), contractEndDate: undefined, previousAmount: undefined },
       });
     });
 
@@ -104,7 +104,7 @@ describe('RecurringTransactionsService', () => {
 
       expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
         where: { id: 'rec-1' },
-        data: { active: false, nextDueDate: undefined, contractEndDate: undefined },
+        data: { active: false, nextDueDate: undefined, contractEndDate: undefined, previousAmount: undefined },
       });
     });
 
@@ -119,7 +119,54 @@ describe('RecurringTransactionsService', () => {
           contractEndDate: new Date('2027-01-31'),
           cancellationPeriodDays: 30,
           nextDueDate: undefined,
+          previousAmount: undefined,
         },
+      });
+    });
+
+    it('snapshots the old amount into previousAmount when amount changes', async () => {
+      prisma.recurringTransaction.findFirst.mockResolvedValue({ id: 'rec-1', userId: 'user-1', amount: -2999 });
+
+      await service.update('user-1', 'rec-1', { amount: -3499 });
+
+      expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
+        where: { id: 'rec-1' },
+        data: {
+          amount: -3499,
+          nextDueDate: undefined,
+          contractEndDate: undefined,
+          previousAmount: -2999,
+        },
+      });
+    });
+
+    it('does not touch previousAmount when the amount in the update matches the existing amount', async () => {
+      prisma.recurringTransaction.findFirst.mockResolvedValue({ id: 'rec-1', userId: 'user-1', amount: -2999 });
+
+      await service.update('user-1', 'rec-1', { amount: -2999, description: 'Internet' });
+
+      expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
+        where: { id: 'rec-1' },
+        data: {
+          amount: -2999,
+          description: 'Internet',
+          nextDueDate: undefined,
+          contractEndDate: undefined,
+          previousAmount: undefined,
+        },
+      });
+    });
+  });
+
+  describe('dismissPriceIncrease', () => {
+    it('clears previousAmount back to null after an ownership check', async () => {
+      prisma.recurringTransaction.findFirst.mockResolvedValue({ id: 'rec-1', userId: 'user-1' });
+
+      await service.dismissPriceIncrease('user-1', 'rec-1');
+
+      expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
+        where: { id: 'rec-1' },
+        data: { previousAmount: null },
       });
     });
   });
