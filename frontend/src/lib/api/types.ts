@@ -42,6 +42,16 @@ export interface RecurringTransaction {
   categoryId: string;
 }
 
+export interface SavingsPot {
+  id: string;
+  name: string;
+  amountCents: number; // cents currently set aside; locked away from "Frei verfügbar"
+  targetCents: number | null; // optional savings goal, cents
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+}
+
 export interface Category {
   id: string;
   name: string;

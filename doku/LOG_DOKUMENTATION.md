@@ -2,6 +2,32 @@
 
 ---
 
+### 📋 Schritt-Log: Virtuelle Töpfe / Rücklagen (Phase 10, erste Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-24 22:20`
+
+#### 1. Was wurde getan?
+*   Nutzer bat um Fortsetzung mit Phase 10 (Virtuelle Töpfe & Vertragsmanagement), während parallel der ausstehende Mini-PC-Deploy der Cashflow-Projektion (Phase 9, letzte Teilscheibe) vom Nutzer selbst nachgeholt wurde.
+*   **Neues Prisma-Modell `SavingsPot`** (`backend/prisma/schema.prisma`): `name`, `amountCents` (aktuell zurückgelegter Betrag, Default 0), `targetCents` (optionales Sparziel, nullable), `userId`-Relation mit `onDelete: Cascade`, Index auf `userId` — gleiches Muster wie `RecurringTransaction`/`Invoice`. Migration `20260824220000_add_savings_pots` von Hand geschrieben (nach dem Muster der `add_invoices`-Migration; kein lokaler Postgres/Docker-Daemon in dieser Session verfügbar, um `prisma migrate dev` live laufen zu lassen — Backend-Tests/Typecheck liefen stattdessen gegen ein lokal per `npm install` erzeugtes `node_modules`, nicht per Docker-Build).
+*   **Neues Backend-Modul `savings-pots`** (`backend/src/savings-pots/`): Standard-CRUD (`create`/`findAll`/`findOne`/`update`/`remove`) nach exakt demselben Muster wie `budgets`/`recurring-transactions` (Ownership-Check per `findFirst({ id, userId })`, `NotFoundException` bei Fremdzugriff). Keine Kategorie-Kopplung nötig (Töpfe sind kategorielos). In `app.module.ts` registriert. Service- und Controller-Spec-Tests ergänzt (mirrored an `budgets`/`recurring-transactions`-Tests).
+*   **Frontend:** `lib/api/savingsPots.ts` (CRUD-Client, Muster wie `recurringTransactions.ts`), `SavingsPot`-Typ in `lib/api/types.ts`. Neue Komponente `components/settings/SavingsPotsPanel.tsx` (Anlegen/Bearbeiten/Löschen, Formular mit Name/Betrag/optionalem Sparziel) unter *Einstellungen* eingehängt.
+*   **`budgetCalc.ts`:** `availableIncome()` um einen dritten, jetzt verpflichtenden Parameter `lockedInPotsCents` erweitert (vorher: `balanceCents - outstandingFixedCostsCents`; jetzt zusätzlich `- lockedInPotsCents`) — der seit der letzten Teilscheibe im Kommentar dokumentierte Platzhalter "Rücklagen existieren erst ab Phase 10" ist damit eingelöst. Einziger Aufrufer (`DashboardPage.tsx`) entsprechend angepasst (Summe aller `amountCents` aus den geladenen Töpfen).
+*   **`DashboardPage.tsx`:** lädt zusätzlich `savingsPotsApi.list()`. Neue Karte "Rücklagen" (nur sichtbar, wenn mindestens ein Topf existiert) zwischen der Fixkosten-Kachel und dem Einnahmen/Ausgaben-Chart, mit Fortschrittsbalken für Töpfe mit gesetztem Sparziel. Caption der "Frei verfügbar"-Kachel erwähnt jetzt den abgezogenen Rücklagen-Betrag, sofern > 0.
+*   **Verifiziert:** Backend — `npm run build` (Nest-Build) fehlerfrei, `npm test` → 16 Suites / 42 Tests grün (inkl. der 8 neuen Savings-Pots-Tests). Frontend — `npx tsc --noEmit` fehlerfrei, `npm run build` (`tsc && vite build`) fehlerfrei. Kein Docker verfügbar in dieser Session (weder Daemon noch laufender Dev-Stack) — Verifikation lief komplett über lokal installierte `node_modules`, nicht über den sonst üblichen `docker build`-Weg.
+*   Committed und nach `origin/main`/den Arbeits-Branch gepusht (siehe Git-Log für Commit-Hashes).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag: mit Phase 10 der Roadmap beginnen. Virtuelle Töpfe sind der erste, in sich abgeschlossene Punkt dieser Phase (Vertrags-Metadaten/Kündigungswecker/Preiserhöhungs-Erkennung sind unabhängige Folge-Teilscheiben).
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Migration nötig** (anders als die letzten drei Phase-9-Teilscheiben) — neue Tabelle `SavingsPot`. Rein additiv, keine bestehenden Spalten/Tabellen verändert.
+*   Der tatsächliche Gesamtsaldo (`User.startingBalance` + Transaktionssumme) bleibt von Töpfen unberührt — es wird kein Geld real verschoben, Töpfe sind eine rein rechnerische Sperre für die "Frei verfügbar"-Kennzahl. Absichtlich so gewählt, konsistent mit der Roadmap-Formel ($\text{Verfügbar} = \text{Gesamtsaldo} - \text{Fixkosten} - \text{Rücklagen}$).
+*   **Nicht deployed:** Wie in der vorherigen Teilscheibe kein Docker-Daemon in dieser Session verfügbar (`docker build` schlägt fehl: kein `/var/run/docker.sock`) — dieses Mal zusätzlich auch kein SSH zum Mini-PC (weiterhin kein `ssh`-Binary vorhanden). Deployment inkl. `npx prisma migrate deploy` (Migration!) steht aus.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC (inkl. Backend-Rebuild + Migration) steht aus — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer nach Deployment)
+
+---
+
 ### 📋 Schritt-Log: Cashflow-Projektion (Phase 9, vierte/letzte Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-24 19:20`
 

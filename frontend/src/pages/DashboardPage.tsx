@@ -8,8 +8,9 @@ import { useDarkMode } from '../context/DarkModeContext';
 import { budgetsApi } from '../lib/api/budgets';
 import { categoriesApi } from '../lib/api/categories';
 import { recurringTransactionsApi } from '../lib/api/recurringTransactions';
+import { savingsPotsApi } from '../lib/api/savingsPots';
 import { transactionsApi } from '../lib/api/transactions';
-import type { Budget, Category, RecurringTransaction, Transaction } from '../lib/api/types';
+import type { Budget, Category, RecurringTransaction, SavingsPot, Transaction } from '../lib/api/types';
 import { usersApi } from '../lib/api/users';
 import {
   availableIncome,
@@ -41,6 +42,7 @@ export function DashboardPage() {
   const [categories, setCategories] = useState<Category[] | null>(null);
   const [budgets, setBudgets] = useState<Budget[] | null>(null);
   const [recurring, setRecurring] = useState<RecurringTransaction[] | null>(null);
+  const [savingsPots, setSavingsPots] = useState<SavingsPot[] | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,13 +56,15 @@ export function DashboardPage() {
       listWithCache('categories', () => categoriesApi.list()),
       listWithCache('budgets', () => budgetsApi.list({ month: period.startISO })),
       recurringTransactionsApi.list(),
+      savingsPotsApi.list(),
       usersApi.getBalance(),
     ])
-      .then(([t, c, b, r, bal]) => {
+      .then(([t, c, b, r, pots, bal]) => {
         setTransactions(t);
         setCategories(c);
         setBudgets(b);
         setRecurring(r);
+        setSavingsPots(pots);
         setBalance(bal.balance);
       })
       .catch(() => setError('Daten konnten nicht geladen werden.'));
@@ -71,7 +75,7 @@ export function DashboardPage() {
     return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
   }
 
-  if (!transactions || !categories || !budgets || !recurring || balance === null) {
+  if (!transactions || !categories || !budgets || !recurring || !savingsPots || balance === null) {
     return <p className="text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>;
   }
 
@@ -91,7 +95,8 @@ export function DashboardPage() {
   const nextPeriodLabel = financialPeriodLabel(nextPeriod);
 
   const outstandingFixedCostsCents = upcomingFixedCosts(recurring, period.startISO, period.endISO);
-  const availableIncomeCents = availableIncome(balance, outstandingFixedCostsCents);
+  const lockedInPotsCents = savingsPots.reduce((sum, p) => sum + p.amountCents, 0);
+  const availableIncomeCents = availableIncome(balance, outstandingFixedCostsCents, lockedInPotsCents);
   const nextIncome = nextIncomeDueDate(recurring);
   const burnRateHorizon = nextIncome ?? period.end;
   const daysUntilNextIncome = daysUntil(burnRateHorizon);
@@ -125,7 +130,11 @@ export function DashboardPage() {
           label="Frei verfügbar"
           value={formatCents(availableIncomeCents)}
           valueClassName={availableIncomeCents < 0 ? 'text-[#d03b3b]' : undefined}
-          caption="Gesamtsaldo abzüglich noch ausstehender Fixkosten in diesem Zeitraum"
+          caption={
+            lockedInPotsCents > 0
+              ? `Gesamtsaldo abzüglich ausstehender Fixkosten und ${formatCents(lockedInPotsCents)} in Rücklagen`
+              : 'Gesamtsaldo abzüglich noch ausstehender Fixkosten in diesem Zeitraum'
+          }
         />
         <StatTile
           label="Tagesbudget"
@@ -141,6 +150,34 @@ export function DashboardPage() {
         valueClassName="text-[#eb6834]"
         caption="Summe aller aktiven, geplanten Fixkosten für den kommenden Zeitraum"
       />
+
+      {savingsPots.length > 0 && (
+        <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Rücklagen</h2>
+          {savingsPots.map((pot) => {
+            const pct = pot.targetCents ? Math.min(100, (pot.amountCents / pot.targetCents) * 100) : null;
+            return (
+              <div key={pot.id} className="space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-neutral-900 dark:text-neutral-100">{pot.name}</span>
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    {formatCents(pot.amountCents)}
+                    {pot.targetCents != null && ` / ${formatCents(pot.targetCents)}`}
+                  </span>
+                </div>
+                {pct !== null && (
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+                    <div
+                      className="h-full rounded-full bg-[#2a78d6] transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="mb-4 text-sm font-medium text-neutral-700 dark:text-neutral-300">

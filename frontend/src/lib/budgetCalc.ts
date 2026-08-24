@@ -45,10 +45,14 @@ export function projectRemainingBudget(
   return totalBudgetCents - projectedExpense;
 }
 
-// Verfügbar = Gesamtsaldo - ausstehende Fixkosten (Rücklagen/sinking funds don't exist yet —
-// that's Phase 10 — so they're not subtracted here).
-export function availableIncome(balanceCents: number, outstandingFixedCostsCents: number): number {
-  return balanceCents - outstandingFixedCostsCents;
+// Verfügbar = Gesamtsaldo - ausstehende Fixkosten - Rücklagen (virtuelle Töpfe, die Teile des
+// Saldos sperren, z. B. Notgroschen/Kfz-Steuer/Urlaub).
+export function availableIncome(
+  balanceCents: number,
+  outstandingFixedCostsCents: number,
+  lockedInPotsCents: number,
+): number {
+  return balanceCents - outstandingFixedCostsCents - lockedInPotsCents;
 }
 
 // Earliest active, income-type (positive-amount) recurring rule due today or later. `nextDueDate`

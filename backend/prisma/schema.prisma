@@ -28,6 +28,7 @@ model User {
   categoryRules         CategoryRule[]
   recurringTransactions RecurringTransaction[]
   invoices              Invoice[]
+  savingsPots           SavingsPot[]
 }
 
 model Authenticator {
@@ -126,6 +127,20 @@ model RecurringTransaction {
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
+
+  @@index([userId])
+}
+
+model SavingsPot {
+  id          String   @id @default(uuid())
+  name        String // e.g. "Notgroschen", "Kfz-Steuer", "Urlaub"
+  amountCents Int      @default(0) // Cents currently set aside in this pot; locked away from availableIncome
+  targetCents Int? // Optional savings goal, cents; purely informational (progress display)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

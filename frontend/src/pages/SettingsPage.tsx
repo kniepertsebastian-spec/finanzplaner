@@ -4,6 +4,7 @@ import { CategoryManager } from '../components/settings/CategoryManager';
 import { MonthCycleSettings } from '../components/settings/MonthCycleSettings';
 import { PasskeyManager } from '../components/settings/PasskeyManager';
 import { RecurringTransactionsPanel } from '../components/settings/RecurringTransactionsPanel';
+import { SavingsPotsPanel } from '../components/settings/SavingsPotsPanel';
 import { TotpEnrollment } from '../components/settings/TotpEnrollment';
 
 export function SettingsPage() {
@@ -22,6 +23,7 @@ export function SettingsPage() {
       <MonthCycleSettings />
       <CategoryManager />
       <RecurringTransactionsPanel />
+      <SavingsPotsPanel />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { BudgetsModule } from './budgets/budgets.module';
 import { RecurringTransactionsModule } from './recurring-transactions/recurring-transactions.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { SavingsPotsModule } from './savings-pots/savings-pots.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     BudgetsModule,
     RecurringTransactionsModule,
     InvoicesModule,
+    SavingsPotsModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
