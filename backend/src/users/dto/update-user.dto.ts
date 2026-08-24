@@ -1,8 +1,13 @@
-import { IsInt, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class UpdateUserDto {
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Max(31)
-  monthStartDay: number;
+  monthStartDay?: number;
+
+  @IsOptional()
+  @IsInt()
+  startingBalance?: number;
 }

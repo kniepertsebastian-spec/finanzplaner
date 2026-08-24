@@ -105,4 +105,14 @@ export class TransactionsService {
     await this.findOne(userId, id);
     await this.prisma.transaction.delete({ where: { id } });
   }
+
+  // Sum of every booked transaction (income positive, expense negative) — the delta since
+  // User.startingBalance. Callers add startingBalance themselves to get the actual account balance.
+  async getBalance(userId: string): Promise<number> {
+    const result = await this.prisma.transaction.aggregate({
+      where: { userId },
+      _sum: { amount: true },
+    });
+    return result._sum.amount ?? 0;
+  }
 }

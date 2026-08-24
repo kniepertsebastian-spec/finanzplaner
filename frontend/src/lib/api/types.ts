@@ -3,6 +3,7 @@ export interface User {
   email: string;
   totpEnabled: boolean;
   monthStartDay: number; // 1-31; day the user's financial month begins
+  startingBalance: number; // Cents; opening balance before any tracked transactions existed
 }
 
 export interface Authenticator {

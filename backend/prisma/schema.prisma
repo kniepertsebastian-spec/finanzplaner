@@ -17,6 +17,7 @@ model User {
   totpSecretEncrypted String?
   totpEnabled         Boolean  @default(false)
   monthStartDay       Int      @default(1) // 1-31; day the user's financial month begins (e.g. 23 = salary day)
+  startingBalance     Int      @default(0) // Cents; opening balance before any tracked transactions existed
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -48,13 +49,14 @@ model Authenticator {
 }
 
 model Transaction {
-  id           String   @id @default(uuid())
-  amount       Int // Stored in Cents
-  description  String
-  date         DateTime @default(now())
-  avoidable    Boolean  @default(false) // user-flagged: this specific booking could have been avoided
-  inefficient  Boolean  @default(false) // user-flagged: this specific booking was a bad deal (e.g. bad banking fees)
-  tooExpensive Boolean  @default(false) // user-flagged: this specific booking costs more than it should (overpriced)
+  id               String   @id @default(uuid())
+  amount           Int // Stored in Cents
+  description      String
+  date             DateTime @default(now())
+  avoidable        Boolean  @default(false) // user-flagged: this specific booking could have been avoided
+  inefficient      Boolean  @default(false) // user-flagged: this specific booking was a bad deal (e.g. bad banking fees)
+  tooExpensive     Boolean  @default(false) // user-flagged: this specific booking costs more than it should (overpriced)
+  isReconciliation Boolean  @default(false) // system-generated balance-adjustment booking from "Saldo abgleichen", not a real-world transaction
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
