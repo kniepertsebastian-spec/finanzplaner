@@ -2,6 +2,27 @@
 
 ---
 
+### 📋 Schritt-Log: Frei verfügbares Einkommen & Tagesbudget auf dem Mini-PC deployed
+**Zeitstempel:** `2026-08-24 04:35`
+
+#### 1. Was wurde getan?
+*   Fortsetzung des vorherigen Eintrags (04:20): Nutzer hat den Deploy freigegeben.
+*   `docker compose -f docker-compose.prod.yml build frontend` (nur Frontend, keine Backend-/DB-Änderung nötig), dann `... up -d frontend`. `docker compose ps`-Ausgabe bestätigt: nur der Frontend-Container wurde neu erstellt (`Recreate`), Backend/Postgres/Redis liefen unverändert weiter.
+*   **Verifiziert:** `docker ps` — alle vier Container laufen, Postgres weiterhin `healthy`. `curl https://finance.pwa-tree.de/` → HTTP 200.
+*   `features.md` um die zwei neuen Dashboard-Kennzahlen ergänzt.
+
+#### 2. Warum wurde es getan?
+*   Direkte Nutzer-Freigabe nach Rückfrage.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Kein visueller Browser-Check dieser konkreten Teilscheibe im Log vermerkt — sollte bei Gelegenheit vom Nutzer selbst bestätigt werden (Dashboard öffnen, "Frei verfügbar"/"Tagesbudget" prüfen).
+*   Von Phase 9 ist jetzt nur noch die Cashflow-Projektion offen.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Code/Deployment) — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer)
+
+---
+
 ### 📋 Schritt-Log: Frei verfügbares Einkommen & Tagesbudget (Phase 9, dritte Teilscheibe)
 **Zeitstempel:** `2026-08-24 04:20`
 

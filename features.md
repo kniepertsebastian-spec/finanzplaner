@@ -50,6 +50,8 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 - **Zeitverlaufs-Chart** (Chart.js) für Einnahmen/Ausgaben über den Zeitraum (auch wenn er zwei Kalendermonate überspannt), hell-/dunkelmodus-fähig.
 - Währungswerte werden intern durchgängig als Cent-Integer geführt (keine Rundungsfehler).
 - **Startsaldo & Saldo-Abgleich:** unter *Einstellungen* ein Startsaldo hinterlegbar (Kontostand vor der ersten erfassten Buchung); der berechnete Gesamtsaldo (Startsaldo + Summe aller Buchungen) wird dort angezeigt. "Saldo abgleichen": tatsächlichen Kontostand aus dem Online-Banking eintragen — bei einer Differenz wird automatisch eine Ausgleichsbuchung angelegt (Kategorie "Kontoabgleich"), bei Übereinstimmung passiert nichts.
+- **Frei verfügbares Einkommen:** Gesamtsaldo abzüglich der im laufenden Zeitraum noch ausstehenden Fixkosten, als Dashboard-Kachel.
+- **Tagesbudget (Tages-Burn-Rate):** frei verfügbares Einkommen geteilt durch die Tage bis zur nächsten geplanten Einnahme (rot dargestellt, falls negativ — Warnsignal für drohende Überziehung vor dem nächsten Gehaltseingang).
 
 ## 🧾 Rechnungen / Belege
 

@@ -6,17 +6,16 @@ Finanz-PWA (Single-User React/NestJS/Postgres-App, produktiv auf `https://financ
 
 ## Aktueller Stand
 
-- Feature vollständig implementiert und verifiziert (`docker build ./frontend` → `tsc && vite build` fehlerfrei). **Rein Frontend** — keine Schema-/Backend-Änderung, keine Migration, nutzt die in Teilscheibe 2 bereits gebaute `GET /users/me/balance`.
-- Committed auf `main` (lokal auf dem Mini-PC, `git push` noch nicht ausgeführt — siehe TODOs). **Noch NICHT deployed** (Frontend-Container nicht neu gebaut/gestartet).
-- Kein Docker-Zwischenfall in dieser Teilscheibe (Lehre aus der vorherigen Session befolgt: nur `docker build` einzelner Images, kein `docker compose ... up` auf einer der beiden Compose-Dateien).
+- Feature vollständig implementiert, verifiziert (`docker build ./frontend` → `tsc && vite build` fehlerfrei) und **auf dem Mini-PC deployed** — nur der Frontend-Container wurde neu gebaut/gestartet (reiner Frontend-Change, kein Backend-Rebuild, keine Migration), Backend/Postgres/Redis liefen unverändert weiter. `curl https://finance.pwa-tree.de/` → HTTP 200. Deployment-Log-Eintrag "Frei verfügbares Einkommen & Tagesbudget auf dem Mini-PC deployed" (04:35).
+- Committed und gepusht auf `origin/main` (Commits `d3bd7c1`, `0aa4bed`).
+- Kein Docker-Zwischenfall in dieser Teilscheibe (Lehre aus der vorherigen Session befolgt: nur `docker build`/`docker compose ... build+up` auf einzelne Services der Prod-Compose-Datei, nie die Dev-Compose-Datei berührt).
 
 ## Offene TODOs
 
-1. **Nächster Schritt (braucht Nutzer-Freigabe):** Auf dem Mini-PC deployen — `docker compose -f docker-compose.prod.yml build frontend`, dann `docker compose -f docker-compose.prod.yml up -d frontend`. Kein Backend-Rebuild, keine Migration nötig (reiner Frontend-Change). Danach Container-Status prüfen, `curl https://finance.pwa-tree.de/` → 200.
-2. `git push` auf `origin/main`.
-3. Danach visueller Check durch den Nutzer selbst: Dashboard öffnen, "Frei verfügbar"- und "Tagesbudget"-Kacheln prüfen (insbesondere den Fallback-Text, falls (noch) keine Einnahme-Fixkostenregel existiert).
-4. Rest von Phase 9 danach: **nur noch Cashflow-Projektion** offen (tagesgenauer Liquiditätsverlauf im Dashboard mit optischer Warnung bei drohender Unterdeckung) — spürbar größerer Umfang (neue Chart-Komponente), als eigene Teilscheibe eingeplant.
-5. Alternativ mit dem Nutzer klären, ob als Nächstes eine andere Roadmap-Phase angegangen werden soll.
+1. Diese Session ist inhaltlich abgeschlossen — kein unmittelbarer nächster Schritt aus dieser Arbeit offen.
+2. Visueller Check durch den Nutzer selbst steht noch aus: Dashboard öffnen, "Frei verfügbar"- und "Tagesbudget"-Kacheln prüfen (insbesondere den Fallback-Text, falls (noch) keine Einnahme-Fixkostenregel existiert).
+3. Rest von Phase 9: **nur noch Cashflow-Projektion** offen (tagesgenauer Liquiditätsverlauf im Dashboard mit optischer Warnung bei drohender Unterdeckung) — spürbar größerer Umfang (neue Chart-Komponente), als eigene Teilscheibe eingeplant, noch nicht begonnen.
+4. Alternativ mit dem Nutzer klären, ob als Nächstes eine andere Roadmap-Phase angegangen werden soll.
 
 ## Relevante Dateien/Pfade
 
