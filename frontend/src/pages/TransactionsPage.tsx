@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Flag, Pencil, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { Flag, Pencil, Plus, SplitSquareHorizontal, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { categoriesApi } from '../lib/api/categories';
 import { transactionsApi } from '../lib/api/transactions';
@@ -7,6 +7,13 @@ import type { Category, Transaction } from '../lib/api/types';
 import { eurosToCents, formatCents } from '../lib/money';
 
 type Sign = 'expense' | 'income';
+
+interface SplitRow {
+  amount: string;
+  categoryId: string;
+}
+
+const emptySplitRow = (): SplitRow => ({ amount: '', categoryId: '' });
 
 const dateFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -23,6 +30,14 @@ export function TransactionsPage() {
   const [date, setDate] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [splitting, setSplitting] = useState(false);
+  const [splitSign, setSplitSign] = useState<Sign>('expense');
+  const [splitDescription, setSplitDescription] = useState('');
+  const [splitDate, setSplitDate] = useState('');
+  const [splitRows, setSplitRows] = useState<SplitRow[]>([emptySplitRow(), emptySplitRow()]);
+  const [splitError, setSplitError] = useState<string | null>(null);
+  const [splitSubmitting, setSplitSubmitting] = useState(false);
 
   const load = () => {
     Promise.all([transactionsApi.list(), categoriesApi.list()])
@@ -98,6 +113,51 @@ export function TransactionsPage() {
     load();
   };
 
+  const resetSplitForm = () => {
+    setSplitting(false);
+    setSplitSign('expense');
+    setSplitDescription('');
+    setSplitDate('');
+    setSplitRows([emptySplitRow(), emptySplitRow()]);
+    setSplitError(null);
+  };
+
+  const updateSplitRow = (index: number, patch: Partial<SplitRow>) => {
+    setSplitRows((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  };
+
+  const addSplitRow = () => setSplitRows((rows) => [...rows, emptySplitRow()]);
+
+  const removeSplitRow = (index: number) => setSplitRows((rows) => rows.filter((_, i) => i !== index));
+
+  const splitTotalCents = splitRows.reduce((sum, row) => sum + (row.amount ? eurosToCents(row.amount) : 0), 0);
+
+  const handleSplitSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSplitError(null);
+    if (splitRows.some((row) => !row.amount || !row.categoryId)) {
+      setSplitError('Bitte für jede Zeile Betrag und Kategorie angeben.');
+      return;
+    }
+    setSplitSubmitting(true);
+    try {
+      await transactionsApi.createSplit({
+        description: splitDescription,
+        date: splitDate || undefined,
+        splits: splitRows.map((row) => ({
+          amount: splitSign === 'income' ? eurosToCents(row.amount) : -eurosToCents(row.amount),
+          categoryId: row.categoryId,
+        })),
+      });
+      resetSplitForm();
+      load();
+    } catch {
+      setSplitError('Aufteilen fehlgeschlagen.');
+    } finally {
+      setSplitSubmitting(false);
+    }
+  };
+
   if (error) {
     return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
   }
@@ -108,14 +168,170 @@ export function TransactionsPage() {
 
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
+  const splitSiblingsByGroupId = new Map<string, Transaction[]>();
+  for (const t of transactions) {
+    if (!t.splitGroupId) continue;
+    const siblings = splitSiblingsByGroupId.get(t.splitGroupId) ?? [];
+    siblings.push(t);
+    splitSiblingsByGroupId.set(t.splitGroupId, siblings);
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Transaktionen</h1>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          Markiere Buchungen als vermeidbar, ineffizient (z. B. schlechte Bankgebühren) oder zu hoch.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Transaktionen</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Markiere Buchungen als vermeidbar, ineffizient (z. B. schlechte Bankgebühren) oder zu hoch.
+          </p>
+        </div>
+        {!splitting && (
+          <button
+            type="button"
+            onClick={() => setSplitting(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            <SplitSquareHorizontal size={16} />
+            Buchung aufteilen
+          </button>
+        )}
       </div>
+
+      {splitting && (
+        <form
+          onSubmit={handleSplitSubmit}
+          className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+        >
+          <h2 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            Buchung auf mehrere Kategorien aufteilen
+          </h2>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSplitSign('expense')}
+              className={clsx(
+                'flex-1 rounded-md border px-3 py-2 text-sm font-medium',
+                splitSign === 'expense'
+                  ? 'border-transparent bg-[#eb6834] text-white'
+                  : 'border-neutral-300 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300',
+              )}
+            >
+              Ausgabe
+            </button>
+            <button
+              type="button"
+              onClick={() => setSplitSign('income')}
+              className={clsx(
+                'flex-1 rounded-md border px-3 py-2 text-sm font-medium',
+                splitSign === 'income'
+                  ? 'border-transparent bg-[#2a78d6] text-white'
+                  : 'border-neutral-300 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300',
+              )}
+            >
+              Einnahme
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                Beschreibung
+              </label>
+              <input
+                type="text"
+                required
+                value={splitDescription}
+                onChange={(e) => setSplitDescription(e.target.value)}
+                placeholder="z. B. Supermarkt-Einkauf"
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                Datum (optional, sonst heute)
+              </label>
+              <input
+                type="date"
+                value={splitDate}
+                onChange={(e) => setSplitDate(e.target.value)}
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {splitRows.map((row, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  value={row.amount}
+                  onChange={(e) => updateSplitRow(index, { amount: e.target.value })}
+                  placeholder="Betrag (€)"
+                  className="w-32 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                />
+                <select
+                  required
+                  value={row.categoryId}
+                  onChange={(e) => updateSplitRow(index, { categoryId: e.target.value })}
+                  className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                >
+                  <option value="" disabled>
+                    Kategorie wählen…
+                  </option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {splitRows.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => removeSplitRow(index)}
+                    aria-label="Zeile entfernen"
+                    className="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addSplitRow}
+              className="flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+            >
+              <Plus size={14} /> Weitere Kategorie
+            </button>
+          </div>
+
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Summe: <span className="font-medium text-neutral-700 dark:text-neutral-300">{formatCents(splitSign === 'income' ? splitTotalCents : -splitTotalCents)}</span>
+          </p>
+
+          {splitError && <p className="text-sm text-red-600 dark:text-red-400">{splitError}</p>}
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={splitSubmitting}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              Aufteilen
+            </button>
+            <button
+              type="button"
+              onClick={resetSplitForm}
+              className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </form>
+      )}
 
       {editingId && (
         <form
@@ -243,7 +459,19 @@ export function TransactionsPage() {
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {dateFormatter.format(new Date(t.date))}
                 </td>
-                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{t.description}</td>
+                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
+                  {t.description}
+                  {t.splitGroupId && (
+                    <span
+                      title={`Teil einer Aufteilung: ${(splitSiblingsByGroupId.get(t.splitGroupId) ?? [])
+                        .map((s) => `${categoryById.get(s.categoryId)?.name ?? 'Unbekannt'} ${formatCents(s.amount)}`)
+                        .join(', ')}`}
+                      className="ml-1.5 inline-flex items-center text-neutral-400 dark:text-neutral-500"
+                    >
+                      <SplitSquareHorizontal size={12} />
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {categoryById.get(t.categoryId)?.name ?? 'Unbekannt'}
                 </td>

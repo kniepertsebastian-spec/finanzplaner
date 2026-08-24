@@ -58,12 +58,15 @@ model Transaction {
   inefficient      Boolean  @default(false) // user-flagged: this specific booking was a bad deal (e.g. bad banking fees)
   tooExpensive     Boolean  @default(false) // user-flagged: this specific booking costs more than it should (overpriced)
   isReconciliation Boolean  @default(false) // system-generated balance-adjustment booking from "Saldo abgleichen", not a real-world transaction
+  splitGroupId     String? // shared id across sibling rows created by one "split into categories" action; null for ordinary transactions
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
+
+  @@index([splitGroupId])
 }
 
 model Category {

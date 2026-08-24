@@ -25,6 +25,7 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
   - 📉 **Ineffizient** — schlechtes Geschäft (z. B. schlechte Bankgebühren).
   - 📈 **Zu hoch** — Betrag ist überteuert/zu hoch.
 - **Offline-Fähigkeit:** Neue Buchungen werden bei fehlender Verbindung lokal in IndexedDB zwischengespeichert und automatisch synchronisiert, sobald die App wieder online ist (Background Sync).
+- **Split-Transaktionen:** eine einzelne Buchung (z. B. ein Supermarkt-Einkauf) auf mehrere Kategorien aufteilen — unter *Transaktionen* per "Buchung aufteilen" mit beliebig vielen Betrag/Kategorie-Zeilen (mindestens 2) plus laufender Summenanzeige. Alle entstehenden Buchungen teilen sich Beschreibung und Datum, bleiben danach aber unabhängig voneinander bearbeitbar; ein kleines Symbol markiert Zeilen aus einer Aufteilung in der Liste (Tooltip zeigt die übrigen Teile).
 
 ## 🔁 Fixkosten & wiederkehrende Buchungen
 

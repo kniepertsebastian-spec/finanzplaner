@@ -72,6 +72,7 @@ export interface Transaction {
   tooExpensive: boolean;
   userId: string;
   categoryId: string;
+  splitGroupId: string | null; // shared across sibling rows created by one "split into categories" action
 }
 
 export interface Budget {

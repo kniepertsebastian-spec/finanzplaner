@@ -17,10 +17,18 @@ export interface TransactionInput {
   tooExpensive?: boolean;
 }
 
+export interface TransactionSplitInput {
+  description: string;
+  date?: string;
+  splits: { amount: number; categoryId: string }[];
+}
+
 export const transactionsApi = {
   list: (params?: TransactionListParams) =>
     apiClient.get<Transaction[]>('/transactions', { params }).then((r) => r.data),
   create: (dto: TransactionInput) => apiClient.post<Transaction>('/transactions', dto).then((r) => r.data),
+  createSplit: (dto: TransactionSplitInput) =>
+    apiClient.post<Transaction[]>('/transactions/split', dto).then((r) => r.data),
   update: (id: string, dto: Partial<TransactionInput>) =>
     apiClient.patch<Transaction>(`/transactions/${id}`, dto).then((r) => r.data),
   remove: (id: string) => apiClient.delete(`/transactions/${id}`).then((r) => r.data),

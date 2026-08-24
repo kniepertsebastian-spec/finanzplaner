@@ -2,6 +2,30 @@
 
 ---
 
+### 📋 Schritt-Log: Split-Transaktionen (Phase 11, erste Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 01:15`
+
+#### 1. Was wurde getan?
+*   Nutzer bestätigte, dass Phase 10 vollständig auf dem Mini-PC deployed ist (Nutzer hat den Deploy selbst durchgeführt, während diese Session bereits mit Phase 11 begonnen hat). Erste Teilscheibe von Phase 11 (Smarte Datenerfassung & Import) gewählt: Split-Transaktionen — bewusst vor CSV-Import/OCR, da beide anderen Punkte entweder ein bankspezifisches CSV-Format (unbekannt, müsste vom Nutzer erfragt werden) oder eine OCR-Engine als neue Abhängigkeit brauchen; Split-Transaktionen sind dagegen vollständig aus der Roadmap-Beschreibung heraus umsetzbar, ohne Rückfragen oder neue npm-Pakete.
+*   **Design-Entscheidung:** Ein Split wird **nicht** als eigenes Kindmodell (z. B. `TransactionSplit` mit Elternbezug) umgesetzt, sondern als mehrere gewöhnliche `Transaction`-Zeilen, die sich eine neue, gemeinsame `splitGroupId` (String?, nullable) teilen. Dadurch funktionieren alle bestehenden Berechnungen (`spentForCategory`, `monthlyTotals`, Budget-Auswertung, Saldo) unverändert weiter, ohne Sonderfall-Logik für Splits — jede Split-Zeile ist danach eine vollständig eigenständige, editier- und löschbare Transaktion wie jede andere auch.
+*   **`Transaction`** um `splitGroupId String?` erweitert (+ Index). Migration `20260825010000_add_split_group_id` von Hand geschrieben (weiterhin kein Docker/Postgres in dieser Session verfügbar).
+*   **Backend:** neue DTOs `CreateTransactionSplitDto`/`TransactionSplitItemDto` (verschachtelte Validierung via `class-transformer`s `@Type()` + `@ValidateNested`, `ArrayMinSize(2)`). `TransactionsService.createSplit()`: validiert, dass alle Split-Beträge ungleich 0 sind und dasselbe Vorzeichen haben (nur Ausgabe *oder* nur Einnahme, kein Mischen), prüft Kategorie-Eigentümerschaft je Zeile, erzeugt dann alle Zeilen atomar über `prisma.$transaction([...])` mit einer neu generierten `splitGroupId` (`randomUUID()`). Neuer Endpunkt `POST /transactions/split`.
+*   **Frontend:** `transactionsApi.createSplit()`, `Transaction.splitGroupId`-Typ. Neuer Formularbereich auf `/transactions` ("Buchung aufteilen", umschaltbar per Button neben der Seitenüberschrift) mit Ausgabe/Einnahme-Umschalter (gilt für alle Zeilen), Beschreibung, optionalem Datum und beliebig vielen Betrag/Kategorie-Zeilen (mind. 2, per "Weitere Kategorie" erweiterbar, ab der dritten Zeile einzeln entfernbar) inkl. laufender Summenanzeige. In der Transaktionsliste markiert ein kleines Split-Icon neben der Beschreibung Zeilen mit `splitGroupId`, Tooltip listet die übrigen Teile (Kategorie + Betrag), rein clientseitig aus der bereits geladenen Liste gruppiert — kein zusätzlicher API-Call.
+*   **Verifiziert:** Backend — `npm run build` fehlerfrei, `npm test` → 16 Suites / 52 Tests grün (4 neue Tests für `createSplit()`: Erfolgsfall inkl. gemeinsamer `splitGroupId`, gemischte Vorzeichen abgelehnt, Nullbetrag abgelehnt, fremde Kategorie abgelehnt). Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei (nur eine unkritische Chunk-Size-Warnung von Vite, kein Fehler). Weiterhin kein Docker in dieser Session, Verifikation komplett über lokal installierte `node_modules`.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag ("currently building but you can start"), erster Punkt aus Roadmap-Phase 11.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Migration nötig** — eine neue, nullable/additive Spalte + Index auf `Transaction`. Keine bestehenden Daten betroffen.
+*   Keine Sonderbehandlung an anderer Stelle nötig (siehe Design-Entscheidung oben) — Dashboard, Budgets, Kategorisierung etc. sehen Split-Zeilen einfach als normale Transaktionen.
+*   **Nicht deployed** — kein Docker-Daemon, kein SSH-Zugriff in dieser Session. Deployment (Backend-Rebuild + `prisma migrate deploy`) steht aus.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer nach Deployment)
+
+---
+
 ### 📋 Schritt-Log: Preiserhöhungs-Erkennung (Phase 10, dritte/letzte Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 00:05`
 

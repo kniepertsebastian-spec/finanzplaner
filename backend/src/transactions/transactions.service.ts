@@ -1,7 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CategorizationService } from './categorization.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { CreateTransactionSplitDto } from './dto/create-transaction-split.dto';
 import { FindTransactionsQueryDto } from './dto/find-transactions-query.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 
@@ -53,6 +55,37 @@ export class TransactionsService {
         tooExpensive: dto.tooExpensive,
       },
     });
+  }
+
+  // Creates 2+ sibling transactions sharing one splitGroupId (e.g. a single 60 EUR supermarket
+  // receipt split into 45 EUR Lebensmittel + 15 EUR Drogerie). Each split keeps its own amount and
+  // category but shares the description/date — they're ordinary, independently editable
+  // transactions afterwards, grouped only by splitGroupId for display purposes.
+  async createSplit(userId: string, dto: CreateTransactionSplitDto) {
+    const signs = new Set(dto.splits.map((s) => Math.sign(s.amount)));
+    if (signs.has(0) || signs.size > 1) {
+      throw new BadRequestException('All splits must be non-zero and share the same sign (all income or all expense)');
+    }
+    for (const split of dto.splits) {
+      await this.assertCategoryOwnership(userId, split.categoryId);
+    }
+
+    const splitGroupId = randomUUID();
+    const date = dto.date ? new Date(dto.date) : undefined;
+    return this.prisma.$transaction(
+      dto.splits.map((split) =>
+        this.prisma.transaction.create({
+          data: {
+            userId,
+            categoryId: split.categoryId,
+            amount: split.amount,
+            description: dto.description,
+            date,
+            splitGroupId,
+          },
+        }),
+      ),
+    );
   }
 
   findAll(userId: string, query: FindTransactionsQueryDto) {

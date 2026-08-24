@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CreateTransactionSplitDto } from './dto/create-transaction-split.dto';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { FindTransactionsQueryDto } from './dto/find-transactions-query.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -12,6 +13,11 @@ export class TransactionsController {
   @Post()
   create(@CurrentUser() user: { id: string }, @Body() dto: CreateTransactionDto) {
     return this.transactionsService.create(user.id, dto);
+  }
+
+  @Post('split')
+  createSplit(@CurrentUser() user: { id: string }, @Body() dto: CreateTransactionSplitDto) {
+    return this.transactionsService.createSplit(user.id, dto);
   }
 
   @Get()
