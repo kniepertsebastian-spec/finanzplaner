@@ -2,6 +2,30 @@
 
 ---
 
+### 📋 Schritt-Log: Hero-Card mit Mesh-Gradient (Phase 12, erste Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 03:00`
+
+#### 1. Was wurde getan?
+*   Nutzer bat um Start von Phase 12 (UI/UX Redesign & Modernes Dashboard) statt der Fortsetzung von Phase 11 (CSV-Import steht dort noch aus, braucht Nutzer-Input zum Bank-CSV-Format). Erste Teilscheibe gewählt: Hero-Card mit Mesh-Gradient — erster Punkt der Phase, rein visuell/Frontend, keine Schema-/Backend-Änderung, direkt aus bereits berechneten Dashboard-Werten speisbar.
+*   Vor der Umsetzung die `dataviz`-Skill geladen (Trigger: "stat tile / KPI row / dashboard"). Relevante Erkenntnisse angewendet: Hero-Zahl ≥48px in derselben serifenlosen Schrift wie der Rest, proportionale statt tabellarischer Ziffern für die große Zahl, genau eine Hero-Zahl pro Ansicht. Kein Rainbow-/willkürlicher Farbverlauf — der Mesh-Gradient nutzt ausschließlich bereits im Projekt etablierte Farben (`#2a78d6` Einnahme-Blau, `#eb6834` Ausgabe-Orange, ein Lila-Ton wie bei den Preiserhöhungs-Badges) statt neuer Markenfarben.
+*   **Neue Komponente `frontend/src/components/HeroCard.tsx`:** fester (theme-unabhängiger) dunkler Mesh-Gradient-Hintergrund aus vier überlappenden `radial-gradient()`-Layern, weißer Text. Zeigt den Gesamtsaldo als große Hero-Zahl (5xl, `font-variant-numeric: proportional-nums`), darunter "Frei verfügbar" und "Tagesbudget" als zwei Unterwerte nebeneinander (rötlich eingefärbt bei negativem Wert, analog zur bisherigen Warnfarben-Logik).
+*   **`DashboardPage.tsx`:** Hero-Card ganz oben eingefügt (nach der Zeitraum-Angabe, vor den Kündigungs-/Preiserhöhungs-Warnbannern). Die bisherigen separaten "Frei verfügbar"/"Tagesbudget"-`StatTile`-Kacheln entfernt (jetzt redundant, da in der Hero-Card enthalten) — kein doppeltes Anzeigen derselben Werte.
+*   **Visuell verifiziert ohne laufenden Dashboard-Stack:** da diese Session weiterhin keinen Zugriff auf eine echte Postgres-Instanz/laufenden Dev-Server mit Login hat, wurde das exakte Karten-Markup (gleiche CSS-Werte wie in `HeroCard.tsx`) in einer isolierten HTML-Datei nachgebaut und per Playwright (lokal via `/opt/node22/lib/node_modules/playwright` + vorinstalliertem Chromium) screenshotet — einmal vor hellem (`#f5f5f5`, entspricht `bg-neutral-50`), einmal vor dunklem (`#0a0a0a`, entspricht `dark:bg-neutral-950`) Seitenhintergrund. Beide Varianten optisch geprüft: guter Kontrast, Farbverlauf wirkt weder zu düster noch zu grell, Karte hebt sich in beiden Modi klar vom Seitenhintergrund ab.
+*   **Verifiziert:** kein Backend-Code betroffen. Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei (weiterhin nur die unkritische Vite-Chunk-Size-Warnung).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag ("you can start with step12 first").
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — rein visuelle Frontend-Änderung, nutzt ausschließlich bereits geladene Dashboard-Daten (`balance`, `availableIncomeCents`, `dailyBurnRateCents`).
+*   Kein waschechter End-to-End-Test in einem laufenden Browser mit echten Nutzerdaten möglich gewesen (siehe oben) — nur isolierte Markup-/Farbverifikation. Ein echter visueller Check durch den Nutzer nach dem Deployment bleibt wichtig.
+*   Restliche Phase-12-Punkte (Privacy-Mode, moderne Chart-Ästhetik, Pill-Progress-Bars, Micro-Interactions) noch offen, als eigene künftige Teilscheiben vorgesehen.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer in einem echten Browser)
+
+---
+
 ### 📋 Schritt-Log: OCR-Belegscan & Fremdwährungs-Umrechner (Phase 11, zweite/dritte Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 02:00`
 

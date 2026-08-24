@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BudgetProgressBar } from '../components/BudgetProgressBar';
 import { CashflowChart } from '../components/charts/CashflowChart';
 import { IncomeExpenseChart } from '../components/charts/IncomeExpenseChart';
+import { HeroCard } from '../components/HeroCard';
 import { StatTile } from '../components/StatTile';
 import { useAuth } from '../context/AuthContext';
 import { useDarkMode } from '../context/DarkModeContext';
@@ -124,6 +125,18 @@ export function DashboardPage() {
     <div className="space-y-6">
       <p className="text-sm text-neutral-500 dark:text-neutral-400">Zeitraum: {periodLabel}</p>
 
+      <HeroCard
+        balanceCents={balance}
+        availableIncomeCents={availableIncomeCents}
+        availableIncomeCaption={
+          lockedInPotsCents > 0
+            ? `abzüglich Fixkosten und ${formatCents(lockedInPotsCents)} in Rücklagen`
+            : 'abzüglich noch ausstehender Fixkosten'
+        }
+        dailyBurnRateCents={dailyBurnRateCents}
+        burnRateCaption={burnRateCaption}
+      />
+
       {cancellationNotices.length > 0 && (
         <div className="space-y-2 rounded-lg border border-[#fab219]/30 bg-[#fab219]/10 p-4 dark:border-[#fab219]/20">
           <h2 className="text-sm font-medium text-[#9a6b00] dark:text-[#fab219]">
@@ -163,25 +176,6 @@ export function DashboardPage() {
         <StatTile label="Einnahmen (Zeitraum)" value={formatCents(incomeCents)} valueClassName="text-[#2a78d6]" />
         <StatTile label="Ausgaben (Zeitraum)" value={formatCents(expenseCents)} valueClassName="text-[#eb6834]" />
         <StatTile label="Netto (Zeitraum)" value={formatCents(netCents)} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <StatTile
-          label="Frei verfügbar"
-          value={formatCents(availableIncomeCents)}
-          valueClassName={availableIncomeCents < 0 ? 'text-[#d03b3b]' : undefined}
-          caption={
-            lockedInPotsCents > 0
-              ? `Gesamtsaldo abzüglich ausstehender Fixkosten und ${formatCents(lockedInPotsCents)} in Rücklagen`
-              : 'Gesamtsaldo abzüglich noch ausstehender Fixkosten in diesem Zeitraum'
-          }
-        />
-        <StatTile
-          label="Tagesbudget"
-          value={formatCents(dailyBurnRateCents)}
-          valueClassName={dailyBurnRateCents < 0 ? 'text-[#d03b3b]' : undefined}
-          caption={burnRateCaption}
-        />
       </div>
 
       <StatTile
