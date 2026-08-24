@@ -7,7 +7,8 @@ Finanz-PWA (Single-User React/NestJS/Postgres-App, produktiv auf `https://financ
 ## Aktueller Stand
 
 - Feature vollständig implementiert und verifiziert (`docker build ./frontend` → `tsc && vite build` fehlerfrei).
-- Committed und gepusht auf `origin/main` (Commit `53b073a`).
+- Committed und gepusht auf `origin/main` (Commits `53b073a`, `e8284a7`, `6446e35`).
+- **Nutzer-Feedback nach Review (noch vor dem ersten Deploy) eingearbeitet:** Horizont der Cashflow-Projektion war ursprünglich "heute bis Ende des *nächsten* Zeitraums" — kurz nach Gehaltseingang wirkte das wie ein Sprung "von September bis Oktober" statt nur bis Ende des aktuellen Zeitraums. Korrigiert auf "heute bis Ende des *aktuellen* Zeitraums" (Commit `6446e35`).
 - **Noch NICHT auf dem Mini-PC deployed.** Diese Session lief in einer Umgebung ohne SSH-Zugang zum Mini-PC (kein `minipc`-Alias, kein passender Key, direkter Verbindungsversuch zu `192.168.178.151` scheiterte an der Host-Key-Verifikation). Der Nutzer hat auf Rückfrage entschieden, das Deployment selbst durchzuführen.
 - Kein Backend-/Migrations-Schritt nötig — reiner Frontend-Change, nutzt bereits geladene Dashboard-Daten (`recurring`, `balance`).
 
@@ -28,7 +29,7 @@ Finanz-PWA (Single-User React/NestJS/Postgres-App, produktiv auf `https://financ
 ## Entscheidungen & Begründungen
 
 - **Nur wiederkehrende Buchungen in der Projektion** (keine variablen Ausgaben) — gleicher Scope wie `availableIncome()`/`dailyBurnRate()` aus der vorherigen Teilscheibe. Eine Schätzung künftiger variabler Ausgaben wäre reine Spekulation ohne belastbare Datengrundlage; die App kennt nur, was tatsächlich als wiederkehrende Regel hinterlegt ist.
-- **Horizont = heute bis Ende des nächsten Finanzzeitraums** (`getNextFinancialPeriod(...).end`), nicht fest verdrahtet (z. B. 30/60 Tage) — nutzt die bereits vorhandene `financialPeriod.ts`-Logik weiter und passt sich automatisch an `monthStartDay` an, deckt zuverlässig mindestens einen vollen Gehaltszyklus ab.
+- **Horizont = heute bis Ende des *aktuellen* Finanzzeitraums** (`period.end`, nicht `nextPeriod.end`) — ursprünglich auf den nächsten Zeitraum ausgedehnt (siehe Historie oben), aber nach Nutzer-Feedback zurückgenommen: kurz nach Gehaltseingang sollte die Prognose nicht bereits in den übernächsten Monat reichen, sondern nur den laufenden Zeitraum abdecken. Nutzt weiterhin die bestehende `financialPeriod.ts`-Logik und passt sich automatisch an `monthStartDay` an.
 - **Kein neues npm-Package für die Null-Linie/rote Warnfarbe** — Chart.js 4 unterstützt `segment.borderColor` (per-Segment-Styling) und `fill.target = { value: 0 }` (Füllung relativ zu einem festen Wert statt zur X-Achse) nativ, seit v3. Eine Annotation-Plugin-Abhängigkeit wäre unnötig gewesen.
 - **`addMonthsClamped()` lokal in `budgetCalc.ts` dupliziert statt aus `financialPeriod.ts` exportiert** — dort ist die äquivalente Funktion (`clampDay`/`periodStartDate`) nicht exportiert und an das `FinancialPeriod`-Konzept gekoppelt; eine schlanke, eigenständige "addiere N Monate mit Clamping"-Funktion war hier die einfachere Wahl als den bestehenden Code umzubauen.
 
