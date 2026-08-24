@@ -2,6 +2,32 @@
 
 ---
 
+### 📋 Schritt-Log: Cashflow-Projektion (Phase 9, vierte/letzte Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-24 19:20`
+
+#### 1. Was wurde getan?
+*   Nutzer wählte als nächsten Schritt die letzte offene Aufgabe aus Phase 9: die Cashflow-Projektion (tagesgenauer Liquiditätsverlauf mit optischer Warnung bei drohender Unterdeckung).
+*   **`budgetCalc.ts`:** `cashflowProjection(startBalanceCents, recurring, horizonDays, referenceDate)` — projiziert den laufenden Kontostand Tag für Tag, indem jede aktive wiederkehrende Regel (Einnahmen *und* Fixkosten) an ihren Fälligkeitstagen angewendet wird. Wiederholungen über den Horizont hinweg werden über `intervalMonths` (ab `nextDueDate`) durchgerechnet, per neuem lokalem Helfer `addMonthsClamped()` (gleiche Monatsende-Clamping-Logik wie `financialPeriod.ts`, damit z. B. eine am 31. fällige Regel nicht in kürzere Monate hineindriftet). `firstShortfall()` findet den ersten Tag, an dem der Saldo unter 0 fällt (oder `null`).
+*   Bewusst **nur** wiederkehrende Buchungen einbezogen, keine variablen Ausgaben (gleicher Scope wie `availableIncome()`/`dailyBurnRate()` aus der vorherigen Teilscheibe) — variable Tagesausgaben sind nicht im Voraus bekannt, eine Schätzung darüber wäre reine Spekulation.
+*   **Horizont:** heute bis zum Ende des *nächsten* Finanzzeitraums (`getNextFinancialPeriod(...).end`, bereits vorhanden), nicht fest verdrahtet auf z. B. 30/60 Tage — passt sich automatisch an `monthStartDay` an und deckt zuverlässig mindestens einen vollen Gehaltszyklus ab, auch wenn spät im aktuellen Zyklus geprüft wird.
+*   **Neue Komponente `frontend/src/components/charts/CashflowChart.tsx`:** Line-Chart nach dem Muster von `IncomeExpenseChart.tsx` (Chart.js/react-chartjs-2, keine neue Abhängigkeit). Unterschreitet die Linie 0, wird das jeweilige Segment per Chart.js' eingebautem `segment.borderColor`-Callback rot eingefärbt, zusätzlich rote Füllung unterhalb der Null-Linie via `fill.target = { value: 0 }` — beides native Chart.js-Features, kein Plugin nötig.
+*   **`DashboardPage.tsx`:** Neue Karte "Liquiditätsverlauf" unterhalb des bestehenden Einnahmen/Ausgaben-Charts. Zeigt bei drohender Unterdeckung zusätzlich einen roten Warn-Banner mit Datum und prognostiziertem Minus-Betrag.
+*   **Verifiziert:** `docker build ./frontend` (führt `tsc && vite build` aus) — ein Typfehler gefunden und behoben (`ScriptableLineSegmentContext`-Callback: `ctx.p0.parsed.y`/`ctx.p1.parsed.y` sind `number | null`, `?? 0`-Fallback ergänzt), danach fehlerfrei durchgebaut. Kein Docker-Dev-Stack berührt. Kein dedizierter Unit-Test (Frontend hat weiterhin keinen Testrunner, Phase 7 weiterhin offen) — wie bei den bisherigen `budgetCalc.ts`-Ergänzungen nur per Typecheck + Code-Review verifiziert.
+*   Committed (`53b073a`) und nach `origin/main` gepusht.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag: letzte offene Aufgabe aus Roadmap-Phase 9 (nach Rückfrage, ob Phase 9 fertiggestellt oder eine andere Phase begonnen werden soll).
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Keine Breaking Changes, keine Migration — rein additive Frontend-Logik plus eine neue Chart-Komponente, keine neuen API-Aufrufe (nutzt bereits geladene `recurring`/`balance`-Daten).
+*   **Nicht deployed:** Diese Session lief in einer Umgebung ohne den vom Mini-PC-Deploy benötigten SSH-Zugang (kein `minipc`-Alias, kein passender Key vorhanden — direkter Verbindungsversuch zu `192.168.178.151` scheiterte an der Host-Key-Verifikation). Auf Rückfrage hat der Nutzer entschieden, das Deployment selbst durchzuführen, statt hier SSH-Zugang einzurichten.
+*   Phase 9 ist damit inhaltlich **vollständig code-fertig** (alle vier Teilscheiben), aber diese letzte Teilscheibe steht noch aus: Mini-PC-Pull + Frontend-Rebuild (`docker compose -f docker-compose.prod.yml build frontend && ... up -d frontend`, kein Backend-/Migrations-Schritt nötig) sowie der übliche visuelle Check.
+
+#### 4. Status der Aufgabe
+*   [x] Abgeschlossen (Code, gepusht) — [ ] Deployment auf den Mini-PC steht noch aus (bewusst dem Nutzer überlassen) — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer nach Deployment)
+
+---
+
 ### 📋 Schritt-Log: Frei verfügbares Einkommen & Tagesbudget auf dem Mini-PC deployed
 **Zeitstempel:** `2026-08-24 04:35`
 
