@@ -17,6 +17,8 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 
 - **Schnellerfassung ("Quick Add"):** Betrag, Beschreibung, Kategorie, Datum, Ausgabe/Einnahme-Umschalter.
 - **Spracheingabe ("Tippen-zum-Sprechen"):** Mikrofon-Button füllt Betrag/Beschreibung/Kategorie automatisch aus einer gesprochenen Eingabe (Web Speech API, Deutsch), ohne Auto-Submit — der Nutzer prüft vor dem Speichern.
+- **OCR-Belegscan:** "Beleg scannen"-Button in Quick Add öffnet die Kamera/Dateiauswahl, erkennt den Text auf dem Foto vollständig im Browser (Tesseract.js, deutsches Sprachmodell, kein Upload an das eigene Backend für diesen Schritt) und befüllt Betrag, Datum und (aus der obersten Textzeile) den Händlernamen als Beschreibung automatisch vor — inkl. Kategorie-Vorschlag über dieselbe Zuordnungslogik wie bei der Spracheingabe. Genau wie bei der Spracheingabe kein Auto-Submit, der Nutzer prüft/korrigiert vor dem Speichern. Benötigt eine Online-Verbindung des Geräts beim ersten Scan (Tesseract lädt Kernmodule/Sprachdaten von einem CDN nach).
+- **Fremdwährungs-Umrechner:** in Quick Add unter dem Betragsfeld einblendbar — Währung wählen, Betrag in der Fremdwährung sowie einen manuell eingegebenen Wechselkurs eintragen (keine Live-Kurs-Anbindung, bewusst ohne externe API), Ergebnis in Euro wird direkt ins Betragsfeld übernommen. Der zuletzt verwendete Kurs pro Währung wird lokal im Browser gemerkt.
 - **Intelligente Kategorisierung:** lernt sich merkende Zuordnungsregeln pro Beschreibungstext; beim nächsten Mal wird die Kategorie automatisch vorgeschlagen.
 - **Transaktionsliste** (`/transactions`) mit Datum, Beschreibung, Kategorie, Betrag.
 - **Bearbeiten & Löschen** einzelner Buchungen.

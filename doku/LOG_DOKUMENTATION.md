@@ -2,6 +2,30 @@
 
 ---
 
+### 📋 Schritt-Log: OCR-Belegscan & Fremdwährungs-Umrechner (Phase 11, zweite/dritte Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 02:00`
+
+#### 1. Was wurde getan?
+*   Nutzer priorisierte explizit OCR-Belegscan und Fremdwährungs-Umrechner vor dem CSV-Import (der noch eine Rückfrage zum tatsächlichen Bank-CSV-Format bräuchte). Beide in dieser Session umgesetzt, Fremdwährungs-Umrechner zuerst (kleinerer, unabhängiger Baustein), danach OCR.
+*   **Fremdwährungs-Umrechner** (`frontend/src/lib/currency.ts`, reine Funktionen): `convertForeignToEuroCents()`, eine feste Liste gängiger Währungen (`COMMON_CURRENCIES`), sowie `getRememberedRate()`/`rememberRate()` (Kurs pro Währung im `localStorage` gemerkt, per-Browser, kein Sync). Bewusst **kein** Live-Wechselkurs über eine externe API — der Nutzer trägt den Kurs manuell ein (z. B. von der Kreditkartenabrechnung), passend zum bisherigen "kein Bank-Pull, keine externen Abhängigkeiten"-Prinzip der App. In `QuickAddPage.tsx` unter dem Betragsfeld einblendbar (🌍-Toggle), übernimmt den umgerechneten Betrag direkt ins Haupt-Betragsfeld.
+*   **OCR-Belegscan:** neue Abhängigkeit `tesseract.js` (^7.0.0) im Frontend (`npm install`) — Client-seitige Texterkennung, kein neuer Backend-Code/Endpunkt nötig. `frontend/src/lib/ocr.ts`: dünner Wrapper um `Tesseract.recognize(file, 'deu', ...)` mit Fortschritts-Callback. `frontend/src/lib/receiptParse.ts` (reine Funktionen, gleiches Muster wie `voiceParse.ts`): `parseReceiptText()` extrahiert per Regex-Heuristik den Gesamtbetrag (bevorzugt die letzte Zeile mit "Summe/Gesamt/Total/Betrag/Zu zahlen", sonst größter gefundener Betrag im Text), ein Datum (`DD.MM.YYYY`-artige Muster) und den Händlernamen (erste Textzeile mit mindestens 3 Buchstaben).
+*   **`QuickAddPage.tsx`:** neuer "📷 Beleg scannen"-Button neben dem bestehenden Mikrofon-Button, öffnet Kamera/Dateiauswahl (`<input type="file" accept="image/*" capture="environment">`), zeigt Scan-Fortschritt in Prozent, befüllt danach Betrag/Datum/Beschreibung (Händlername) sowie — über die bereits vorhandene `matchCategoryId()`-Funktion aus der Spracheingabe — einen Kategorie-Vorschlag. Genau wie bei der Spracheingabe **kein Auto-Submit**, der Nutzer prüft vor dem Speichern.
+*   **Verifiziert:** kein Backend-Code betroffen (beide Features sind rein Frontend), daher keine Backend-Tests nötig. Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei (weiterhin nur die unkritische Vite-Chunk-Size-Warnung). Kein Lint-Script im Projekt konfiguriert (`npm run lint` existiert nicht) — nichts zusätzlich zu prüfen. `tesseract.js` selbst trägt nur ~17 KB zum Bundle bei (WASM-Core/Sprachdaten werden erst zur Laufzeit vom CDN nachgeladen, nicht mitgebaut) — kein spürbarer Einfluss auf die reguläre App-Ladezeit.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag ("ocr receipt scan and currency converter are more important" — Priorisierung gegenüber CSV-Import).
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — beide Features sind rein clientseitig, keine Schema-Änderung.
+*   **OCR braucht eine Online-Verbindung des Endgeräts beim ersten Einsatz** (Tesseract lädt WASM-Core + deutsches Sprachmodell von einem CDN nach) — analog zur bereits bestehenden Einschränkung bei der Spracheingabe (Web Speech API braucht in Chrome ebenfalls eine Google-Serververbindung). In der `PWA`-Offline-Caching-Strategie nicht mit einbezogen (kein Precaching der Tesseract-Assets) — bewusst außerhalb des Scopes dieser Teilscheibe gelassen, da die App ohnehin für Offline-*Buchungserfassung* ausgelegt ist, nicht für Offline-Beleg-OCR.
+*   **OCR-Ergebnis ist eine Heuristik, keine Garantie** — bei schlecht lesbaren/ungewöhnlich formatierten Belegen können Betrag/Datum/Händler falsch oder gar nicht erkannt werden; der Nutzer sieht das vorbefüllte Formular vor dem Speichern und kann korrigieren (gleiche Sicherheitsnetz-Logik wie bei der Spracheingabe). Bei komplett leerem Ergebnis erscheint ein Hinweistext statt eines stillen Fehlschlags.
+*   Bewusst **kein** Zusammenspiel mit dem bestehenden Invoice-Upload (`backend/src/invoices/`, 30-Tage-Aufbewahrung) — das ist ein separates Anliegen (Belegarchivierung) von dem hier umgesetzten Ziel (schnellere manuelle Dateneingabe). Der Nutzer kann einen Beleg weiterhin zusätzlich getrennt unter *Rechnungen* hochladen, falls gewünscht.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer, insbesondere OCR-Ergebnis mit einem echten Beleg-Foto testen)
+
+---
+
 ### 📋 Schritt-Log: Split-Transaktionen (Phase 11, erste Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 01:15`
 
