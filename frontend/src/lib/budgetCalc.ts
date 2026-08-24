@@ -146,3 +146,35 @@ export function cashflowProjection(
 export function firstShortfall(points: CashflowPoint[]): CashflowPoint | null {
   return points.find((p) => p.balanceCents < 0) ?? null;
 }
+
+export interface CancellationNotice {
+  recurring: RecurringTransaction;
+  deadline: Date; // last day to cancel: contractEndDate - cancellationPeriodDays
+  contractEndDate: Date;
+}
+
+// Active recurring rules with both `contractEndDate` and `cancellationPeriodDays` set whose
+// cancellation deadline falls within [today, today + windowDays] — i.e. contracts that will
+// silently auto-renew soon unless cancelled now. Sorted by deadline, most urgent first. A
+// deadline already in the past (data entered late) is still surfaced, not filtered out — the
+// user needs to know just as much, if not more.
+export function contractsNeedingCancellationNotice(
+  recurring: RecurringTransaction[],
+  windowDays: number = 30,
+  referenceDate: Date = new Date(),
+): CancellationNotice[] {
+  const todayUTC = Date.UTC(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const windowEndUTC = todayUTC + windowDays * 24 * 60 * 60 * 1000;
+
+  const notices: CancellationNotice[] = [];
+  for (const r of recurring) {
+    if (!r.active || !r.contractEndDate || r.cancellationPeriodDays == null) continue;
+    const end = new Date(r.contractEndDate);
+    const endUTC = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+    const deadlineUTC = endUTC - r.cancellationPeriodDays * 24 * 60 * 60 * 1000;
+    if (deadlineUTC <= windowEndUTC) {
+      notices.push({ recurring: r, deadline: new Date(deadlineUTC), contractEndDate: new Date(endUTC) });
+    }
+  }
+  return notices.sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
+}

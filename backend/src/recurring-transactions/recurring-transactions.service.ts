@@ -35,6 +35,9 @@ export class RecurringTransactionsService {
         avoidable: dto.avoidable ?? false,
         inefficient: dto.inefficient ?? false,
         tooExpensive: dto.tooExpensive ?? false,
+        contractNumber: dto.contractNumber,
+        contractEndDate: dto.contractEndDate ? new Date(dto.contractEndDate) : undefined,
+        cancellationPeriodDays: dto.cancellationPeriodDays,
       },
     });
   }
@@ -61,7 +64,11 @@ export class RecurringTransactionsService {
     }
     return this.prisma.recurringTransaction.update({
       where: { id },
-      data: { ...dto, nextDueDate: dto.nextDueDate ? new Date(dto.nextDueDate) : undefined },
+      data: {
+        ...dto,
+        nextDueDate: dto.nextDueDate ? new Date(dto.nextDueDate) : undefined,
+        contractEndDate: dto.contractEndDate ? new Date(dto.contractEndDate) : undefined,
+      },
     });
   }
 

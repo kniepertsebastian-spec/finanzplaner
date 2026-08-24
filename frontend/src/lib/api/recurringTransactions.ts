@@ -11,6 +11,9 @@ export interface RecurringTransactionInput {
   avoidable?: boolean;
   inefficient?: boolean;
   tooExpensive?: boolean;
+  contractNumber?: string;
+  contractEndDate?: string;
+  cancellationPeriodDays?: number;
 }
 
 export const recurringTransactionsApi = {

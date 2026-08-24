@@ -122,6 +122,11 @@ model RecurringTransaction {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  // Contract metadata (optional; only meaningful for actual fixed-term contracts, e.g. internet/insurance)
+  contractNumber         String?
+  contractEndDate        DateTime? // minimum term end date; the contract auto-renews if not cancelled in time
+  cancellationPeriodDays Int? // how many days' notice is required before contractEndDate to cancel
+
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 

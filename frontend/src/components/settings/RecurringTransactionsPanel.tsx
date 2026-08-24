@@ -34,6 +34,9 @@ export function RecurringTransactionsPanel() {
   const [categoryId, setCategoryId] = useState('');
   const [nextDueDate, setNextDueDate] = useState(todayIsoDate());
   const [intervalMonths, setIntervalMonths] = useState('1');
+  const [contractNumber, setContractNumber] = useState('');
+  const [contractEndDate, setContractEndDate] = useState('');
+  const [cancellationPeriodDays, setCancellationPeriodDays] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,6 +59,9 @@ export function RecurringTransactionsPanel() {
     setCategoryId('');
     setNextDueDate(todayIsoDate());
     setIntervalMonths('1');
+    setContractNumber('');
+    setContractEndDate('');
+    setCancellationPeriodDays('');
     setFormError(null);
   };
 
@@ -67,6 +73,9 @@ export function RecurringTransactionsPanel() {
     setCategoryId(item.categoryId);
     setNextDueDate(item.nextDueDate.slice(0, 10));
     setIntervalMonths(String(item.intervalMonths));
+    setContractNumber(item.contractNumber ?? '');
+    setContractEndDate(item.contractEndDate ? item.contractEndDate.slice(0, 10) : '');
+    setCancellationPeriodDays(item.cancellationPeriodDays != null ? String(item.cancellationPeriodDays) : '');
     setFormError(null);
   };
 
@@ -82,6 +91,9 @@ export function RecurringTransactionsPanel() {
         categoryId,
         nextDueDate,
         intervalMonths: Number(intervalMonths),
+        contractNumber: contractNumber || undefined,
+        contractEndDate: contractEndDate || undefined,
+        cancellationPeriodDays: cancellationPeriodDays ? Number(cancellationPeriodDays) : undefined,
       };
       if (editingId) {
         await recurringTransactionsApi.update(editingId, dto);
@@ -234,6 +246,49 @@ export function RecurringTransactionsPanel() {
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        <div className="space-y-3 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+          <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+            Vertragsdaten (optional, z. B. für Internet/Versicherungen mit Mindestlaufzeit)
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                Vertragsnummer
+              </label>
+              <input
+                type="text"
+                value={contractNumber}
+                onChange={(e) => setContractNumber(e.target.value)}
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                Mindestlaufzeit-Ende
+              </label>
+              <input
+                type="date"
+                value={contractEndDate}
+                onChange={(e) => setContractEndDate(e.target.value)}
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                Kündigungsfrist (Tage vorher)
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={cancellationPeriodDays}
+                onChange={(e) => setCancellationPeriodDays(e.target.value)}
+                placeholder="z. B. 30"
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              />
+            </div>
           </div>
         </div>
 

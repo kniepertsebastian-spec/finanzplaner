@@ -2,6 +2,31 @@
 
 ---
 
+### 📋 Schritt-Log: Vertragsmetadaten & Kündigungswecker (Phase 10, zweite Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-24 23:10`
+
+#### 1. Was wurde getan?
+*   Fortsetzung von Phase 10, während der Nutzer parallel den ausstehenden Mini-PC-Deploy vorbereitet hat (Docker-Berechtigungen/`.env`-Wiederherstellung, vom Nutzer selbst durchgeführt — dieser Session fehlt weiterhin sowohl Docker-Daemon- als auch SSH-Zugriff auf den Mini-PC).
+*   **`RecurringTransaction`** (`schema.prisma`) um drei optionale Felder erweitert: `contractNumber` (String?), `contractEndDate` (DateTime?, Mindestlaufzeit-Ende), `cancellationPeriodDays` (Int?, Kündigungsfrist in Tagen). Migration `20260824230000_add_contract_metadata` von Hand geschrieben (weiterhin kein Docker/Postgres in dieser Session verfügbar).
+*   **Backend:** `CreateRecurringTransactionDto` um die drei Felder ergänzt (alle optional, `contractEndDate` als `@IsDateString()`). `RecurringTransactionsService.create()`/`update()` konvertieren `contractEndDate` konsistent zu `nextDueDate` von String zu `Date`. Bestehende `update()`-Tests angepasst (zusätzliches `contractEndDate: undefined` im exakten `toHaveBeenCalledWith`-Objekt), neue Tests für `create()`- und `update()`-Pfade mit Vertragsdaten ergänzt.
+*   **`budgetCalc.ts`:** neue Funktion `contractsNeedingCancellationNotice(recurring, windowDays = 30, referenceDate)` — findet aktive Regeln mit gesetztem `contractEndDate` **und** `cancellationPeriodDays`, deren Kündigungs-Deadline (`contractEndDate - cancellationPeriodDays`) innerhalb der nächsten `windowDays` liegt (oder bereits verstrichen ist — bewusst nicht herausgefiltert, der Nutzer soll das gerade dann sehen). Gleiche UTC-Datumslogik wie die übrigen Funktionen in der Datei.
+*   **`DashboardPage.tsx`:** neuer gelber Warn-Banner "⏰ Kündigungsfrist läuft bald ab" ganz oben auf dem Dashboard (vor den Stat-Kacheln), nur sichtbar wenn mindestens eine Regel betroffen ist. Listet Beschreibung, optionale Vertragsnummer, Kündigungs-Deadline und Verlängerungsdatum.
+*   **`RecurringTransactionsPanel.tsx`:** neuer optionaler Formularabschnitt "Vertragsdaten" (Vertragsnummer, Mindestlaufzeit-Ende, Kündigungsfrist in Tagen) unterhalb der bestehenden Felder, mit eigenem Trennstrich und erklärendem Hinweistext.
+*   **Verifiziert:** Backend — `npm run build` fehlerfrei, `npm test` → 16 Suites / 45 Tests grün. Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei. Weiterhin kein Docker in dieser Session, Verifikation komplett über lokal installierte `node_modules`.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag ("go ahead and continue with the next step"), nachdem der Mini-PC-Deploy-Support (Docker-Berechtigungen, `.env`-Wiederherstellung) an den Nutzer selbst delegiert wurde, da diese Session weder Docker- noch SSH-Zugriff auf den Mini-PC hat. Nächster ausführbarer Schritt aus der Roadmap: Phase 10, zweiter Punkt (Vertrags-Metadaten + Kündigungswecker; Preiserhöhungs-Erkennung bewusst als eigene, spätere Teilscheibe zurückgestellt — deutlich größerer Scope, braucht einen Vergleich historischer Beträge über Zyklen hinweg).
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Migration nötig** — drei neue, alle nullable/additive Spalten auf `RecurringTransaction`. Keine bestehenden Daten betroffen.
+*   **Bekannte Einschränkung, bewusst nicht behoben:** Einmal gesetzte `contractEndDate`/`cancellationPeriodDays` können über das UI aktuell nicht wieder auf "leer" zurückgesetzt werden (leeres Feld im Formular wird beim Speichern als `undefined` = "unverändert lassen" gesendet, nicht als "löschen"). Falls ein Vertrag storniert wurde, hilft ersatzweise das Pausieren der Regel (`active: false`) — dann verschwindet die Regel auch aus `contractsNeedingCancellationNotice()`. Eine echte Clear-Funktion wäre zusätzlicher Scope (nullable-Update-Semantik im DTO + UI-Button) und wurde für diese Teilscheibe zurückgestellt.
+*   **Nicht deployed** — wie die letzten beiden Teilscheiben: kein Docker-Daemon, kein SSH-Zugriff in dieser Session. Deployment (inkl. Backend-Rebuild + `prisma migrate deploy` für **zwei** ausstehende Migrationen: `add_savings_pots` und `add_contract_metadata`) steht komplett aus.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC (inkl. Backend-Rebuild + beide ausstehenden Migrationen) steht aus — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer nach Deployment)
+
+---
+
 ### 📋 Schritt-Log: Virtuelle Töpfe / Rücklagen (Phase 10, erste Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-24 22:20`
 

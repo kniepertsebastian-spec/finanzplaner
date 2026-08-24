@@ -1,4 +1,15 @@
-import { IsBoolean, IsDateString, IsInt, IsOptional, IsString, IsUUID, Max, Min, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class CreateRecurringTransactionDto {
   @IsInt()
@@ -35,4 +46,18 @@ export class CreateRecurringTransactionDto {
   @IsOptional()
   @IsBoolean()
   tooExpensive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  contractNumber?: string;
+
+  @IsOptional()
+  @IsDateString()
+  contractEndDate?: string;
+
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  cancellationPeriodDays?: number;
 }

@@ -15,6 +15,7 @@ import { usersApi } from '../lib/api/users';
 import {
   availableIncome,
   cashflowProjection,
+  contractsNeedingCancellationNotice,
   dailyBurnRate,
   daysUntil,
   firstShortfall,
@@ -115,9 +116,29 @@ export function DashboardPage() {
   const shortfall = firstShortfall(cashflowPoints);
   const shortfallLabel = shortfall?.date.toLocaleDateString('de-DE', { timeZone: 'UTC' });
 
+  const cancellationNotices = contractsNeedingCancellationNotice(recurring);
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-neutral-500 dark:text-neutral-400">Zeitraum: {periodLabel}</p>
+
+      {cancellationNotices.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-[#fab219]/30 bg-[#fab219]/10 p-4 dark:border-[#fab219]/20">
+          <h2 className="text-sm font-medium text-[#9a6b00] dark:text-[#fab219]">
+            ⏰ Kündigungsfrist läuft bald ab
+          </h2>
+          <ul className="space-y-1 text-sm text-[#9a6b00] dark:text-[#fab219]">
+            {cancellationNotices.map(({ recurring: r, deadline, contractEndDate }) => (
+              <li key={r.id}>
+                <span className="font-medium">{r.description}</span>
+                {r.contractNumber && ` (${r.contractNumber})`} — spätestens{' '}
+                {deadline.toLocaleDateString('de-DE', { timeZone: 'UTC' })} kündigen, sonst verlängert sich der
+                Vertrag bis {contractEndDate.toLocaleDateString('de-DE', { timeZone: 'UTC' })}.
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile label="Einnahmen (Zeitraum)" value={formatCents(incomeCents)} valueClassName="text-[#2a78d6]" />

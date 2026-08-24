@@ -34,6 +34,8 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 - **Automatisches Buchen:** täglicher Cron-Job bucht fällige Fixkosten automatisch als Transaktion und schiebt die nächste Fälligkeit weiter (inkl. Nachholen verpasster Buchungen und Monatsende-Clamping, z. B. 31. Jan. + 1 Monat → 28./29. Feb.).
 - **Gleiche Flags** wie bei Transaktionen: Vermeidbar, Ineffizient, Zu hoch — direkt auf der Regel.
 - **Dashboard-Kennzahl:** Summe aller aktiven Fixkosten-Ausgaben, die im nächsten Abrechnungszeitraum fällig werden (siehe unten — richtet sich nach dem konfigurierbaren Monatsstart, nicht zwingend nach dem Kalendermonat).
+- **Vertragsmetadaten (optional):** Vertragsnummer, Mindestlaufzeit-Ende und benötigte Kündigungsfrist (in Tagen) pro Regel hinterlegbar — für Verträge mit fester Laufzeit (Internet, Versicherungen, Mobilfunk).
+- **Kündigungswecker:** Warn-Banner auf dem Dashboard, sobald die Kündigungsfrist einer aktiven Regel mit hinterlegten Vertragsdaten innerhalb der nächsten 30 Tage abläuft (Formel: Mindestlaufzeit-Ende − Kündigungsfrist), inkl. Datum der spätestmöglichen Kündigung und des Verlängerungsdatums bei Nichtstun.
 
 ## 🗂️ Kategorien
 

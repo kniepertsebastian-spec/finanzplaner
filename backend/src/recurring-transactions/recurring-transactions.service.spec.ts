@@ -6,7 +6,7 @@ import { RecurringTransactionsService } from './recurring-transactions.service';
 describe('RecurringTransactionsService', () => {
   let service: RecurringTransactionsService;
   let prisma: {
-    recurringTransaction: { findMany: jest.Mock; findFirst: jest.Mock; update: jest.Mock };
+    recurringTransaction: { findMany: jest.Mock; findFirst: jest.Mock; update: jest.Mock; create: jest.Mock };
     category: { findFirst: jest.Mock };
   };
   let transactionsService: { create: jest.Mock };
@@ -19,6 +19,7 @@ describe('RecurringTransactionsService', () => {
         findMany: jest.fn(),
         findFirst: jest.fn(),
         update: jest.fn(),
+        create: jest.fn(),
       },
       category: {
         findFirst: jest.fn(),
@@ -41,6 +42,49 @@ describe('RecurringTransactionsService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('create', () => {
+    it('passes through optional contract metadata and converts contractEndDate to a Date', async () => {
+      prisma.category.findFirst.mockResolvedValue({ id: 'cat-1', userId: 'user-1' });
+
+      await service.create('user-1', {
+        amount: -2999,
+        description: 'Internet',
+        categoryId: 'cat-1',
+        nextDueDate: '2026-09-01',
+        contractNumber: 'INET-123',
+        contractEndDate: '2027-08-31',
+        cancellationPeriodDays: 30,
+      });
+
+      expect(prisma.recurringTransaction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          contractNumber: 'INET-123',
+          contractEndDate: new Date('2027-08-31'),
+          cancellationPeriodDays: 30,
+        }),
+      });
+    });
+
+    it('leaves contract metadata undefined when not provided', async () => {
+      prisma.category.findFirst.mockResolvedValue({ id: 'cat-1', userId: 'user-1' });
+
+      await service.create('user-1', {
+        amount: -2999,
+        description: 'Internet',
+        categoryId: 'cat-1',
+        nextDueDate: '2026-09-01',
+      });
+
+      expect(prisma.recurringTransaction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          contractNumber: undefined,
+          contractEndDate: undefined,
+          cancellationPeriodDays: undefined,
+        }),
+      });
+    });
+  });
+
   describe('update', () => {
     it('converts a plain date string nextDueDate into a Date before writing to Prisma', async () => {
       prisma.recurringTransaction.findFirst.mockResolvedValue({ id: 'rec-1', userId: 'user-1' });
@@ -49,18 +93,33 @@ describe('RecurringTransactionsService', () => {
 
       expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
         where: { id: 'rec-1' },
-        data: { nextDueDate: new Date('2026-09-01') },
+        data: { nextDueDate: new Date('2026-09-01'), contractEndDate: undefined },
       });
     });
 
-    it('leaves nextDueDate untouched when not part of the update (e.g. pausing a rule)', async () => {
+    it('leaves nextDueDate/contractEndDate untouched when not part of the update (e.g. pausing a rule)', async () => {
       prisma.recurringTransaction.findFirst.mockResolvedValue({ id: 'rec-1', userId: 'user-1' });
 
       await service.update('user-1', 'rec-1', { active: false });
 
       expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
         where: { id: 'rec-1' },
-        data: { active: false, nextDueDate: undefined },
+        data: { active: false, nextDueDate: undefined, contractEndDate: undefined },
+      });
+    });
+
+    it('converts a plain date string contractEndDate into a Date before writing to Prisma', async () => {
+      prisma.recurringTransaction.findFirst.mockResolvedValue({ id: 'rec-1', userId: 'user-1' });
+
+      await service.update('user-1', 'rec-1', { contractEndDate: '2027-01-31', cancellationPeriodDays: 30 });
+
+      expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
+        where: { id: 'rec-1' },
+        data: {
+          contractEndDate: new Date('2027-01-31'),
+          cancellationPeriodDays: 30,
+          nextDueDate: undefined,
+        },
       });
     });
   });
