@@ -9,7 +9,17 @@ import { categoriesApi } from '../lib/api/categories';
 import { recurringTransactionsApi } from '../lib/api/recurringTransactions';
 import { transactionsApi } from '../lib/api/transactions';
 import type { Budget, Category, RecurringTransaction, Transaction } from '../lib/api/types';
-import { monthlyTotals, projectRemainingBudget, spentForCategory, upcomingFixedCosts } from '../lib/budgetCalc';
+import { usersApi } from '../lib/api/users';
+import {
+  availableIncome,
+  dailyBurnRate,
+  daysUntil,
+  monthlyTotals,
+  nextIncomeDueDate,
+  projectRemainingBudget,
+  spentForCategory,
+  upcomingFixedCosts,
+} from '../lib/budgetCalc';
 import {
   daysInFinancialPeriod,
   dayOfFinancialPeriod,
@@ -28,6 +38,7 @@ export function DashboardPage() {
   const [categories, setCategories] = useState<Category[] | null>(null);
   const [budgets, setBudgets] = useState<Budget[] | null>(null);
   const [recurring, setRecurring] = useState<RecurringTransaction[] | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,12 +51,14 @@ export function DashboardPage() {
       listWithCache('categories', () => categoriesApi.list()),
       listWithCache('budgets', () => budgetsApi.list({ month: period.startISO })),
       recurringTransactionsApi.list(),
+      usersApi.getBalance(),
     ])
-      .then(([t, c, b, r]) => {
+      .then(([t, c, b, r, bal]) => {
         setTransactions(t);
         setCategories(c);
         setBudgets(b);
         setRecurring(r);
+        setBalance(bal.balance);
       })
       .catch(() => setError('Daten konnten nicht geladen werden.'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,7 +68,7 @@ export function DashboardPage() {
     return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
   }
 
-  if (!transactions || !categories || !budgets || !recurring) {
+  if (!transactions || !categories || !budgets || !recurring || balance === null) {
     return <p className="text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>;
   }
 
@@ -74,6 +87,17 @@ export function DashboardPage() {
   const periodLabel = financialPeriodLabel(period);
   const nextPeriodLabel = financialPeriodLabel(nextPeriod);
 
+  const outstandingFixedCostsCents = upcomingFixedCosts(recurring, period.startISO, period.endISO);
+  const availableIncomeCents = availableIncome(balance, outstandingFixedCostsCents);
+  const nextIncome = nextIncomeDueDate(recurring);
+  const burnRateHorizon = nextIncome ?? period.end;
+  const daysUntilNextIncome = daysUntil(burnRateHorizon);
+  const dailyBurnRateCents = dailyBurnRate(availableIncomeCents, daysUntilNextIncome);
+  const burnRateHorizonLabel = burnRateHorizon.toLocaleDateString('de-DE', { timeZone: 'UTC' });
+  const burnRateCaption = nextIncome
+    ? `Bis zum nächsten Gehaltseingang am ${burnRateHorizonLabel} (${daysUntilNextIncome} Tage)`
+    : `Keine geplante Einnahme gefunden — bis Ende des Zeitraums am ${burnRateHorizonLabel}`;
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-neutral-500 dark:text-neutral-400">Zeitraum: {periodLabel}</p>
@@ -82,6 +106,21 @@ export function DashboardPage() {
         <StatTile label="Einnahmen (Zeitraum)" value={formatCents(incomeCents)} valueClassName="text-[#2a78d6]" />
         <StatTile label="Ausgaben (Zeitraum)" value={formatCents(expenseCents)} valueClassName="text-[#eb6834]" />
         <StatTile label="Netto (Zeitraum)" value={formatCents(netCents)} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <StatTile
+          label="Frei verfügbar"
+          value={formatCents(availableIncomeCents)}
+          valueClassName={availableIncomeCents < 0 ? 'text-[#d03b3b]' : undefined}
+          caption="Gesamtsaldo abzüglich noch ausstehender Fixkosten in diesem Zeitraum"
+        />
+        <StatTile
+          label="Tagesbudget"
+          value={formatCents(dailyBurnRateCents)}
+          valueClassName={dailyBurnRateCents < 0 ? 'text-[#d03b3b]' : undefined}
+          caption={burnRateCaption}
+        />
       </div>
 
       <StatTile

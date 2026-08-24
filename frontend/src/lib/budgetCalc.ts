@@ -44,3 +44,36 @@ export function projectRemainingBudget(
   const projectedExpense = daysElapsed > 0 ? (expenseSoFarCents / daysElapsed) * daysInMonth : 0;
   return totalBudgetCents - projectedExpense;
 }
+
+// Verfügbar = Gesamtsaldo - ausstehende Fixkosten (Rücklagen/sinking funds don't exist yet —
+// that's Phase 10 — so they're not subtracted here).
+export function availableIncome(balanceCents: number, outstandingFixedCostsCents: number): number {
+  return balanceCents - outstandingFixedCostsCents;
+}
+
+// Earliest active, income-type (positive-amount) recurring rule due today or later. `nextDueDate`
+// is a UTC-midnight-anchored calendar date from the backend — compared via getTime(), never via
+// local Date getters (see the CEST bug documented for financialPeriod.ts).
+export function nextIncomeDueDate(recurring: RecurringTransaction[], referenceDate: Date = new Date()): Date | null {
+  const todayUTC = Date.UTC(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const dueDates = recurring
+    .filter((r) => r.active && r.amount > 0)
+    .map((r) => new Date(r.nextDueDate))
+    .filter((d) => d.getTime() >= todayUTC)
+    .sort((a, b) => a.getTime() - b.getTime());
+  return dueDates[0] ?? null;
+}
+
+// Whole days between "today" and a UTC-midnight-anchored target date, floored at 1 so burn-rate
+// math never divides by zero (e.g. the next income is due today).
+export function daysUntil(target: Date, referenceDate: Date = new Date()): number {
+  const todayUTC = Date.UTC(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const diffDays = Math.round((target.getTime() - todayUTC) / (24 * 60 * 60 * 1000));
+  return Math.max(1, diffDays);
+}
+
+// "Verbleibendes Tagesbudget bis zum nächsten Gehaltseingang" — can go negative, which is the
+// point: it signals the user is already projected to overspend before the next income arrives.
+export function dailyBurnRate(availableIncomeCents: number, daysUntilNextIncome: number): number {
+  return Math.round(availableIncomeCents / daysUntilNextIncome);
+}
