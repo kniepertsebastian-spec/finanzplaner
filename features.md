@@ -45,6 +45,7 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 
 - **Vollständige Verwaltung** (Anlegen, Auflisten, Löschen) unter *Einstellungen*.
 - Schutz vor Lösch-Fehlern: Kategorien, die noch von Transaktionen/Budgets verwendet werden, können nicht gelöscht werden (verständliche Fehlermeldung statt Absturz).
+- **50/30/20-Einordnung (optional):** jede Kategorie kann als Bedarf, Wunsch oder Sparen klassifiziert werden — speist die 50/30/20-Auswertung auf dem Dashboard. Kategorien ohne Einordnung fließen dort nicht mit ein (kein erzwungenes Raten).
 
 ## 📊 Budgets & Dashboard
 
@@ -52,7 +53,8 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 - **Konfigurierbarer Abrechnungszeitraum:** der "Finanzmonat" muss nicht am 1. beginnen — ein frei wählbarer Starttag (1–31, z. B. der Gehaltseingangstag) unter *Einstellungen* bestimmt den Zeitraum, den Dashboard, Budgets und die Fixkosten-Summe verwenden (Standard: 1 = klassischer Kalendermonat, unverändertes Verhalten). Änderbar jederzeit, mit Live-Vorschau des sich ergebenden Zeitraums.
 - **Budgets pro Kategorie und Zeitraum:** Anlegen, Bearbeiten, Löschen — Zeitraum-Auswahl per Dropdown (statt eines reinen Kalendermonat-Pickers), zeigt die konkreten Start-/Enddaten.
 - **Budget-Fortschrittsbalken** je Kategorie (Ist-Ausgaben vs. Budget).
-- **Dashboard-Kennzahlen:** Einnahmen, Ausgaben und Netto des laufenden Zeitraums.
+- **Dashboard-Kennzahlen:** Einnahmen, Ausgaben, Netto und Sparquote (Anteil der Einnahmen, der im Zeitraum nicht ausgegeben wurde) des laufenden Zeitraums.
+- **50/30/20-Regel-Auswertung:** vergleicht die tatsächlichen Anteile für Notwendiges/Wünsche/Sparen (auf Basis der Kategorie-Einordnung, siehe oben) gegen die klassischen 50/30/20-Zielwerte, je mit Fortschrittsbalken und Status (Im Ziel/Knapp am Ziel/Deutliche Abweichung, farb- und icon-codiert). "Sparen" zählt sowohl explizit als Sparen eingeordnete Ausgaben als auch schlicht nicht ausgegebenes Einkommen. Kategorien ohne Einordnung werden separat ausgewiesen, nicht stillschweigend zugerechnet.
 - **Restbudget-Prognose:** lineare Hochrechnung des Restbudgets auf Basis der bisherigen Ausgaben im laufenden Zeitraum.
 - **Zeitverlaufs-Chart** (Chart.js) für Einnahmen/Ausgaben über den Zeitraum (auch wenn er zwei Kalendermonate überspannt), hell-/dunkelmodus-fähig.
 - Währungswerte werden intern durchgängig als Cent-Integer geführt (keine Rundungsfehler).

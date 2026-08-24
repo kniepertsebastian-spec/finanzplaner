@@ -56,9 +56,12 @@ export interface SavingsPot {
   userId: string;
 }
 
+export type BudgetType = 'NEEDS' | 'WANTS' | 'SAVINGS';
+
 export interface Category {
   id: string;
   name: string;
+  budgetType: BudgetType | null; // optional 50/30/20-rule classification
   userId: string;
 }
 

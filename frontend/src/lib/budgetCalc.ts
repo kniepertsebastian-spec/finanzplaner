@@ -1,4 +1,4 @@
-import type { RecurringTransaction, Transaction } from './api/types';
+import type { Category, RecurringTransaction, Transaction } from './api/types';
 
 // Sums active, expense-only (negative amount) recurring rules whose nextDueDate falls
 // within [startISO, endISO) — i.e. what's due to post next calendar month.
@@ -32,6 +32,70 @@ export function monthlyTotals(transactions: Transaction[]): { incomeCents: numbe
     },
     { incomeCents: 0, expenseCents: 0 },
   );
+}
+
+// Share of income not spent in the period, as a percentage (e.g. 23.5). Null when there was no
+// income at all — a rate would be meaningless (division by zero), not just "0%".
+export function savingsRate(incomeCents: number, expenseCents: number): number | null {
+  if (incomeCents <= 0) return null;
+  return ((incomeCents - expenseCents) / incomeCents) * 100;
+}
+
+export interface BudgetTypeBreakdown {
+  needsCents: number;
+  wantsCents: number;
+  // Spending in SAVINGS-classified categories (e.g. a transfer-to-savings booking) plus whatever
+  // of the period's income was left unspent entirely — both count as "saved" for this rule.
+  savingsCents: number;
+  // Expense in categories with no budgetType set — excluded from the needs/wants/savings split
+  // rather than silently folded into one of them, since the user hasn't made that call yet.
+  unassignedCents: number;
+  incomeCents: number;
+}
+
+// Classifies the period's expense transactions by their category's 50/30/20 budgetType, for the
+// "Notwendiges/Wünsche/Sparen" breakdown against the classic 50/30/20 income-based targets.
+export function budgetTypeBreakdown(
+  transactions: Transaction[],
+  categories: Category[],
+  incomeCents: number,
+): BudgetTypeBreakdown {
+  const budgetTypeByCategoryId = new Map(categories.map((c) => [c.id, c.budgetType]));
+
+  let needsCents = 0;
+  let wantsCents = 0;
+  let categorizedSavingsCents = 0;
+  let unassignedCents = 0;
+  let totalExpenseCents = 0;
+
+  for (const t of transactions) {
+    if (t.amount >= 0) continue;
+    const amount = Math.abs(t.amount);
+    totalExpenseCents += amount;
+
+    switch (budgetTypeByCategoryId.get(t.categoryId)) {
+      case 'NEEDS':
+        needsCents += amount;
+        break;
+      case 'WANTS':
+        wantsCents += amount;
+        break;
+      case 'SAVINGS':
+        categorizedSavingsCents += amount;
+        break;
+      default:
+        unassignedCents += amount;
+    }
+  }
+
+  const leftoverCents = Math.max(0, incomeCents - totalExpenseCents);
+  return {
+    needsCents,
+    wantsCents,
+    savingsCents: categorizedSavingsCents + leftoverCents,
+    unassignedCents,
+    incomeCents,
+  };
 }
 
 // Linear extrapolation of spend-to-date to the end of the month.

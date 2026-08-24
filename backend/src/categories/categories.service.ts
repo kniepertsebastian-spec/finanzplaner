@@ -9,7 +9,7 @@ export class CategoriesService {
 
   create(userId: string, dto: CreateCategoryDto) {
     return this.prisma.category.create({
-      data: { name: dto.name, userId },
+      data: { name: dto.name, budgetType: dto.budgetType, userId },
     });
   }
 

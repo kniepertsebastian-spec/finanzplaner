@@ -69,9 +69,16 @@ model Transaction {
   @@index([splitGroupId])
 }
 
+enum BudgetType {
+  NEEDS
+  WANTS
+  SAVINGS
+}
+
 model Category {
-  id   String @id @default(uuid())
-  name String
+  id         String      @id @default(uuid())
+  name       String
+  budgetType BudgetType? // optional 50/30/20-rule classification; unset categories are excluded from that breakdown
 
   userId String
   user   User   @relation(fields: [userId], references: [id])

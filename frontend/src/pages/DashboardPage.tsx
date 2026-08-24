@@ -1,3 +1,4 @@
+import { AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BudgetProgressBar } from '../components/BudgetProgressBar';
 import { CashflowChart } from '../components/charts/CashflowChart';
@@ -15,6 +16,7 @@ import type { Budget, Category, RecurringTransaction, SavingsPot, Transaction } 
 import { usersApi } from '../lib/api/users';
 import {
   availableIncome,
+  budgetTypeBreakdown,
   cashflowProjection,
   contractsNeedingCancellationNotice,
   dailyBurnRate,
@@ -24,6 +26,7 @@ import {
   nextIncomeDueDate,
   priceIncreaseRules,
   projectRemainingBudget,
+  savingsRate,
   spentForCategory,
   upcomingFixedCosts,
 } from '../lib/budgetCalc';
@@ -36,6 +39,15 @@ import {
 } from '../lib/financialPeriod';
 import { formatCents } from '../lib/money';
 import { listWithCache } from '../lib/offlineDb';
+
+// Status colors never stand alone (see BudgetProgressBar) — always paired with an icon + label,
+// direction-agnostic wording so it reads correctly for both "at most" (Notwendiges/Wünsche) and
+// "at least" (Sparen) targets.
+const RULE_STATUS = {
+  good: { color: '#0ca30c', label: 'Im Ziel', Icon: CheckCircle2 },
+  warning: { color: '#fab219', label: 'Knapp am Ziel', Icon: AlertTriangle },
+  critical: { color: '#d03b3b', label: 'Deutliche Abweichung', Icon: AlertCircle },
+};
 
 export function DashboardPage() {
   const { isDark } = useDarkMode();
@@ -88,6 +100,8 @@ export function DashboardPage() {
   const { incomeCents, expenseCents } = monthlyTotals(transactions);
   const netCents = incomeCents - expenseCents;
   const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const savingsRatePct = savingsRate(incomeCents, expenseCents);
+  const rule503020 = budgetTypeBreakdown(transactions, categories, incomeCents);
 
   const totalBudgetCents = budgets.reduce((sum, b) => sum + b.amount, 0);
   const remainingCents = projectRemainingBudget(totalBudgetCents, expenseCents, elapsed, days);
@@ -172,10 +186,16 @@ export function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile label="Einnahmen (Zeitraum)" value={formatCents(incomeCents)} valueClassName="text-[#2a78d6]" />
         <StatTile label="Ausgaben (Zeitraum)" value={formatCents(expenseCents)} valueClassName="text-[#eb6834]" />
         <StatTile label="Netto (Zeitraum)" value={formatCents(netCents)} />
+        <StatTile
+          label="Sparquote"
+          value={savingsRatePct !== null ? `${savingsRatePct.toFixed(0)}%` : '–'}
+          valueClassName={savingsRatePct !== null && savingsRatePct < 0 ? 'text-[#d03b3b]' : undefined}
+          caption="Anteil der Einnahmen, der im Zeitraum nicht ausgegeben wurde"
+        />
       </div>
 
       <StatTile
@@ -184,6 +204,50 @@ export function DashboardPage() {
         valueClassName="text-[#eb6834]"
         caption="Summe aller aktiven, geplanten Fixkosten für den kommenden Zeitraum"
       />
+
+      {incomeCents > 0 && (
+        <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">50/30/20-Regel</h2>
+          {(
+            [
+              { label: 'Notwendiges', cents: rule503020.needsCents, target: 50, direction: 'atMost' as const },
+              { label: 'Wünsche', cents: rule503020.wantsCents, target: 30, direction: 'atMost' as const },
+              { label: 'Sparen', cents: rule503020.savingsCents, target: 20, direction: 'atLeast' as const },
+            ]
+          ).map((row) => {
+            const pct = (row.cents / incomeCents) * 100;
+            const ratio = row.direction === 'atMost' ? pct / row.target : row.target / Math.max(pct, 0.01);
+            const status = ratio <= 1 ? RULE_STATUS.good : ratio <= 1.2 ? RULE_STATUS.warning : RULE_STATUS.critical;
+            return (
+              <div key={row.label} className="space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-neutral-900 dark:text-neutral-100">{row.label}</span>
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    {formatCents(row.cents)} · {pct.toFixed(0)}% (Ziel {row.direction === 'atMost' ? '≤' : '≥'}
+                    {row.target}%)
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${Math.min(100, pct)}%`, backgroundColor: status.color }}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 text-xs" style={{ color: status.color }}>
+                  <status.Icon size={14} />
+                  <span>{status.label}</span>
+                </div>
+              </div>
+            );
+          })}
+          {rule503020.unassignedCents > 0 && (
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">
+              {formatCents(rule503020.unassignedCents)} in nicht zugeordneten Kategorien nicht enthalten — unter
+              Einstellungen → Kategorien als Bedarf/Wunsch/Sparen einordnen.
+            </p>
+          )}
+        </div>
+      )}
 
       {savingsPots.length > 0 && (
         <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">

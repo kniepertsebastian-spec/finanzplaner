@@ -2,6 +2,32 @@
 
 ---
 
+### 📋 Schritt-Log: Sparquote & 50/30/20-Regel (Phase 13, erste Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 04:10`
+
+#### 1. Was wurde getan?
+*   Nutzer bat um Start von Phase 13 (Auswertungen, Tags & PWA-Power-Features), CSV-Import (noch offener Punkt aus Phase 11) bewusst als Allerletztes zurückgestellt. Erste Teilscheibe: "Erweiterte Analytics" — Sparquote und 50/30/20-Regel-Auswertung zusammen umgesetzt (Sparquote ist inhaltlich der "20%"-Teil der Regel, daher kombiniert), Sankey-Geldflussdiagramm bewusst als eigene, spätere Teilscheibe zurückgestellt (deutlich größerer Umfang, keine bestehende Chart.js-Sankey-Fähigkeit im Projekt).
+*   **Neues Prisma-Enum `BudgetType` (`NEEDS`/`WANTS`/`SAVINGS`)** + optionales Feld `Category.budgetType` — Klassifizierung einer Kategorie für die 50/30/20-Regel. Migration `20260825040000_add_category_budget_type` von Hand geschrieben (weiterhin kein Docker/Postgres in dieser Session verfügbar).
+*   **Backend:** `CreateCategoryDto`/`UpdateCategoryDto` um `budgetType` erweitert, **explizit `BudgetType | null` typisiert** (nicht nur `| undefined`) — damit lässt sich die Einordnung über den normalen Update-Pfad auch wieder auf "nicht zugeordnet" zurücksetzen (`data: dto` reicht ein explizites `null` unverändert an Prisma durch, das die Spalte dann wirklich leert). Bewusst anders gelöst als die frühere Vertragsdaten-Teilscheibe (dort blieb "Zurücksetzen nicht möglich" eine dokumentierte Einschränkung) — hier war die Lösung trivial (ein einzelnes Enum-Feld, kein Datums-Sonderfall), daher gleich sauber gelöst statt eine weitere bekannte Lücke zu hinterlassen. `CategoriesService.create()` reicht `budgetType` jetzt durch; `update()` brauchte keine Änderung (spreadet `dto` bereits direkt).
+*   **`budgetCalc.ts`:** `savingsRate(incomeCents, expenseCents)` (Anteil nicht ausgegebener Einnahmen, `null` bei Einnahmen = 0 statt einer bedeutungslosen Division). `budgetTypeBreakdown(transactions, categories, incomeCents)` — summiert Ausgaben-Transaktionen nach der `budgetType`-Einordnung ihrer Kategorie; "Sparen" zählt sowohl `SAVINGS`-eingeordnete Ausgaben als auch den im Zeitraum nicht ausgegebenen Rest des Einkommens; nicht eingeordnete Kategorien landen separat in `unassignedCents`, statt stillschweigend einem der drei Töpfe zugerechnet zu werden.
+*   **`CategoryManager.tsx`:** neues Dropdown pro Kategorie-Zeile (Bedarf/Wunsch/Sparen/Nicht zugeordnet), aktualisiert sofort bei Auswahl, plus erklärender Hinweistext.
+*   **`DashboardPage.tsx`:** "Sparquote" als vierte Kachel neben Einnahmen/Ausgaben/Netto (Grid von 3 auf 4 Spalten angepasst). Neue Karte "50/30/20-Regel" (nur sichtbar bei Einnahmen > 0) mit drei Fortschrittsbalken (Notwendiges/Wünsche/Sparen) inkl. Ist-Wert, Ist-%, Ziel-% und Status (Im Ziel/Knapp am Ziel/Deutliche Abweichung — farb- **und** icon-codiert, wiederverwendet dieselben Statusfarben/-icons wie `BudgetProgressBar.tsx`). Hinweistext, falls Ausgaben in nicht zugeordneten Kategorien existieren.
+*   **`dataviz`-Skill-Konformität:** vor dem Bau der Statusbalken erneut die Skill-Vorgabe geprüft — "Status-Farben nie allein, immer mit Icon + Label" (Non-negotiable-Regel). Ursprünglicher Entwurf hatte nur Farbe + Text; nachträglich um Status-Icons (`CheckCircle2`/`AlertTriangle`/`AlertCircle`, exakt wie in `BudgetProgressBar.tsx`) ergänzt.
+*   **Verifiziert:** Backend — `npm run build` fehlerfrei, `npm test` → 16 Suites / 55 Tests grün (3 neue Tests: `create()` mit/ohne `budgetType`, `update()` reicht `budgetType` durch). Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei. **Visuell geprüft:** exaktes Markup der neuen 50/30/20-Balken in einer isolierten HTML-Datei nachgebaut und per Playwright screenshotet (rot/grün/rot bei simulierten 62%/29%/9%-Werten) — Statusfarben-Schwellen (`ratio <= 1` grün, `<= 1.2` gelb, sonst rot) verhalten sich wie beabsichtigt.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag ("go ahead with 13. lets do the .csv at last").
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Migration nötig** — neuer Enum-Typ + eine nullable Spalte auf `Category`. Additiv, keine bestehenden Daten betroffen.
+*   Bestehende Kategorien haben nach dem Deploy zunächst `budgetType = null` — die 50/30/20-Karte zeigt dann entsprechend viel in "nicht zugeordnet" an, bis der Nutzer seine Kategorien einmal durchklassifiziert. Kein Zwang/keine Sperre, rein informativ.
+*   Rest von Phase 13 (Sankey-Diagramm, Flag-Auswertung, Tags, Steuer-Marker, Web Push, App Shortcuts, Batch-Bearbeitung) sowie der CSV-Import aus Phase 11 bleiben offen.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer, insbesondere die Kategorie-Einordnung unter Einstellungen ausprobieren)
+
+---
+
 ### 📋 Schritt-Log: Hero-Card mit Mesh-Gradient (Phase 12, erste Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 03:00`
 

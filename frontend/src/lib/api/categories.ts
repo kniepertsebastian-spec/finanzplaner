@@ -1,8 +1,9 @@
 import { apiClient } from './client';
-import type { Category } from './types';
+import type { BudgetType, Category } from './types';
 
 export interface CategoryInput {
   name: string;
+  budgetType?: BudgetType | null;
 }
 
 export const categoriesApi = {
