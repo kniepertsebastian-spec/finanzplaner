@@ -203,12 +203,20 @@ export function DashboardPage() {
         />
       </div>
 
-      <StatTile
-        label={`Fixkosten ${nextPeriodLabel}`}
-        value={formatCents(upcomingFixedCostsCents)}
-        valueClassName="text-[#eb6834]"
-        caption="Summe aller aktiven, geplanten Fixkosten für den kommenden Zeitraum"
-      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <StatTile
+          label={`Fixkosten ${periodLabel}`}
+          value={formatCents(outstandingFixedCostsCents)}
+          valueClassName="text-[#eb6834]"
+          caption="Summe aller aktiven Fixkosten mit Fälligkeit im laufenden Zeitraum"
+        />
+        <StatTile
+          label={`Fixkosten ${nextPeriodLabel}`}
+          value={formatCents(upcomingFixedCostsCents)}
+          valueClassName="text-[#eb6834]"
+          caption="Summe aller aktiven, geplanten Fixkosten für den kommenden Zeitraum"
+        />
+      </div>
 
       {incomeCents > 0 && (
         <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">

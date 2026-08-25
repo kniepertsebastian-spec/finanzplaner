@@ -76,7 +76,7 @@ export function TransactionsPage() {
     setFormError(null);
     setSubmitting(true);
     try {
-      const cents = eurosToCents(amount);
+      const cents = Math.abs(eurosToCents(amount));
       await transactionsApi.update(editingId, {
         amount: sign === 'income' ? cents : -cents,
         description,
@@ -130,7 +130,7 @@ export function TransactionsPage() {
 
   const removeSplitRow = (index: number) => setSplitRows((rows) => rows.filter((_, i) => i !== index));
 
-  const splitTotalCents = splitRows.reduce((sum, row) => sum + (row.amount ? eurosToCents(row.amount) : 0), 0);
+  const splitTotalCents = splitRows.reduce((sum, row) => sum + (row.amount ? Math.abs(eurosToCents(row.amount)) : 0), 0);
 
   const handleSplitSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -144,10 +144,13 @@ export function TransactionsPage() {
       await transactionsApi.createSplit({
         description: splitDescription,
         date: splitDate || undefined,
-        splits: splitRows.map((row) => ({
-          amount: splitSign === 'income' ? eurosToCents(row.amount) : -eurosToCents(row.amount),
-          categoryId: row.categoryId,
-        })),
+        splits: splitRows.map((row) => {
+          const rowCents = Math.abs(eurosToCents(row.amount));
+          return {
+            amount: splitSign === 'income' ? rowCents : -rowCents,
+            categoryId: row.categoryId,
+          };
+        }),
       });
       resetSplitForm();
       load();

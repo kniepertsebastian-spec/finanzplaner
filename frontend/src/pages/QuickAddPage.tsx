@@ -143,7 +143,7 @@ export function QuickAddPage() {
     setStatus('idle');
     setSubmitting(true);
 
-    const cents = eurosToCents(amount);
+    const cents = Math.abs(eurosToCents(amount));
     const input: TransactionInput = {
       amount: sign === 'income' ? cents : -cents,
       description,
@@ -200,7 +200,6 @@ export function QuickAddPage() {
               ref={receiptInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={handleReceiptSelected}
               className="hidden"
             />

@@ -85,7 +85,7 @@ export function RecurringTransactionsPanel() {
     setFormError(null);
     setSubmitting(true);
     try {
-      const cents = eurosToCents(amount);
+      const cents = Math.abs(eurosToCents(amount));
       const dto = {
         amount: sign === 'income' ? cents : -cents,
         description,

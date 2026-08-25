@@ -2,6 +2,30 @@
 
 ---
 
+### 📋 Schritt-Log: Bugfixes aus Live-Test — Vorzeichen-Doppelnegation, fehlende "Fixkosten (aktueller Zeitraum)"-Kachel, Beleg-Upload statt nur Kamera — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 05:20`
+
+#### 1. Was wurde getan?
+*   Nutzer meldete: neu angelegte Fixkosten-Regeln ("Miete -840€", "Kredit -240€") tauchen nicht in der Fixkosten-Berechnung auf. Nutzer hatte das Minuszeichen selbst ins Betragsfeld getippt, obwohl das Vorzeichen eigentlich über den Ausgabe/Einnahme-Umschalter gesteuert wird.
+*   **Root Cause gefunden:** In allen Formularen mit Ausgabe/Einnahme-Umschalter galt `amount: sign === 'income' ? cents : -cents`. Tippt der Nutzer selbst ein "-840" bei bereits ausgewähltem "Ausgabe", liefert `eurosToCents("-840")` bereits `-84000`; die anschließende Negation (`-cents`) macht daraus **+84000** — die Buchung wird dadurch fälschlich als Einnahme gespeichert und verschwindet aus allen `amount < 0`-gefilterten Fixkosten-/Ausgaben-Berechnungen, ohne dass eine Fehlermeldung erscheint.
+*   **Fix:** an allen vier betroffenen Stellen (`RecurringTransactionsPanel.tsx`, `QuickAddPage.tsx`, `TransactionsPage.tsx` Bearbeiten-Formular, `TransactionsPage.tsx` Split-Formular inkl. `splitTotalCents`-Summenanzeige) den geparsten Centbetrag zuerst durch `Math.abs(eurosToCents(amount))` normalisiert, bevor das Vorzeichen vom Umschalter angewendet wird — ein versehentlich mitgetipptes Minus wird jetzt einfach ignoriert, der Umschalter bleibt die alleinige Quelle der Wahrheit fürs Vorzeichen. **Bewusst nicht** in `eurosToCents()` selbst zentralisiert: die Funktion wird auch für Felder ohne Umschalter verwendet, wo ein negativer Wert legitim ist (`BalanceSettings.tsx`: Startsaldo, Saldo-Abgleich — beides kann berechtigterweise negativ sein, z. B. bei einem Dispo/Überzug).
+*   **Zweiter, damit zusammenhängender Punkt:** Nutzer wunderte sich, dass die Dashboard-Kachel "Fixkosten" den *kommenden* Zeitraum (23. Sep – 22. Okt) zeigt statt des *aktuellen* (23. Aug – 22. Sep) — das war die ursprünglich beabsichtigte Vorschau-Semantik dieser Kachel aus einer früheren Session, deckt aber nicht ab, was der Nutzer eigentlich sehen wollte ("Gesamtsaldo minus Fixkosten für den laufenden 23.-23.-Zyklus"). Diese Zahl existierte technisch schon (`outstandingFixedCostsCents`, fließt bereits korrekt in die "Frei verfügbar"-Berechnung der Hero-Card ein), war aber nirgends als eigene, sichtbare Kachel ausgewiesen. **`DashboardPage.tsx`:** neue Kachel "Fixkosten `{periodLabel}`" (aktueller Zeitraum) direkt neben der bestehenden "Fixkosten `{nextPeriodLabel}`"-Kachel (jetzt beide nebeneinander in einem 2-Spalten-Grid) — verifiziert, dass `getFinancialPeriod()`/`getNextFinancialPeriod()` selbst korrekt sind (das 23.-23.-Fenster wird als ein durchgehendes Intervall berechnet, nicht an der Kalendermonatsgrenze zerschnitten — per Code-Review nachvollzogen, kein Bug in `financialPeriod.ts`).
+*   **Dritter, unabhängiger Punkt aus derselben Test-Session:** Nutzer lobte den OCR-Belegscan, wünschte sich aber zusätzlich die Möglichkeit, ein bereits vorhandenes Bild (z. B. eine in einer anderen App gespeicherte Rechnung) statt zwingend live zu fotografieren. Ursache: `capture="environment"` auf dem `<input type="file">` in `QuickAddPage.tsx` zwingt mobile Browser, direkt die Kamera zu öffnen, statt die native Auswahl ("Kamera" / "Fotomediathek" / "Dateien") anzuzeigen. **Fix:** `capture`-Attribut entfernt — Kamera-Aufnahme bleibt weiterhin eine der Optionen im nativen Auswahldialog, zusätzlich aber jetzt auch die Auswahl eines bestehenden Bilds.
+*   **Verifiziert:** kein Backend-Code betroffen. Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei (weiterhin nur die unkritische Vite-Chunk-Size-Warnung).
+
+#### 2. Warum wurde es getan?
+*   Direkte Nutzermeldungen mehrerer konkreter Beobachtungen beim eigenen Ausprobieren nach dem letzten Deployment (Vorzeichen-Bug, fehlende Zeitraum-Kachel, Beleg-Upload-Wunsch). Der "Netto-Betrag"-Punkt des Nutzers stellte sich als Missverständnis heraus (die App führt keinerlei Brutto/Netto-Umrechnung durch) — stattdessen auf die bereits existierende "Saldo abgleichen"-Funktion unter Einstellungen → Kontostand verwiesen, die genau die gewünschte "korrigiere diesen Wert"-Funktionalität bereits bietet.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — reine Frontend-Logik-Korrektur plus eine neue Anzeige-Kachel.
+*   **Wichtig — betrifft bereits gespeicherte Daten:** Der Code-Fix verhindert das Problem nur für *künftige* Eingaben. Die bereits fehlerhaft gespeicherten Regeln "Miete" und "Kredit" (aktuell mit positivem statt negativem Betrag in der Datenbank) müssen vom Nutzer manuell korrigiert werden — Bearbeiten öffnen, Ausgabe/Einnahme-Umschalter explizit auf "Ausgabe" stellen (das Formular übernimmt beim Öffnen zunächst das aktuell falsche Vorzeichen und zeigt "Einnahme" vorausgewählt), speichern. Kein automatisches Daten-Reparaturskript geschrieben — bei nur zwei betroffenen, dem Nutzer bekannten Einträgen wäre das unnötiger Aufwand; sollten mehr betroffene Einträge auffallen, ggf. in einer künftigen Session nachbessern.
+*   Rest von Phase 13 (Sankey, Tags, Steuer-Marker, Push, App Shortcuts, Batch-Bearbeitung) weiterhin offen.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Nutzer muss nach dem Deployment die betroffenen Bestandsdaten (Miete, Kredit) manuell korrigieren — [ ] Überprüfung erforderlich
+
+---
+
 ### 📋 Schritt-Log: Flag-Auswertung / Einsparpotenzial (Phase 13, zweite Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 04:45`
 
