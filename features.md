@@ -76,6 +76,7 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 ## 📱 PWA & Offline-Verhalten
 
 - **Installierbar** auf dem Homescreen (Web-App-Manifest, Standalone-Modus, App-Icons inkl. maskable Icon).
+- **App Shortcuts:** langes Drücken/Rechtsklick auf das installierte App-Icon bietet direkte Sprünge zu "Neue Buchung", "Transaktionen" und "Budgets", ohne erst über das Dashboard navigieren zu müssen.
 - **App-Shell-Caching** über einen Service Worker (Workbox) — die App lädt auch offline.
 - **SPA-Offline-Fallback:** ein Reload auf einer Unterseite (z. B. `/budgets`) funktioniert auch offline dank gecachtem `index.html`.
 - **Lokaler Datencache (IndexedDB):** Kategorien, Transaktionen und Budgets werden gecacht und bei fehlender Verbindung aus dem Cache angezeigt.

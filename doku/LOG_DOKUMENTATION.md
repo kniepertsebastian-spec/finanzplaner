@@ -2,6 +2,26 @@
 
 ---
 
+### 📋 Schritt-Log: App Shortcuts (Phase 13, erste Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 11:45`
+
+#### 1. Was wurde getan?
+*   Erster (und laut Roadmap-Text kleinster) Punkt aus Phase 13: "App Shortcuts". Reine Web-App-Manifest-Erweiterung, kein neuer Anwendungscode.
+*   **`frontend/vite.config.ts`:** `shortcuts`-Array im `VitePWA`-Manifest ergänzt — drei Einträge ("Neue Buchung" → `/add`, "Transaktionen" → `/transactions`, "Budgets" → `/budgets`), jeweils mit dem bestehenden `icon-192.png` als Icon (keine dedizierten Shortcut-Icon-Assets vorhanden, daher bewusst das App-Icon wiederverwendet statt neue Grafiken anzulegen).
+*   **Verifiziert:** `npm run build` erzeugt ein `dist/manifest.webmanifest` mit korrekt befülltem `shortcuts`-Array (per `cat` geprüft). `npx tsc --noEmit` fehlerfrei. Kein Backend-Code betroffen, keine Migration.
+
+#### 2. Warum wurde es getan?
+*   Fortsetzung des Nutzerauftrags ("finish phase 12/13"), jetzt in Phase 13 — als erster (kleinster) Punkt gewählt, um zügig Fortschritt zu zeigen, bevor die größeren Phase-13-Punkte (Tags, Steuer-Marker, Push, Sankey) angegangen werden.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Keine Migration, kein neues npm-Package — reine Konfigurationsänderung im bestehenden `vite-plugin-pwa`-Setup.
+*   Wirkt erst nach einer echten Neuinstallation/einem Update der PWA auf einem Gerät (App-Shortcuts werden vom Betriebssystem beim Hinzufügen zum Homescreen aus dem Manifest gelesen) — auf dem Entwicklungsgerät des Nutzers nach dem nächsten Deploy + Reinstall/Update der installierten App sichtbar.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (echte Installation auf einem Gerät, da Shortcuts nicht im Browser-Tab, sondern nur über das installierte Homescreen-Icon sichtbar sind)
+
+---
+
 ### 📋 Schritt-Log: Micro-Interactions (Phase 12, fünfte und letzte Teilscheibe) — Code fertig, noch nicht deployed — **Phase 12 vollständig abgeschlossen**
 **Zeitstempel:** `2026-08-25 11:15`
 

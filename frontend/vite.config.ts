@@ -30,6 +30,28 @@ export default defineConfig({
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
+        // Long-press/right-click quick actions on the home-screen icon (Android/Windows/macOS) —
+        // reuses the existing app icon since there are no dedicated per-shortcut icon assets.
+        shortcuts: [
+          {
+            name: 'Neue Buchung',
+            short_name: 'Neue Buchung',
+            url: '/add',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: 'Transaktionen',
+            short_name: 'Transaktionen',
+            url: '/transactions',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: 'Budgets',
+            short_name: 'Budgets',
+            url: '/budgets',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+        ],
       },
       devOptions: {
         enabled: true,
