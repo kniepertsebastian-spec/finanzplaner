@@ -5,6 +5,7 @@ import { BudgetProgressBar } from '../components/BudgetProgressBar';
 import { CashflowChart } from '../components/charts/CashflowChart';
 import { CategoryDonutChart } from '../components/charts/CategoryDonutChart';
 import { IncomeExpenseChart } from '../components/charts/IncomeExpenseChart';
+import { SankeyChart } from '../components/charts/SankeyChart';
 import { HeroCard } from '../components/HeroCard';
 import { Skeleton } from '../components/Skeleton';
 import { StatTile } from '../components/StatTile';
@@ -26,6 +27,7 @@ import {
   daysUntil,
   expensesByCategory,
   firstShortfall,
+  moneyFlow,
   monthlyTotals,
   nextIncomeDueDate,
   priceIncreaseRules,
@@ -121,6 +123,7 @@ export function DashboardPage() {
   const savingsRatePct = savingsRate(incomeCents, expenseCents);
   const rule503020 = budgetTypeBreakdown(transactions, categories, incomeCents);
   const categoryShares = expensesByCategory(transactions, categories);
+  const moneyFlowData = moneyFlow(transactions, categories);
 
   const totalBudgetCents = budgets.reduce((sum, b) => sum + b.amount, 0);
   const remainingCents = projectRemainingBudget(totalBudgetCents, expenseCents, elapsed, days);
@@ -358,6 +361,13 @@ export function DashboardPage() {
         <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <h2 className="mb-4 text-sm font-medium text-neutral-700 dark:text-neutral-300">Ausgaben nach Kategorie</h2>
           <CategoryDonutChart shares={categoryShares} isDark={isDark} />
+        </div>
+      )}
+
+      {moneyFlowData.items.length > 0 && (
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="mb-4 text-sm font-medium text-neutral-700 dark:text-neutral-300">Geldfluss</h2>
+          <SankeyChart data={moneyFlowData} isDark={isDark} />
         </div>
       )}
 

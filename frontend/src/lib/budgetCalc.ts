@@ -303,6 +303,50 @@ export interface CategoryShare {
   cents: number;
 }
 
+export interface MoneyFlowNode {
+  key: string; // categoryId, or a synthetic key for the "Gespart" pseudo-category
+  name: string;
+  cents: number;
+}
+
+export interface MoneyFlowData {
+  totalIncomeCents: number;
+  items: MoneyFlowNode[]; // expense categories (desc by amount) + "Gespart" last, if any is left over
+}
+
+const SAVED_KEY = '__saved__';
+
+// Money-flow diagram data for a simple two-column Sankey-style visualization: all income pooled
+// into a single "Einnahmen" source, fanning out to expense categories plus "Gespart" (unspent
+// income). A three-column source->hub->categories layout would show individual income categories
+// too, but with only 1-2 income categories in practice that's not worth the extra layout
+// complexity — see SankeyChart.tsx for why this is hand-rolled SVG rather than a charting library.
+export function moneyFlow(transactions: Transaction[], categories: Category[]): MoneyFlowData {
+  const nameById = new Map(categories.map((c) => [c.id, c.name]));
+  let totalIncomeCents = 0;
+  const expenseByCategoryId = new Map<string, number>();
+
+  for (const t of transactions) {
+    if (t.amount >= 0) {
+      totalIncomeCents += t.amount;
+    } else {
+      expenseByCategoryId.set(t.categoryId, (expenseByCategoryId.get(t.categoryId) ?? 0) + Math.abs(t.amount));
+    }
+  }
+
+  const items: MoneyFlowNode[] = Array.from(expenseByCategoryId.entries())
+    .map(([key, cents]) => ({ key, name: nameById.get(key) ?? 'Unbekannt', cents }))
+    .sort((a, b) => b.cents - a.cents);
+
+  const totalExpenseCents = items.reduce((sum, i) => sum + i.cents, 0);
+  const leftover = totalIncomeCents - totalExpenseCents;
+  if (leftover > 0) {
+    items.push({ key: SAVED_KEY, name: 'Gespart', cents: leftover });
+  }
+
+  return { totalIncomeCents, items };
+}
+
 // Expense totals per category for the given (already period-scoped) transactions, sorted largest
 // first — feeds the category-share donut chart. Categories with zero expense are omitted.
 export function expensesByCategory(transactions: Transaction[], categories: Category[]): CategoryShare[] {

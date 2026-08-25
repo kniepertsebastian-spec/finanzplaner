@@ -2,6 +2,31 @@
 
 ---
 
+### 📋 Schritt-Log: Sankey-Geldflussdiagramm (Phase 13, sechste und letzte Teilscheibe) — Code fertig, noch nicht deployed — **Phase 13 vollständig abgeschlossen**
+**Zeitstempel:** `2026-08-25 16:30`
+
+#### 1. Was wurde getan?
+*   Sechster und letzter Punkt aus Phase 13: "Sankey-Geldflussdiagramm" (Teil von "Erweiterte Analytics" im Roadmap-Text — Sparquote und 50/30/20-Auswertung waren bereits aus früheren Phasen vorhanden, nur das Sankey-Diagramm fehlte noch). Mit dieser Teilscheibe ist Phase 13 (Auswertungen, Tags & PWA-Power-Features) vollständig umgesetzt.
+*   **Erster Versuch (verworfen): `chartjs-chart-sankey`-Plugin.** Da Chart.js selbst keine Sankey-Unterstützung hat, zunächst das einzige Chart.js-v4-kompatible Sankey-Plugin (`chartjs-chart-sankey@0.15.0`) installiert und eingebunden. Beim isolierten Test-Rendern (eigenständiges HTML + esbuild-Bundle + Playwright-Screenshot, dieselbe Technik wie bei allen bisherigen Chart-Verifikationen dieser Session) zeigte sich ein klar fehlerhaftes Layout für genau die hier benötigte Topologie ("eine Quelle verzweigt sich zu mehreren Zielen"): der Knoten mit nur einer eingehenden/ausgehenden Verbindung wurde als riesiges, die halbe Zeichenfläche füllendes Rechteck gerendert statt als schmaler Knotenbalken mit sauberem Fluss-Band. Mit dem exakten README-Beispiel (mehrere Verbindungen pro Knoten) rendert die Bibliothek dagegen korrekt — das Problem trat spezifisch nur bei "1 Quelle → viele Ziele" auf, auch mit expliziten `column`-Zuordnungen und `modeX: 'even'` nicht behebbar. Statt weiter an einer Bibliothek mit einem offenbar spezifischen Layout-Bug zu debuggen, wie in `context.md`/Roadmap ohnehin als Möglichkeit vorgesehen ("SVG von Hand oder neue Bibliothek") auf eine handgebaute Lösung umgestiegen; das Plugin wieder deinstalliert.
+*   **Umgesetzt: handgebaute SVG-Komponente.** Da die Topologie für diese App ohnehin denkbar einfach ist (alle Einnahmen fließen in einen einzigen "Einnahmen"-Knoten, der sich zu Ausgabenkategorien + "Gespart" verzweigt — keine echte 3-Spalten-Struktur mit mehreren Einnahmequellen nötig, da die meisten Nutzer 1–2 Einnahmekategorien haben), ließ sich die Positionsberechnung direkt von Hand herleiten: pro rechtem Knoten eine proportionale Y-Spanne, verbunden mit dem linken Vollhöhen-Knoten über ein klassisches Zwei-Bézier-"Ribbon" (`ribbonPath()` in `SankeyChart.tsx`). Kein Kreuzungsproblem, da es nur eine Quelle gibt — die Y-Bereiche stimmen auf beiden Seiten überein.
+*   **`budgetCalc.ts`:** `sankeyFlows()` (generisches `{from,to,flow}`-Format für die verworfene Bibliothek) durch `moneyFlow()` ersetzt — liefert `{ totalIncomeCents, items }`, wobei `items` bereits nach Betrag absteigend sortierte Ausgabenkategorien plus optional "Gespart" sind (behält Kategorie-`id`s statt nur Namen, für stabile Farbzuordnung).
+*   **Neue gemeinsame Datei `frontend/src/lib/chartPalette.ts`:** die validierte 8-Slot-Farbpalette aus `CategoryDonutChart.tsx` herausgezogen (jetzt von Donut *und* Sankey geteilt) — dieselbe Kategorie bekommt dadurch in beiden Charts dieselbe Farbe (beide sortieren nach Betrag absteigend und weisen Paletten-Slots per Index zu).
+*   **Dashboard-Integration:** neue Karte "Geldfluss" unter der Donut-Karte, nur sichtbar wenn `moneyFlowData.items.length > 0`.
+*   **Verifiziert:** kein Backend-Code betroffen, keine Migration. Frontend — `npx tsc --noEmit` und `npm run build` beide fehlerfrei (Bundle-Größe nach Deinstallation des verworfenen Plugins wieder auf dem vorherigen Stand). Visuell per **echtem Komponenten-Render** verifiziert (nicht nur Markup-Mockup diesmal): `SankeyChart.tsx` mit React + PrivacyModeProvider per esbuild zu einem eigenständigen Bundle gebündelt und per Playwright in Light- *und* Dark-Mode gerendert — Proportionen korrekt (kleine Kategorie "Freizeit" als schmales, aber noch lesbares Band; "Miete"/"Gespart" als größte Bänder), Beschriftungen lesbar in beiden Themes, Zähl-Animation der Gesamteinnahmen-Zeile lief sichtbar mit.
+
+#### 2. Warum wurde es getan?
+*   Abschluss des Nutzerauftrags für Phase 13 ("finish phase 12/13").
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — reine Frontend-Visualisierung.
+*   **Kein neues npm-Package** — im Gegenteil, eine zuvor installierte Abhängigkeit (`chartjs-chart-sankey`) wurde wieder entfernt, da sie sich für den konkreten Anwendungsfall als fehlerhaft erwies.
+*   **Phase 13 (Auswertungen, Tags & PWA-Power-Features) ist damit vollständig abgeschlossen.** Damit sind sowohl Phase 12 als auch Phase 13 komplett — als Nächstes laut Nutzerpriorisierung: CSV-Import (Rest aus Phase 11, wartet auf das echte Bank-CSV-Format des Nutzers), danach zuletzt Phase 7 (Datenexport/DSGVO/Unit-Tests).
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [x] Visuell geprüft (echter Komponenten-Render, Light + Dark)
+
+---
+
 ### 📋 Schritt-Log: Web Push Notifications (Phase 13, fünfte Teilscheibe) — Code fertig, noch nicht deployed — **Migration + neue Server-Konfiguration erforderlich**
 **Zeitstempel:** `2026-08-25 15:20`
 
