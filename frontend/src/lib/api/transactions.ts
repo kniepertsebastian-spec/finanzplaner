@@ -23,6 +23,13 @@ export interface TransactionSplitInput {
   splits: { amount: number; categoryId: string }[];
 }
 
+export interface BulkUpdatePatch {
+  categoryId?: string;
+  avoidable?: boolean;
+  inefficient?: boolean;
+  tooExpensive?: boolean;
+}
+
 export const transactionsApi = {
   list: (params?: TransactionListParams) =>
     apiClient.get<Transaction[]>('/transactions', { params }).then((r) => r.data),
@@ -32,4 +39,8 @@ export const transactionsApi = {
   update: (id: string, dto: Partial<TransactionInput>) =>
     apiClient.patch<Transaction>(`/transactions/${id}`, dto).then((r) => r.data),
   remove: (id: string) => apiClient.delete(`/transactions/${id}`).then((r) => r.data),
+  bulkRemove: (ids: string[]) =>
+    apiClient.post<{ count: number }>('/transactions/bulk-delete', { ids }).then((r) => r.data),
+  bulkUpdate: (ids: string[], patch: BulkUpdatePatch) =>
+    apiClient.post<{ count: number }>('/transactions/bulk-update', { ids, patch }).then((r) => r.data),
 };

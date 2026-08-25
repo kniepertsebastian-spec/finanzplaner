@@ -7,14 +7,14 @@ import { TransactionsService } from './transactions.service';
 describe('TransactionsService', () => {
   let service: TransactionsService;
   let prisma: {
-    transaction: { aggregate: jest.Mock; create: jest.Mock };
+    transaction: { aggregate: jest.Mock; create: jest.Mock; deleteMany: jest.Mock; updateMany: jest.Mock };
     category: { findFirst: jest.Mock };
     $transaction: jest.Mock;
   };
 
   beforeEach(async () => {
     prisma = {
-      transaction: { aggregate: jest.fn(), create: jest.fn() },
+      transaction: { aggregate: jest.fn(), create: jest.fn(), deleteMany: jest.fn(), updateMany: jest.fn() },
       category: { findFirst: jest.fn() },
       $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
     };
@@ -124,6 +124,46 @@ describe('TransactionsService', () => {
       ).rejects.toThrow(ForbiddenException);
 
       expect(prisma.transaction.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('bulkRemove', () => {
+    it('deletes only the given ids scoped to the current user', async () => {
+      prisma.transaction.deleteMany.mockResolvedValue({ count: 2 });
+
+      const result = await service.bulkRemove('user-1', { ids: ['tx-1', 'tx-2'] });
+
+      expect(prisma.transaction.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['tx-1', 'tx-2'] }, userId: 'user-1' },
+      });
+      expect(result).toEqual({ count: 2 });
+    });
+  });
+
+  describe('bulkUpdate', () => {
+    it('applies the patch to all given ids scoped to the current user', async () => {
+      prisma.transaction.updateMany.mockResolvedValue({ count: 3 });
+
+      const result = await service.bulkUpdate('user-1', {
+        ids: ['tx-1', 'tx-2', 'tx-3'],
+        patch: { avoidable: true },
+      });
+
+      expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['tx-1', 'tx-2', 'tx-3'] }, userId: 'user-1' },
+        data: { categoryId: undefined, avoidable: true, inefficient: undefined, tooExpensive: undefined },
+      });
+      expect(result).toEqual({ count: 3 });
+    });
+
+    it('rejects when the patch references a category the user does not own', async () => {
+      prisma.category.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.bulkUpdate('user-1', { ids: ['tx-1'], patch: { categoryId: 'not-mine' } }),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(prisma.transaction.updateMany).not.toHaveBeenCalled();
     });
   });
 });

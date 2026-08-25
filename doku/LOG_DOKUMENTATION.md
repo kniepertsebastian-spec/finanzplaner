@@ -2,6 +2,29 @@
 
 ---
 
+### 📋 Schritt-Log: Batch-Bearbeitung in der Transaktionsliste (Phase 13, zweite Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 12:20`
+
+#### 1. Was wurde getan?
+*   Zweiter Punkt aus Phase 13: "Batch-Bearbeitung in der Transaktionsliste — Mehrfachauswahl + Massenbearbeitung/-löschung."
+*   **Backend:** zwei neue Endpunkte `POST /transactions/bulk-delete` und `POST /transactions/bulk-update` (bewusst als POST mit einer id-Liste im Body, nicht als DELETE/PATCH `:id`-Routen, um jede Kollision mit den bestehenden `:id`-Routen auszuschließen). Neue DTOs `BulkRemoveTransactionsDto` (`ids: string[]`) und `BulkUpdateTransactionsDto` (`ids` + verschachteltes `patch`-Objekt, das nur Kategorie und die drei Flags abdeckt — Betrag/Beschreibung/Datum bleiben bewusst Einzel-Buchungs-Edits, da eine gemeinsame Änderung dort selten sinnvoll ist). `TransactionsService.bulkRemove`/`bulkUpdate` nutzen Prisms `deleteMany`/`updateMany`, beide **zusätzlich zur id-Liste immer nach `userId` gefiltert** — eine fremde id in der Liste wird so stillschweigend übersprungen statt versehentlich fremde Daten zu berühren. Kategorie-Eigentümerschaft wird bei `bulkUpdate` genauso geprüft wie beim Einzel-Update.
+*   **Frontend `TransactionsPage.tsx`:** Checkbox-Spalte je Zeile plus "Alle auswählen" in der Kopfzeile (`selectedIds: Set<string>`). Sobald mindestens eine Buchung ausgewählt ist, erscheint eine Toolbar oberhalb der Tabelle: Kategorie-Dropdown (wendet sofort bei Auswahl an), drei Buttons zum Markieren aller Ausgewählten als vermeidbar/ineffizient/zu hoch, ein Löschen-Button (mit `window.confirm`-Sicherheitsabfrage wie bei den bestehenden Einzel-Lösch-Aktionen) sowie "Auswahl aufheben". Nach jeder Bulk-Aktion wird die Auswahl geleert und neu geladen. `load()` entfernt außerdem bei jedem Neuladen automatisch id's aus der Auswahl, die nicht mehr existieren (z. B. wenn zwischenzeitlich eine einzelne der ausgewählten Buchungen über die bestehende Einzel-Löschen-Aktion entfernt wurde) — verhindert eine unsichtbar falsche Anzahl in der Toolbar.
+*   **`frontend/src/lib/api/transactions.ts`:** `bulkRemove(ids)` und `bulkUpdate(ids, patch)` ergänzt.
+*   **Verifiziert:** Backend — neue Unit-Tests für `bulkRemove`/`bulkUpdate` (Erfolgsfall + Kategorie-Eigentümerschaftsprüfung), komplette Backend-Testsuite weiterhin grün (61/61). Frontend — `npx tsc --noEmit` und `npm run build` beide fehlerfrei. Visuell per eigenständigem HTML-Mockup + Playwright-Screenshot geprüft (Toolbar-Layout, Checkbox-Zustände, ausgewählte Zeilen farblich hervorgehoben).
+
+#### 2. Warum wurde es getan?
+*   Fortsetzung des Nutzerauftrags ("finish phase 12/13") in Phase 13.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — neue Endpunkte, kein Schema-Wechsel.
+*   Kein neues npm-Package.
+*   Sicherheitsrelevant, aber bewusst so entschieden: die Bulk-Endpunkte scheitern nicht mit einem Fehler, wenn eine id in der Liste nicht (mehr) existiert oder einem anderen Nutzer gehört — sie wird einfach ignoriert (`deleteMany`/`updateMany` statt einzelner `findFirst`+`delete`-Aufrufe je id). Für eine Single-User-App ohne Mehrbenutzer-Betrieb unkritisch.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [x] Visuell geprüft (isoliertes HTML-Mockup/Playwright) — [ ] Funktionaler Live-Test mit echten Daten steht aus (kein Backend/DB in dieser Remote-Session verfügbar)
+
+---
+
 ### 📋 Schritt-Log: App Shortcuts (Phase 13, erste Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 11:45`
 

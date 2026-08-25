@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CategorizationService } from './categorization.service';
+import { BulkRemoveTransactionsDto } from './dto/bulk-remove-transactions.dto';
+import { BulkUpdateTransactionsDto } from './dto/bulk-update-transactions.dto';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { CreateTransactionSplitDto } from './dto/create-transaction-split.dto';
 import { FindTransactionsQueryDto } from './dto/find-transactions-query.dto';
@@ -137,6 +139,33 @@ export class TransactionsService {
   async remove(userId: string, id: string) {
     await this.findOne(userId, id);
     await this.prisma.transaction.delete({ where: { id } });
+  }
+
+  // Scoped by userId in the `where` clause (not just the id list) so a stray id from another user
+  // can never be deleted/edited — Prisma's *Many operations silently skip non-matching rows rather
+  // than throwing, which is the right behavior here (no need to fail the whole batch over one id
+  // that no longer exists, e.g. deleted concurrently in another tab).
+  async bulkRemove(userId: string, dto: BulkRemoveTransactionsDto) {
+    const result = await this.prisma.transaction.deleteMany({
+      where: { id: { in: dto.ids }, userId },
+    });
+    return { count: result.count };
+  }
+
+  async bulkUpdate(userId: string, dto: BulkUpdateTransactionsDto) {
+    if (dto.patch.categoryId) {
+      await this.assertCategoryOwnership(userId, dto.patch.categoryId);
+    }
+    const result = await this.prisma.transaction.updateMany({
+      where: { id: { in: dto.ids }, userId },
+      data: {
+        categoryId: dto.patch.categoryId,
+        avoidable: dto.patch.avoidable,
+        inefficient: dto.patch.inefficient,
+        tooExpensive: dto.patch.tooExpensive,
+      },
+    });
+    return { count: result.count };
   }
 
   // Sum of every booked transaction (income positive, expense negative) — the delta since

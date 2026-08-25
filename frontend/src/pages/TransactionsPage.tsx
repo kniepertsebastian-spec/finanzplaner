@@ -79,11 +79,19 @@ export function TransactionsPage() {
   const [splitError, setSplitError] = useState<string | null>(null);
   const [splitSubmitting, setSplitSubmitting] = useState(false);
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkCategoryId, setBulkCategoryId] = useState('');
+
   const load = () => {
     Promise.all([transactionsApi.list(), categoriesApi.list()])
       .then(([t, c]) => {
         setTransactions(t);
         setCategories(c);
+        // Drop any selected id that no longer exists (e.g. deleted via the single-row action)
+        // instead of leaving a stale, invisible entry in the selection count.
+        const stillPresent = new Set(t.map((tx) => tx.id));
+        setSelectedIds((prev) => new Set([...prev].filter((id) => stillPresent.has(id))));
       })
       .catch(() => setError('Transaktionen konnten nicht geladen werden.'));
   };
@@ -151,6 +159,62 @@ export function TransactionsPage() {
     if (!window.confirm(`Buchung "${t.description}" wirklich löschen?`)) return;
     await transactionsApi.remove(t.id);
     load();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const allSelected = transactions !== null && transactions.length > 0 && selectedIds.size === transactions.length;
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(transactions?.map((t) => t.id)));
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`${selectedIds.size} Buchung(en) wirklich löschen?`)) return;
+    setBulkBusy(true);
+    try {
+      await transactionsApi.bulkRemove([...selectedIds]);
+      clearSelection();
+      load();
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkCategoryChange = async (newCategoryId: string) => {
+    if (!newCategoryId) return;
+    setBulkBusy(true);
+    try {
+      await transactionsApi.bulkUpdate([...selectedIds], { categoryId: newCategoryId });
+      clearSelection();
+      setBulkCategoryId('');
+      load();
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkFlag = async (flag: 'avoidable' | 'inefficient' | 'tooExpensive') => {
+    setBulkBusy(true);
+    try {
+      await transactionsApi.bulkUpdate([...selectedIds], { [flag]: true });
+      clearSelection();
+      load();
+    } finally {
+      setBulkBusy(false);
+    }
   };
 
   const resetSplitForm = () => {
@@ -497,10 +561,80 @@ export function TransactionsPage() {
         </form>
       )}
 
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+          <span className="font-medium text-blue-900 dark:text-blue-200">{selectedIds.size} ausgewählt</span>
+          <select
+            value={bulkCategoryId}
+            disabled={bulkBusy}
+            onChange={(e) => {
+              setBulkCategoryId(e.target.value);
+              handleBulkCategoryChange(e.target.value);
+            }}
+            className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          >
+            <option value="">Kategorie ändern…</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={() => handleBulkFlag('avoidable')}
+            className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-600 hover:bg-white disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            Als vermeidbar markieren
+          </button>
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={() => handleBulkFlag('inefficient')}
+            className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-600 hover:bg-white disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            Als ineffizient markieren
+          </button>
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={() => handleBulkFlag('tooExpensive')}
+            className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-600 hover:bg-white disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            Als zu hoch markieren
+          </button>
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={handleBulkDelete}
+            className="flex items-center gap-1 rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            <Trash2 size={14} /> Löschen
+          </button>
+          <button
+            type="button"
+            onClick={clearSelection}
+            className="ml-auto flex items-center gap-1 text-xs text-blue-900 hover:underline dark:text-blue-200"
+          >
+            <X size={14} /> Auswahl aufheben
+          </button>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
             <tr>
+              <th className="px-4 py-2">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  aria-label="Alle auswählen"
+                  className="rounded border-neutral-300 dark:border-neutral-700"
+                />
+              </th>
               <th className="px-4 py-2 font-medium">Datum</th>
               <th className="px-4 py-2 font-medium">Beschreibung</th>
               <th className="px-4 py-2 font-medium">Kategorie</th>
@@ -513,7 +647,7 @@ export function TransactionsPage() {
               <Fragment key={group.items[0].id}>
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="bg-neutral-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:bg-neutral-800/60 dark:text-neutral-400"
                   >
                     {group.label}
@@ -521,6 +655,15 @@ export function TransactionsPage() {
                 </tr>
                 {group.items.map((t) => (
                   <tr key={t.id} className="border-b border-neutral-100 last:border-0 dark:border-neutral-800">
+                <td className="px-4 py-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(t.id)}
+                    onChange={() => toggleSelect(t.id)}
+                    aria-label={`"${t.description}" auswählen`}
+                    className="rounded border-neutral-300 dark:border-neutral-700"
+                  />
+                </td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {dateFormatter.format(new Date(t.date))}
                 </td>
@@ -612,7 +755,7 @@ export function TransactionsPage() {
             ))}
             {transactions.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-neutral-400 dark:text-neutral-500">
+                <td colSpan={6} className="px-4 py-6 text-center text-neutral-400 dark:text-neutral-500">
                   Noch keine Transaktionen vorhanden.
                 </td>
               </tr>
