@@ -11,18 +11,18 @@ Nutzer bat darum, Phase 12 (UI/UX Redesign) und Phase 13 (Auswertungen, Tags & P
   - Frontend: `npx tsc --noEmit` und `npm run build` jeweils fehlerfrei. Chart-Ästhetik, Privacy-Mode und Micro-Interactions zusätzlich visuell per Playwright-Screenshots geprüft (eigenständige HTML-Datei, da React-Komponenten nicht trivial isoliert testbar sind); Icon-Badges nur über Build/Typecheck verifiziert (triviale, rein deklarative Komponente — Span mit bereits im Projekt etablierten Tailwind-Pastellklassen).
 - **Aus Phase 13 bereits erledigt:**
   - App Shortcuts (`vite.config.ts`, `shortcuts`-Array im PWA-Manifest — "Neue Buchung"/"Transaktionen"/"Budgets"). Keine Migration, kein Backend betroffen.
-  - Batch-Bearbeitung in der Transaktionsliste (Mehrfachauswahl per Checkbox + Toolbar für Massen-Kategorieänderung/-Flags/-Löschung). Backend: neue `POST /transactions/bulk-delete`/`bulk-update`-Endpunkte, immer zusätzlich nach `userId` gefiltert; neue Unit-Tests, komplette Backend-Suite weiterhin grün (61/61). Keine Migration.
-  - Beide committed & gepusht.
-- **Nächster Schritt:** mit dem nächsten Phase-13-Punkt weitermachen (Projektbezogene Tags, braucht eine Migration), siehe TODO-Liste unten.
+  - Batch-Bearbeitung in der Transaktionsliste (Mehrfachauswahl per Checkbox + Toolbar für Massen-Kategorieänderung/-Flags/-Löschung). Backend: neue `POST /transactions/bulk-delete`/`bulk-update`-Endpunkte, immer zusätzlich nach `userId` gefiltert. Keine Migration.
+  - Projektbezogene Tags (`#Urlaub2026` etc.) — neues `tags String[]`-Feld direkt am `Transaction`-Modell (kein eigenes Tag-Modell), editierbar im Bearbeiten-Formular, Filter-Chip-Leiste über der Transaktionsliste mit Summenanzeige für den gefilterten Tag. **⚠️ Neue Migration `20260825050000_add_transaction_tags` — muss beim nächsten Deploy per `prisma migrate deploy` angewendet werden**, sonst schlägt jede Transaktion mit Tags fehl (Feld existiert dann im Prisma-Client, aber nicht in der DB-Tabelle).
+  - Alle drei committed & gepusht. Backend-Testsuite komplett grün (66/66 nach der Tags-Teilscheibe).
+- **Nächster Schritt:** mit dem nächsten Phase-13-Punkt weitermachen (Steuer-Marker), siehe TODO-Liste unten.
 - **Noch NICHT deployed** (weiterhin kein Docker/SSH in dieser Session) — wie der gesamte Rest dieser Session.
 
 ## Offene TODOs — Reihenfolge für den Rest dieser Session
 
-Phase 12 ist komplett abgeschlossen. Aus Phase 13 bereits erledigt: App Shortcuts, Batch-Bearbeitung. Verbleibend aus Phase 13 (Reihenfolge: kleinster/einfachster Punkt zuerst):
-1. **Projektbezogene Tags** (`#Urlaub2026` etc.) — braucht neues Datenmodell (Migration).
-2. **Steuer-Marker** — Flag + gefilterter Jahres-Export samt Belegen (Export-Teil ggf. mit Phase 7 überschneidend, aber laut Roadmap hier als eigener, engerer Scope gemeint — nur steuerrelevante Buchungen).
-3. **Web Push Notifications** — braucht VAPID-Keys/Push-Subscription-Backend, größerer technischer Umfang.
-4. **Sankey-Geldflussdiagramm** — größter Einzelposten, keine Chart.js-Sankey-Fähigkeit im Projekt, braucht eigenen Ansatz (SVG von Hand oder neue Bibliothek).
+Phase 12 ist komplett abgeschlossen. Aus Phase 13 bereits erledigt: App Shortcuts, Batch-Bearbeitung, Projektbezogene Tags. Verbleibend aus Phase 13 (Reihenfolge: kleinster/einfachster Punkt zuerst):
+1. **Steuer-Marker** — Flag + gefilterter Jahres-Export samt Belegen (Export-Teil ggf. mit Phase 7 überschneidend, aber laut Roadmap hier als eigener, engerer Scope gemeint — nur steuerrelevante Buchungen).
+2. **Web Push Notifications** — braucht VAPID-Keys/Push-Subscription-Backend, größerer technischer Umfang.
+3. **Sankey-Geldflussdiagramm** — größter Einzelposten, keine Chart.js-Sankey-Fähigkeit im Projekt, braucht eigenen Ansatz (SVG von Hand oder neue Bibliothek).
 
 Nach jedem einzelnen Punkt: Doku (`features.md`, `doku/LOG_DOKUMENTATION.md`, dieses `context.md`) aktualisieren, committen, auf `claude/remote-control-finanzplaner-gbmdlb` **und** `main` pushen (etabliertes Muster dieser Session — Nutzer nutzt `main` für den Mini-PC-Pull).
 

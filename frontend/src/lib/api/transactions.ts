@@ -15,6 +15,7 @@ export interface TransactionInput {
   avoidable?: boolean;
   inefficient?: boolean;
   tooExpensive?: boolean;
+  tags?: string[];
 }
 
 export interface TransactionSplitInput {

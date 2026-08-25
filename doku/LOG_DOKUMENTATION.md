@@ -2,6 +2,29 @@
 
 ---
 
+### 📋 Schritt-Log: Projektbezogene Tags (Phase 13, dritte Teilscheibe) — Code fertig, noch nicht deployed — **Migration erforderlich**
+**Zeitstempel:** `2026-08-25 13:10`
+
+#### 1. Was wurde getan?
+*   Dritter Punkt aus Phase 13: "Projektbezogene Tags — beliebige Hashtags (`#Urlaub2026`, `#Renovierung`) für kategorieübergreifende Auswertungen."
+*   **Datenmodell:** bewusst *kein* eigenes `Tag`-Modell mit Fremdschlüssel-Beziehung angelegt — stattdessen ein einfaches `tags String[] @default([])`-Feld direkt am `Transaction`-Modell (Postgres-natives String-Array). Für eine Single-User-App in dieser Größenordnung deutlich einfacher als eine eigene Tag-Entität samt Join-Tabelle und CRUD-Endpunkten, deckt aber "beliebige, frei vergebene Hashtags" (kein Vorab-Anlegen nötig) genau ab. Neue Migration `20260825050000_add_transaction_tags` (`ALTER TABLE "Transaction" ADD COLUMN "tags" TEXT[] DEFAULT ARRAY[]::TEXT[]`), von Hand geschrieben (kein Datenbankzugriff in dieser Remote-Session, wie bei allen bisherigen Migrationen dieser Session) — **muss beim nächsten Deploy per `prisma migrate deploy` angewendet werden.**
+*   **Backend:** `CreateTransactionDto`/`UpdateTransactionDto` (Letzteres per `PartialType` automatisch mit abgedeckt) um optionales `tags?: string[]` erweitert. Neue `normalizeTags()`-Hilfsfunktion (`backend/src/transactions/normalize-tags.ts`) — entfernt ein optionales führendes `#`, trimmt Leerraum, verwirft leere Einträge sowie Duplikate (case-insensitive, behält aber die zuerst gesehene Schreibweise). In `create`/`update` angewendet; `undefined` (kein `tags`-Feld im Request) lässt das Feld unangetastet bzw. nutzt beim Anlegen den Schema-Default `[]` — nur ein explizit mitgeschicktes (ggf. leeres) Array ändert die Tags.
+*   **Frontend:** `Transaction.tags: string[]` im Typ ergänzt. Neue Komponente `TagBadge.tsx` (neutrale graue Pille, bewusst optisch von `CategoryBadge` unterschieden, da ein Tag keine Kategorie ist und nicht damit verwechselt werden soll). Neue Hilfsfunktion `frontend/src/lib/parseTags.ts` (spiegelt `normalizeTags` des Backends, splittet zusätzlich auf Leerzeichen/Kommas). `TransactionsPage.tsx`: neues "Tags"-Textfeld im Bearbeiten-Formular; Tag-Chips werden unter der Beschreibung je Zeile angezeigt; über der Tabelle eine Chip-Leiste mit allen bisher vergebenen Tags — Klick auf einen Chip filtert die (bereits nach Datum gruppierte) Liste auf genau diesen Tag und zeigt die Summe der gefilterten Buchungen. Die "Alle auswählen"-Checkbox und Massenbearbeitung aus der letzten Teilscheibe arbeiten jetzt korrekt auf der *gefilterten* Liste, nicht mehr immer auf allen Buchungen.
+*   **Verifiziert:** Backend — neue Unit-Tests (`normalize-tags.spec.ts` sowie `create()`-Tests für Normalisierung/Undefined-Fall in `transactions.service.spec.ts`), komplette Backend-Suite grün (66/66). `npx prisma generate` nach dem Schema-Update ausgeführt (nötig, damit der generierte Prisma-Client-Typ das neue Feld kennt — ohne das schlägt `tsc` fehl). Frontend — `npx tsc --noEmit` und `npm run build` beide fehlerfrei. Visuell per eigenständigem HTML-Mockup + Playwright-Screenshot geprüft (Chip-Leiste, aktiver/inaktiver Tag-Zustand, Tag-Chips je Zeile, Summenanzeige).
+
+#### 2. Warum wurde es getan?
+*   Fortsetzung des Nutzerauftrags ("finish phase 12/13") in Phase 13.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **⚠️ Migration erforderlich** — anders als die bisherigen Phase-12/13-Teilscheiben braucht dieser Schritt beim nächsten Deploy zusätzlich `docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy` (Teil der Standard-Deploy-Befehle, siehe unten — aber hier erstmals seit Längerem tatsächlich mit einer neuen Migration relevant).
+*   Kein neues npm-Package.
+*   Tags auf Split-Buchungen (`createSplit`) sind bewusst **nicht** unterstützt — Splits bleiben wie bisher nur über Betrag/Kategorie definiert; Tags lassen sich bei Bedarf nachträglich über die normale Bearbeiten-Funktion je Split-Teil ergänzen.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus (inkl. Migration!) — [x] Visuell geprüft (isoliertes HTML-Mockup/Playwright) — [ ] Funktionaler Live-Test mit echten Daten steht aus
+
+---
+
 ### 📋 Schritt-Log: Batch-Bearbeitung in der Transaktionsliste (Phase 13, zweite Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 12:20`
 

@@ -59,6 +59,7 @@ model Transaction {
   tooExpensive     Boolean  @default(false) // user-flagged: this specific booking costs more than it should (overpriced)
   isReconciliation Boolean  @default(false) // system-generated balance-adjustment booking from "Saldo abgleichen", not a real-world transaction
   splitGroupId     String? // shared id across sibling rows created by one "split into categories" action; null for ordinary transactions
+  tags             String[] @default([]) // free-form hashtags (e.g. "Urlaub2026") for cross-category evaluation, stored without the leading '#'
 
   userId String
   user   User   @relation(fields: [userId], references: [id])

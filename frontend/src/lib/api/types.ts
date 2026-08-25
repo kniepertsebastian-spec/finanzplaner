@@ -76,6 +76,7 @@ export interface Transaction {
   userId: string;
   categoryId: string;
   splitGroupId: string | null; // shared across sibling rows created by one "split into categories" action
+  tags: string[]; // free-form hashtags (e.g. "Urlaub2026"), stored without the leading '#'
 }
 
 export interface Budget {

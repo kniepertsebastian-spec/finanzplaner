@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsISO8601, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsISO8601, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class CreateTransactionDto {
   @IsInt()
@@ -27,4 +27,9 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsBoolean()
   tooExpensive?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 }

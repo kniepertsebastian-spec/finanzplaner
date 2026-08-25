@@ -4,10 +4,12 @@ import { Fragment, useEffect, useState, type FormEvent } from 'react';
 import { Amount } from '../components/Amount';
 import { CategoryBadge } from '../components/CategoryBadge';
 import { Skeleton } from '../components/Skeleton';
+import { TagBadge } from '../components/TagBadge';
 import { categoriesApi } from '../lib/api/categories';
 import { transactionsApi } from '../lib/api/transactions';
 import type { Category, Transaction } from '../lib/api/types';
 import { eurosToCents, formatCents } from '../lib/money';
+import { parseTags } from '../lib/parseTags';
 
 type Sign = 'expense' | 'income';
 
@@ -68,8 +70,11 @@ export function TransactionsPage() {
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [date, setDate] = useState('');
+  const [tagsInput, setTagsInput] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
 
   const [splitting, setSplitting] = useState(false);
   const [splitSign, setSplitSign] = useState<Sign>('expense');
@@ -105,6 +110,7 @@ export function TransactionsPage() {
     setDescription('');
     setCategoryId('');
     setDate('');
+    setTagsInput('');
     setFormError(null);
   };
 
@@ -115,6 +121,7 @@ export function TransactionsPage() {
     setDescription(t.description);
     setCategoryId(t.categoryId);
     setDate(t.date.slice(0, 10));
+    setTagsInput(t.tags.join(' '));
     setFormError(null);
   };
 
@@ -130,6 +137,7 @@ export function TransactionsPage() {
         description,
         categoryId,
         date,
+        tags: parseTags(tagsInput),
       });
       resetForm();
       load();
@@ -173,10 +181,19 @@ export function TransactionsPage() {
     });
   };
 
-  const allSelected = transactions !== null && transactions.length > 0 && selectedIds.size === transactions.length;
+  const visibleTransactions = (transactions ?? []).filter((t) => !tagFilter || t.tags.includes(tagFilter));
+
+  const allSelected = visibleTransactions.length > 0 && visibleTransactions.every((t) => selectedIds.has(t.id));
 
   const toggleSelectAll = () => {
-    setSelectedIds(allSelected ? new Set() : new Set(transactions?.map((t) => t.id)));
+    setSelectedIds((prev) => {
+      if (allSelected) {
+        const next = new Set(prev);
+        for (const t of visibleTransactions) next.delete(t.id);
+        return next;
+      }
+      return new Set([...prev, ...visibleTransactions.map((t) => t.id)]);
+    });
   };
 
   const clearSelection = () => setSelectedIds(new Set());
@@ -291,6 +308,9 @@ export function TransactionsPage() {
     siblings.push(t);
     splitSiblingsByGroupId.set(t.splitGroupId, siblings);
   }
+
+  const allTags = [...new Set(transactions.flatMap((t) => t.tags))].sort((a, b) => a.localeCompare(b, 'de'));
+  const tagFilterSumCents = visibleTransactions.reduce((sum, t) => sum + t.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -538,6 +558,18 @@ export function TransactionsPage() {
                 className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
               />
             </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                Tags (optional, mit Leerzeichen getrennt)
+              </label>
+              <input
+                type="text"
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                placeholder="z. B. Urlaub2026 Renovierung"
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              />
+            </div>
           </div>
 
           {formError && <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>}
@@ -559,6 +591,23 @@ export function TransactionsPage() {
             </button>
           </div>
         </form>
+      )}
+
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Tags:</span>
+          {allTags.map((tag) => (
+            <TagBadge key={tag} tag={tag} active={tagFilter === tag} onClick={() => setTagFilter(tagFilter === tag ? null : tag)} />
+          ))}
+          {tagFilter && (
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+              Summe für #{tagFilter}:{' '}
+              <span className={clsx('font-medium', tagFilterSumCents >= 0 ? 'text-[#2a78d6]' : 'text-[#eb6834]')}>
+                <Amount cents={tagFilterSumCents} />
+              </span>
+            </span>
+          )}
+        </div>
       )}
 
       {selectedIds.size > 0 && (
@@ -643,7 +692,7 @@ export function TransactionsPage() {
             </tr>
           </thead>
           <tbody>
-            {groupByDate(transactions).map((group) => (
+            {groupByDate(visibleTransactions).map((group) => (
               <Fragment key={group.items[0].id}>
                 <tr>
                   <td
@@ -678,6 +727,13 @@ export function TransactionsPage() {
                     >
                       <SplitSquareHorizontal size={12} />
                     </span>
+                  )}
+                  {t.tags.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {t.tags.map((tag) => (
+                        <TagBadge key={tag} tag={tag} active={tagFilter === tag} onClick={() => setTagFilter(tag)} />
+                      ))}
+                    </div>
                   )}
                 </td>
                 <td className="px-4 py-2">
@@ -753,10 +809,10 @@ export function TransactionsPage() {
                 ))}
               </Fragment>
             ))}
-            {transactions.length === 0 && (
+            {visibleTransactions.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-neutral-400 dark:text-neutral-500">
-                  Noch keine Transaktionen vorhanden.
+                  {tagFilter ? `Keine Buchungen mit Tag #${tagFilter}.` : 'Noch keine Transaktionen vorhanden.'}
                 </td>
               </tr>
             )}

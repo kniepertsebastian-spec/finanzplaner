@@ -8,6 +8,7 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { CreateTransactionSplitDto } from './dto/create-transaction-split.dto';
 import { FindTransactionsQueryDto } from './dto/find-transactions-query.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { normalizeTags } from './normalize-tags';
 
 @Injectable()
 export class TransactionsService {
@@ -55,6 +56,7 @@ export class TransactionsService {
         avoidable: dto.avoidable,
         inefficient: dto.inefficient,
         tooExpensive: dto.tooExpensive,
+        tags: dto.tags ? normalizeTags(dto.tags) : undefined,
       },
     });
   }
@@ -132,6 +134,7 @@ export class TransactionsService {
         avoidable: dto.avoidable,
         inefficient: dto.inefficient,
         tooExpensive: dto.tooExpensive,
+        tags: dto.tags ? normalizeTags(dto.tags) : undefined,
       },
     });
   }

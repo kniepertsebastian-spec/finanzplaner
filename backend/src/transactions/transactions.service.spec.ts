@@ -12,18 +12,21 @@ describe('TransactionsService', () => {
     $transaction: jest.Mock;
   };
 
+  let categorization: { learn: jest.Mock; suggestCategoryId: jest.Mock };
+
   beforeEach(async () => {
     prisma = {
       transaction: { aggregate: jest.fn(), create: jest.fn(), deleteMany: jest.fn(), updateMany: jest.fn() },
       category: { findFirst: jest.fn() },
       $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
     };
+    categorization = { learn: jest.fn(), suggestCategoryId: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransactionsService,
         { provide: PrismaService, useValue: prisma },
-        { provide: CategorizationService, useValue: {} },
+        { provide: CategorizationService, useValue: categorization },
       ],
     }).compile();
 
@@ -53,6 +56,35 @@ describe('TransactionsService', () => {
       const balance = await service.getBalance('user-1');
 
       expect(balance).toBe(0);
+    });
+  });
+
+  describe('create', () => {
+    it('normalizes tags before storing (strips #, trims, dedupes)', async () => {
+      prisma.category.findFirst.mockResolvedValue({ id: 'cat-1', userId: 'user-1' });
+      prisma.transaction.create.mockImplementation((args) => Promise.resolve({ id: 'tx', ...args.data }));
+
+      await service.create('user-1', {
+        amount: -1500,
+        description: 'Hotel',
+        categoryId: 'cat-1',
+        tags: ['#Urlaub2026', '  urlaub2026 ', 'Renovierung'],
+      });
+
+      expect(prisma.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ tags: ['Urlaub2026', 'Renovierung'] }) }),
+      );
+    });
+
+    it('leaves tags undefined (schema default) when none are given', async () => {
+      prisma.category.findFirst.mockResolvedValue({ id: 'cat-1', userId: 'user-1' });
+      prisma.transaction.create.mockImplementation((args) => Promise.resolve({ id: 'tx', ...args.data }));
+
+      await service.create('user-1', { amount: -1500, description: 'Hotel', categoryId: 'cat-1' });
+
+      expect(prisma.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ tags: undefined }) }),
+      );
     });
   });
 
