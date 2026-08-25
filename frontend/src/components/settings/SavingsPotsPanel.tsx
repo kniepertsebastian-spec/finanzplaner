@@ -4,6 +4,7 @@ import { savingsPotsApi } from '../../lib/api/savingsPots';
 import type { SavingsPot } from '../../lib/api/types';
 import { eurosToCents } from '../../lib/money';
 import { Amount } from '../Amount';
+import { SkeletonList } from '../Skeleton';
 
 export function SavingsPotsPanel() {
   const [pots, setPots] = useState<SavingsPot[] | null>(null);
@@ -77,7 +78,7 @@ export function SavingsPotsPanel() {
   }
 
   if (!pots) {
-    return <p className="text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>;
+    return <SkeletonList />;
   }
 
   const totalLockedCents = pots.reduce((sum, p) => sum + p.amountCents, 0);

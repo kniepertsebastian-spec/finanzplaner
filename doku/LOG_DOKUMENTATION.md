@@ -2,6 +2,29 @@
 
 ---
 
+### 📋 Schritt-Log: Micro-Interactions (Phase 12, fünfte und letzte Teilscheibe) — Code fertig, noch nicht deployed — **Phase 12 vollständig abgeschlossen**
+**Zeitstempel:** `2026-08-25 11:15`
+
+#### 1. Was wurde getan?
+*   Fünfter und letzter Punkt aus Phase 12: "Zähl-Animationen für Beträge (Animated Counters), Skeleton-Loader mit Shimmer-Effekt und Transaktions-Gruppierung nach Datumsblöcken (Heute, Gestern)." Mit dieser Teilscheibe ist Phase 12 (UI/UX Redesign & Modernes Dashboard) vollständig umgesetzt.
+*   **Zähl-Animationen:** neuer Hook `frontend/src/lib/useCountUp.ts` — eased (Ease-Out-Cubic, 600ms) Zählanimation von einem Ausgangswert (Ref, initial 0) zu einem Zielwert per `requestAnimationFrame`, übersprungen bei `prefers-reduced-motion: reduce`. In `Amount.tsx` eingebaut (zählt jetzt überall dort hoch/runter, wo `<Amount>` bereits verwendet wird — Hero-Card, Transaktions-/Budget-/Fixkosten-Tabellen usw.). `StatTile.tsx` um eine optionale `cents`-Prop erweitert (nutzt intern denselben Hook), die vier Geld-Kacheln auf dem Dashboard (Einnahmen/Ausgaben Zeitraum, Fixkosten aktuell/kommend, Restbudget-Prognose) darauf umgestellt; die reine Prozent-Kachel (Sparquote) behält die bisherige `value`-String-Prop.
+*   **Skeleton-Loader mit Shimmer:** neue Komponente `frontend/src/components/Skeleton.tsx` (`Skeleton` als Baustein, `SkeletonList` als generischer Mehrzeilen-Platzhalter) — horizontal durchlaufender Farbverlauf (`animate-shimmer`, neues `@keyframes shimmer` + `--animate-shimmer` in `index.css`, Tailwind v4 CSS-first Theme), bewusst kein reines Opacity-Pulsieren (`animate-pulse`), da die Roadmap explizit einen "Shimmer-Effekt" vorgibt. Der reine "Lädt…"-Text wurde ersetzt: `DashboardPage.tsx` (inhaltsgetreues Skelett: Hero-Card-Block, 3er-Kachelraster, 2er-Fixkosten-Raster, Chart-Block), `TransactionsPage.tsx`/`BudgetsPage.tsx` (Tabellen-Skelett), sowie generisch (`SkeletonList`) in `CategoryManager.tsx`, `RecurringTransactionsPanel.tsx`, `SavingsPotsPanel.tsx`, `QuickAddPage.tsx`, `InvoicesPage.tsx`, `PasskeyManager.tsx`. Bewusst ausgenommen: `ProtectedRoute.tsx` (Vollbild-Auth-Gate, kein Daten-Ladezustand, andere Kategorie von "Laden").
+*   **Datumsgruppierung:** `TransactionsPage.tsx` gruppiert die Tabelle jetzt nach Kalendertag ("Heute", "Gestern", sonst volles formatiertes Datum als Zwischenüberschrift-Zeile) statt einer flachen Liste — ein einziger linearer Durchlauf reicht, da die Buchungen bereits absteigend nach Datum vom Backend sortiert ankommen (`orderBy: { date: 'desc' }`), gleiche Labels also immer zusammenhängend sind. Tagesvergleich über lokale Kalendertag-Komponenten (Jahr/Monat/Tag), konsistent mit der bereits vorhandenen `new Date(t.date)`-Formatierung der Datumsspalte in derselben Datei.
+*   **Verifiziert:** kein Backend-Code betroffen, keine Migration. Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei (nur die bekannte, unkritische Vite-Chunk-Size-Warnung). Visuell per eigenständigem HTML-Snippet + Playwright-Screenshot-Vergleich (zwei Aufnahmen im Abstand von 600ms) geprüft: Shimmer-Verlauf sichtbar in Bewegung, Datumsgruppen-Überschriften ("Heute"/"Gestern"/volles Datum) korrekt gerendert, Zähl-Animation lief zwischen den beiden Aufnahmen sichtbar von einem Zwischenwert zum Zielwert hoch.
+
+#### 2. Warum wurde es getan?
+*   Fortsetzung und Abschluss des Nutzerauftrags für Phase 12 ("finish phase 12/13").
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — reine Frontend-/Darstellungsänderung.
+*   Kein neues npm-Package — `requestAnimationFrame` und CSS-Animationen sind Bordmittel, keine zusätzliche Abhängigkeit.
+*   **Phase 12 (UI/UX Redesign & Modernes Dashboard) ist damit vollständig abgeschlossen** — als Nächstes folgt Phase 13 (verbleibend: Sankey-Diagramm, Projekt-Tags, Steuer-Marker, Web Push, App Shortcuts, Batch-Bearbeitung), danach wie vom Nutzer priorisiert CSV-Import und zuletzt Phase 7.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [x] Visuell geprüft (isoliertes HTML/Playwright)
+
+---
+
 ### 📋 Schritt-Log: Kategorie-Icon-Badges (Phase 12, vierte Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 10:30`
 

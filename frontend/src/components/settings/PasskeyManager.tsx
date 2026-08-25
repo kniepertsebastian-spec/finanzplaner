@@ -2,6 +2,7 @@ import { startRegistration } from '@simplewebauthn/browser';
 import { KeyRound, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { authApi } from '../../lib/api/auth';
+import { SkeletonList } from '../Skeleton';
 import type { Authenticator } from '../../lib/api/types';
 
 const dateFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -79,7 +80,7 @@ export function PasskeyManager() {
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-        {authenticators === null && <p className="py-2 text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>}
+        {authenticators === null && <SkeletonList rows={2} />}
         {authenticators?.length === 0 && (
           <p className="py-2 text-sm text-neutral-400 dark:text-neutral-500">Noch keine Passkeys registriert.</p>
         )}

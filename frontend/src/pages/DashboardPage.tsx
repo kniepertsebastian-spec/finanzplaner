@@ -6,6 +6,7 @@ import { CashflowChart } from '../components/charts/CashflowChart';
 import { CategoryDonutChart } from '../components/charts/CategoryDonutChart';
 import { IncomeExpenseChart } from '../components/charts/IncomeExpenseChart';
 import { HeroCard } from '../components/HeroCard';
+import { Skeleton } from '../components/Skeleton';
 import { StatTile } from '../components/StatTile';
 import { useAuth } from '../context/AuthContext';
 import { useDarkMode } from '../context/DarkModeContext';
@@ -95,7 +96,21 @@ export function DashboardPage() {
   }
 
   if (!transactions || !categories || !budgets || !recurring || !savingsPots || balance === null) {
-    return <p className="text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>;
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
   }
 
   const period = getFinancialPeriod(monthStartDay);
@@ -195,8 +210,8 @@ export function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile label="Einnahmen (Zeitraum)" value={formatCents(incomeCents)} valueClassName="text-[#2a78d6]" />
-        <StatTile label="Ausgaben (Zeitraum)" value={formatCents(expenseCents)} valueClassName="text-[#eb6834]" />
+        <StatTile label="Einnahmen (Zeitraum)" cents={incomeCents} valueClassName="text-[#2a78d6]" />
+        <StatTile label="Ausgaben (Zeitraum)" cents={expenseCents} valueClassName="text-[#eb6834]" />
         <StatTile
           label="Sparquote"
           value={savingsRatePct !== null ? `${savingsRatePct.toFixed(0)}%` : '–'}
@@ -209,13 +224,13 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatTile
           label={`Fixkosten ${periodLabel}`}
-          value={formatCents(outstandingFixedCostsCents)}
+          cents={outstandingFixedCostsCents}
           valueClassName="text-[#eb6834]"
           caption="Summe aller aktiven Fixkosten mit Fälligkeit im laufenden Zeitraum"
         />
         <StatTile
           label={`Fixkosten ${nextPeriodLabel}`}
-          value={formatCents(upcomingFixedCostsCents)}
+          cents={upcomingFixedCostsCents}
           valueClassName="text-[#eb6834]"
           caption="Summe aller aktiven, geplanten Fixkosten für den kommenden Zeitraum"
         />
@@ -369,7 +384,7 @@ export function DashboardPage() {
         <>
           <StatTile
             label="Restbudget-Prognose"
-            value={formatCents(remainingCents)}
+            cents={remainingCents}
             valueClassName={remainingCents < 0 ? 'text-[#d03b3b]' : undefined}
             caption="Lineare Hochrechnung auf Basis der bisherigen Ausgaben in diesem Monat"
           />

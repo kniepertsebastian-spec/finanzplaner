@@ -3,6 +3,7 @@ import { ArrowUpCircle, Flag, Pause, Pencil, Play, Trash2, TrendingDown, Trendin
 import { useEffect, useState, type FormEvent } from 'react';
 import { Amount } from '../Amount';
 import { CategoryBadge } from '../CategoryBadge';
+import { SkeletonList } from '../Skeleton';
 import { categoriesApi } from '../../lib/api/categories';
 import { recurringTransactionsApi } from '../../lib/api/recurringTransactions';
 import type { Category, RecurringTransaction } from '../../lib/api/types';
@@ -148,7 +149,7 @@ export function RecurringTransactionsPanel() {
   }
 
   if (!items || !categories) {
-    return <p className="text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>;
+    return <SkeletonList />;
   }
 
   const categoryById = new Map(categories.map((c) => [c.id, c]));

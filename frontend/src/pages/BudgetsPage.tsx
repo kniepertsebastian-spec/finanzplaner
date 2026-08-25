@@ -2,6 +2,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Amount } from '../components/Amount';
 import { CategoryBadge } from '../components/CategoryBadge';
+import { Skeleton } from '../components/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import { budgetsApi } from '../lib/api/budgets';
 import { categoriesApi } from '../lib/api/categories';
@@ -87,7 +88,16 @@ export function BudgetsPage() {
   }
 
   if (!budgets || !categories) {
-    return <p className="text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>;
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-40 w-full" />
+        <div className="space-y-2 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   const categoryById = new Map(categories.map((c) => [c.id, c]));

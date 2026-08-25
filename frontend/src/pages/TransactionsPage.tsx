@@ -1,8 +1,9 @@
 import clsx from 'clsx';
 import { Flag, Pencil, Plus, SplitSquareHorizontal, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useState, type FormEvent } from 'react';
 import { Amount } from '../components/Amount';
 import { CategoryBadge } from '../components/CategoryBadge';
+import { Skeleton } from '../components/Skeleton';
 import { categoriesApi } from '../lib/api/categories';
 import { transactionsApi } from '../lib/api/transactions';
 import type { Category, Transaction } from '../lib/api/types';
@@ -18,6 +19,43 @@ interface SplitRow {
 const emptySplitRow = (): SplitRow => ({ amount: '', categoryId: '' });
 
 const dateFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const groupDateFormatter = new Intl.DateTimeFormat('de-DE', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+// "Heute"/"Gestern" for the two most recent calendar days, a full formatted date otherwise —
+// compared via local calendar day (same convention the existing date column already uses via
+// `new Date(t.date)`), not raw ISO string slicing.
+function dateGroupLabel(dateISO: string): string {
+  const d = new Date(dateISO);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (dayKey(d) === dayKey(today)) return 'Heute';
+  if (dayKey(d) === dayKey(yesterday)) return 'Gestern';
+  return groupDateFormatter.format(d);
+}
+
+// Transactions arrive sorted by date desc from the backend, so same-label transactions are always
+// contiguous — a single linear pass is enough to group them into date blocks.
+function groupByDate(transactions: Transaction[]): { label: string; items: Transaction[] }[] {
+  const groups: { label: string; items: Transaction[] }[] = [];
+  for (const t of transactions) {
+    const label = dateGroupLabel(t.date);
+    const current = groups[groups.length - 1];
+    if (current && current.label === label) {
+      current.items.push(t);
+    } else {
+      groups.push({ label, items: [t] });
+    }
+  }
+  return groups;
+}
 
 export function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
@@ -168,7 +206,16 @@ export function TransactionsPage() {
   }
 
   if (!transactions || !categories) {
-    return <p className="text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>;
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="space-y-2 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   const categoryById = new Map(categories.map((c) => [c.id, c]));
@@ -462,8 +509,18 @@ export function TransactionsPage() {
             </tr>
           </thead>
           <tbody>
-            {transactions.map((t) => (
-              <tr key={t.id} className="border-b border-neutral-100 last:border-0 dark:border-neutral-800">
+            {groupByDate(transactions).map((group) => (
+              <Fragment key={group.items[0].id}>
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="bg-neutral-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:bg-neutral-800/60 dark:text-neutral-400"
+                  >
+                    {group.label}
+                  </td>
+                </tr>
+                {group.items.map((t) => (
+                  <tr key={t.id} className="border-b border-neutral-100 last:border-0 dark:border-neutral-800">
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {dateFormatter.format(new Date(t.date))}
                 </td>
@@ -550,6 +607,8 @@ export function TransactionsPage() {
                   </button>
                 </td>
               </tr>
+                ))}
+              </Fragment>
             ))}
             {transactions.length === 0 && (
               <tr>

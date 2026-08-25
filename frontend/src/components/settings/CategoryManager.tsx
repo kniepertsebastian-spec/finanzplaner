@@ -1,6 +1,7 @@
 import { Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { CategoryBadge } from '../CategoryBadge';
+import { SkeletonList } from '../Skeleton';
 import { categoriesApi } from '../../lib/api/categories';
 import type { BudgetType, Category } from '../../lib/api/types';
 
@@ -61,7 +62,7 @@ export function CategoryManager() {
   }
 
   if (!categories) {
-    return <p className="text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>;
+    return <SkeletonList />;
   }
 
   return (

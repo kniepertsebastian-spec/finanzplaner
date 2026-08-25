@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { Camera, Globe, Mic, MicOff } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { categoriesApi } from '../lib/api/categories';
+import { SkeletonList } from '../components/Skeleton';
 import { transactionsApi, type TransactionInput } from '../lib/api/transactions';
 import type { Category } from '../lib/api/types';
 import { COMMON_CURRENCIES, convertForeignToEuroCents, getRememberedRate, rememberRate } from '../lib/currency';
@@ -184,7 +185,7 @@ export function QuickAddPage() {
   }
 
   if (!categories) {
-    return <p className="text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>;
+    return <SkeletonList />;
   }
 
   return (

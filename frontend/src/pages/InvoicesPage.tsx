@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { ExternalLink, Star, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { invoicesApi } from '../lib/api/invoices';
+import { SkeletonList } from '../components/Skeleton';
 import type { Invoice } from '../lib/api/types';
 
 const RETENTION_DAYS = 30;
@@ -68,7 +69,7 @@ export function InvoicesPage() {
   }
 
   if (!invoices) {
-    return <p className="text-sm text-neutral-500 dark:text-neutral-400">Lädt…</p>;
+    return <SkeletonList />;
   }
 
   return (

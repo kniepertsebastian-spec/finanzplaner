@@ -6,23 +6,21 @@ Nutzer bat darum, Phase 12 (UI/UX Redesign) und Phase 13 (Auswertungen, Tags & P
 
 ## Aktueller Stand
 
-- **Erledigt in dieser Runde:** Privacy-Mode (Blickschutz), Moderne Chart-Ästhetik (Bézier-Kurven, Farbverläufe, Donut-Chart, gestrichelte Prognoselinie), Kategorie-Icon-Badges — alle drei vollständig implementiert, verifiziert, committed, gepusht.
-  - Kein Backend-Code betroffen, keine Migration in allen drei Teilscheiben.
-  - Frontend: `npx tsc --noEmit` und `npm run build` jeweils fehlerfrei. Chart-Ästhetik und Privacy-Mode zusätzlich visuell per Playwright-Screenshots geprüft (eigenständige HTML-Datei, da React-Komponenten nicht trivial isoliert testbar sind); Icon-Badges nur über Build/Typecheck verifiziert (triviale, rein deklarative Komponente — Span mit bereits im Projekt etablierten Tailwind-Pastellklassen).
+- **Phase 12 (UI/UX Redesign & Modernes Dashboard) ist vollständig abgeschlossen:** Privacy-Mode (Blickschutz), Moderne Chart-Ästhetik (Bézier-Kurven, Farbverläufe, Donut-Chart, gestrichelte Prognoselinie), Kategorie-Icon-Badges, Micro-Interactions (Zähl-Animationen, Skeleton-Loader mit Shimmer, Datumsgruppierung "Heute"/"Gestern") — alle fünf Teilscheiben implementiert, verifiziert, committed, gepusht.
+  - Kein Backend-Code betroffen, keine Migration in allen fünf Teilscheiben.
+  - Frontend: `npx tsc --noEmit` und `npm run build` jeweils fehlerfrei. Chart-Ästhetik, Privacy-Mode und Micro-Interactions zusätzlich visuell per Playwright-Screenshots geprüft (eigenständige HTML-Datei, da React-Komponenten nicht trivial isoliert testbar sind); Icon-Badges nur über Build/Typecheck verifiziert (triviale, rein deklarative Komponente — Span mit bereits im Projekt etablierten Tailwind-Pastellklassen).
+- **Nächster Schritt:** Phase 13 (Auswertungen, Tags & PWA-Power-Features), beginnend mit dem kleinsten/einfachsten offenen Punkt zuerst (App Shortcuts), siehe TODO-Liste unten.
 - **Noch NICHT deployed** (weiterhin kein Docker/SSH in dieser Session) — wie der gesamte Rest dieser Session.
 
 ## Offene TODOs — Reihenfolge für den Rest dieser Session
 
-Verbleibend aus Phase 12:
-1. **Micro-Interactions:** Zähl-Animationen für Beträge, Skeleton-Loader mit Shimmer-Effekt, Transaktions-Gruppierung nach Datumsblöcken (Heute/Gestern). Reine Frontend-Aufgabe.
-
-Verbleibend aus Phase 13:
-2. **Sankey-Geldflussdiagramm** — größter Einzelposten, keine Chart.js-Sankey-Fähigkeit im Projekt, braucht eigenen Ansatz (SVG von Hand oder neue Bibliothek).
+Phase 12 ist komplett abgeschlossen. Verbleibend aus Phase 13 (Reihenfolge: kleinster/einfachster Punkt zuerst):
+1. **App Shortcuts** — kleinster Punkt, reine Web-Manifest-Erweiterung, kein neuer Code.
+2. **Batch-Bearbeitung** in der Transaktionsliste — Mehrfachauswahl + Massenbearbeitung/-löschung.
 3. **Projektbezogene Tags** (`#Urlaub2026` etc.) — braucht neues Datenmodell (Migration).
 4. **Steuer-Marker** — Flag + gefilterter Jahres-Export samt Belegen (Export-Teil ggf. mit Phase 7 überschneidend, aber laut Roadmap hier als eigener, engerer Scope gemeint — nur steuerrelevante Buchungen).
 5. **Web Push Notifications** — braucht VAPID-Keys/Push-Subscription-Backend, größerer technischer Umfang.
-6. **App Shortcuts** — kleinster Punkt, reine Web-Manifest-Erweiterung, kein neuer Code.
-7. **Batch-Bearbeitung** in der Transaktionsliste — Mehrfachauswahl + Massenbearbeitung/-löschung.
+6. **Sankey-Geldflussdiagramm** — größter Einzelposten, keine Chart.js-Sankey-Fähigkeit im Projekt, braucht eigenen Ansatz (SVG von Hand oder neue Bibliothek).
 
 Nach jedem einzelnen Punkt: Doku (`features.md`, `doku/LOG_DOKUMENTATION.md`, dieses `context.md`) aktualisieren, committen, auf `claude/remote-control-finanzplaner-gbmdlb` **und** `main` pushen (etabliertes Muster dieser Session — Nutzer nutzt `main` für den Mini-PC-Pull).
 
