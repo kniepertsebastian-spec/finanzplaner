@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Amount } from '../components/Amount';
 import { BudgetProgressBar } from '../components/BudgetProgressBar';
 import { CashflowChart } from '../components/charts/CashflowChart';
+import { CategoryDonutChart } from '../components/charts/CategoryDonutChart';
 import { IncomeExpenseChart } from '../components/charts/IncomeExpenseChart';
 import { HeroCard } from '../components/HeroCard';
 import { StatTile } from '../components/StatTile';
@@ -22,6 +23,7 @@ import {
   contractsNeedingCancellationNotice,
   dailyBurnRate,
   daysUntil,
+  expensesByCategory,
   firstShortfall,
   monthlyTotals,
   nextIncomeDueDate,
@@ -103,6 +105,7 @@ export function DashboardPage() {
   const categoryById = new Map(categories.map((c) => [c.id, c]));
   const savingsRatePct = savingsRate(incomeCents, expenseCents);
   const rule503020 = budgetTypeBreakdown(transactions, categories, incomeCents);
+  const categoryShares = expensesByCategory(transactions, categories);
 
   const totalBudgetCents = budgets.reduce((sum, b) => sum + b.amount, 0);
   const remainingCents = projectRemainingBudget(totalBudgetCents, expenseCents, elapsed, days);
@@ -335,6 +338,13 @@ export function DashboardPage() {
         </h2>
         <IncomeExpenseChart transactions={transactions} periodStart={period.start} daysInPeriod={days} isDark={isDark} />
       </div>
+
+      {categoryShares.length > 0 && (
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="mb-4 text-sm font-medium text-neutral-700 dark:text-neutral-300">Ausgaben nach Kategorie</h2>
+          <CategoryDonutChart shares={categoryShares} isDark={isDark} />
+        </div>
+      )}
 
       <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="mb-1 text-sm font-medium text-neutral-700 dark:text-neutral-300">Liquiditätsverlauf</h2>

@@ -2,6 +2,30 @@
 
 ---
 
+### 📋 Schritt-Log: Moderne Chart-Ästhetik (Phase 12, dritte Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 09:15`
+
+#### 1. Was wurde getan?
+*   Dritter Punkt aus Phase 12: "Glatte Bézier-Kurven (tension: 0.4) mit transparenten Farbverläufen, Donut-Chart für Kategorie-Anteile und gestrichelter Prognoselinie."
+*   **`IncomeExpenseChart.tsx`:** `tension: 0.2 → 0.4` für beide Datasets (Einnahmen/Ausgaben). Neuer scriptabler `areaGradient()`-Helfer erzeugt einen echten Canvas-`createLinearGradient()` (Serienfarbe bei ~10% Deckkraft oben, transparent unten — passend zur `dataviz`-Skill-Vorgabe "Area fill = series hue at ~10% opacity, never a saturated block"), als `backgroundColor` + `fill: true` je Dataset.
+*   **`CashflowChart.tsx`:** ebenfalls `tension: 0.4`. Neu: `borderDash: [6, 4]` auf der gesamten Linie — bewusst durchgehend gestrichelt (nicht nur ab "heute"), da die komplette Kurve eine Prognose ist, keine bereits feststehende Historie. Die bestehende Schwellenwert-Füllung (`fill.target = {value:0}`) für den Bereich *oberhalb* der Null-Linie von `'transparent'` auf eine transluzente Wash-Farbe (`rgba(...,0.1)`, gleiche blaue Linienfarbe) geändert — der Bereich *unterhalb* (Unterdeckungs-Warnung) blieb unverändert, da die kräftigere rote Füllung dort bewusst als Warnsignal gedacht ist.
+*   **Neue Komponente `frontend/src/components/charts/CategoryDonutChart.tsx`:** Chart.js-Donut (`ArcElement`), zeigt Ausgabenanteile je Kategorie im geladenen (bereits zeitraum-gefilterten) Transaktions-Array. Farben: die validierte 8-Slot-kategoriale Palette aus der `dataviz`-Skill (feste Reihenfolge, nicht zyklisch), mehr als 8 Kategorien fallen in eine gesammelte "Sonstige"-Kachel (neutrales Grau). Gesamtsumme als `<Amount>`-Wert mittig über dem Ring platziert (reines CSS-Overlay, kein Chart.js-Plugin) — automatisch Privacy-Mode-fähig durch Wiederverwendung der `<Amount>`-Komponente aus der vorherigen Teilscheibe.
+*   **`budgetCalc.ts`:** neue Funktion `expensesByCategory(transactions, categories)` (einmaliger Aggregations-Pass statt mehrfachem `spentForCategory()`-Aufruf pro Kategorie), sortiert absteigend nach Betrag.
+*   **`DashboardPage.tsx`:** neue Karte "Ausgaben nach Kategorie" zwischen dem Einnahmen/Ausgaben-Zeitverlaufs-Chart und der Liquiditätsverlauf-Karte, nur sichtbar wenn im Zeitraum tatsächlich Ausgaben vorhanden sind.
+*   **Verifiziert:** kein Backend-Code betroffen. Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei. **Visuell geprüft:** da React/Chart.js-Komponenten nicht trivial isoliert außerhalb des Vite-Dev-Servers zu rendern sind, wurde Chart.js direkt (UMD-Build aus `node_modules`, ohne React) mit denselben Konfigurationswerten in einer eigenständigen HTML-Datei nachgebaut und per Playwright screenshotet — glatte Kurven, Farbverlauf-Füllungen, durchgehend gestrichelte Prognoselinie mit Farbwechsel an der Null-Schwelle sowie der Donut mit klar unterscheidbaren Segmenten und Legende bestätigt.
+
+#### 2. Warum wurde es getan?
+*   Fortsetzung des Nutzerauftrags ("finish phase 12/13").
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — reine Frontend-/Darstellungsänderung, nutzt ausschließlich bereits geladene Dashboard-Daten.
+*   Kein neues npm-Package — alles über bereits vorhandenes `chart.js`/`react-chartjs-2` (nur `ArcElement`/`Filler` zusätzlich registriert, beides Teil des bestehenden `chart.js`-Pakets).
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (echter Browser-Check der drei Charts, insbesondere des neuen Donut-Charts mit echten Kategorie-Daten)
+
+---
+
 ### 📋 Schritt-Log: Privacy-Mode / Blickschutz (Phase 12, zweite Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 08:00`
 

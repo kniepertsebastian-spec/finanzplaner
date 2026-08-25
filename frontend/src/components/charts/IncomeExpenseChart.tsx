@@ -1,18 +1,20 @@
 import {
   CategoryScale,
   Chart as ChartJS,
+  Filler,
   Legend,
   LinearScale,
   LineElement,
   PointElement,
   Tooltip,
   type ChartOptions,
+  type ScriptableContext,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { formatCents } from '../../lib/money';
 import type { Transaction } from '../../lib/api/types';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 // Categorical slots 1 (blue) & 2 (orange) from the dataviz palette — red is
 // reserved for the budget-overrun "critical" status elsewhere on this dashboard.
@@ -26,6 +28,20 @@ const INK = {
   muted: { light: '#898781', dark: '#898781' },
   grid: { light: '#e1e0d9', dark: '#2c2c2a' },
 };
+
+// Soft area wash under each line (~10% opacity fading to transparent), per the dataviz skill's
+// "area fill = series hue at ~10% opacity, never a saturated block". Scriptable because the
+// gradient needs the chart's pixel bounds, which aren't known until after layout.
+function areaGradient(hexColor: string) {
+  return (context: ScriptableContext<'line'>) => {
+    const { chartArea, ctx } = context.chart;
+    if (!chartArea) return undefined;
+    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+    gradient.addColorStop(0, `${hexColor}1a`);
+    gradient.addColorStop(1, `${hexColor}00`);
+    return gradient;
+  };
+}
 
 interface IncomeExpenseChartProps {
   transactions: Transaction[];
@@ -63,21 +79,23 @@ export function IncomeExpenseChart({ transactions, periodStart, daysInPeriod, is
         label: 'Einnahmen',
         data: incomeByDay,
         borderColor: SERIES.income[mode],
-        backgroundColor: SERIES.income[mode],
+        backgroundColor: areaGradient(SERIES.income[mode]),
+        fill: true,
         borderWidth: 2,
         pointRadius: 0,
         pointHoverRadius: 5,
-        tension: 0.2,
+        tension: 0.4,
       },
       {
         label: 'Ausgaben',
         data: expenseByDay,
         borderColor: SERIES.expense[mode],
-        backgroundColor: SERIES.expense[mode],
+        backgroundColor: areaGradient(SERIES.expense[mode]),
+        fill: true,
         borderWidth: 2,
         pointRadius: 0,
         pointHoverRadius: 5,
-        tension: 0.2,
+        tension: 0.4,
       },
     ],
   };

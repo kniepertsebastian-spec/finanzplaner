@@ -296,3 +296,25 @@ export function savingsPotential(transactions: Transaction[], recurring: Recurri
     tooExpensive: flagPotential(transactions, recurring, 'tooExpensive'),
   };
 }
+
+export interface CategoryShare {
+  categoryId: string;
+  name: string;
+  cents: number;
+}
+
+// Expense totals per category for the given (already period-scoped) transactions, sorted largest
+// first — feeds the category-share donut chart. Categories with zero expense are omitted.
+export function expensesByCategory(transactions: Transaction[], categories: Category[]): CategoryShare[] {
+  const nameById = new Map(categories.map((c) => [c.id, c.name]));
+  const totals = new Map<string, number>();
+
+  for (const t of transactions) {
+    if (t.amount >= 0) continue;
+    totals.set(t.categoryId, (totals.get(t.categoryId) ?? 0) + Math.abs(t.amount));
+  }
+
+  return Array.from(totals.entries())
+    .map(([categoryId, cents]) => ({ categoryId, name: nameById.get(categoryId) ?? 'Unbekannt', cents }))
+    .sort((a, b) => b.cents - a.cents);
+}

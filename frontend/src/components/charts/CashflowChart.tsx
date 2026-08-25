@@ -1,6 +1,7 @@
 import {
   CategoryScale,
   Chart as ChartJS,
+  Filler,
   Legend,
   LinearScale,
   LineElement,
@@ -13,7 +14,7 @@ import { Line } from 'react-chartjs-2';
 import { formatCents } from '../../lib/money';
 import type { CashflowPoint } from '../../lib/budgetCalc';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 // Same balance-line blue as elsewhere on the dashboard; red is reserved for the
 // Unterdeckung (shortfall) warning, applied per-segment where the projection dips below zero.
@@ -51,12 +52,13 @@ export function CashflowChart({ points, isDark }: CashflowChartProps) {
         backgroundColor: LINE[mode],
         segment: { borderColor: belowZero },
         borderWidth: 2,
+        borderDash: [6, 4], // dashed throughout: the whole line is a forecast, not settled history
         pointRadius: 0,
         pointHoverRadius: 5,
-        tension: 0.2,
+        tension: 0.4,
         fill: {
           target: { value: 0 },
-          above: 'transparent',
+          above: isDark ? 'rgba(57, 135, 229, 0.12)' : 'rgba(42, 120, 214, 0.1)',
           below: isDark ? 'rgba(224, 85, 79, 0.15)' : 'rgba(208, 59, 59, 0.12)',
         },
       },
