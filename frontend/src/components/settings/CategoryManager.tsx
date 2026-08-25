@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
+import { CategoryBadge } from '../CategoryBadge';
 import { categoriesApi } from '../../lib/api/categories';
 import type { BudgetType, Category } from '../../lib/api/types';
 
@@ -94,7 +95,7 @@ export function CategoryManager() {
       <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
         {categories.map((category) => (
           <li key={category.id} className="flex items-center justify-between gap-2 py-2">
-            <span className="text-sm text-neutral-700 dark:text-neutral-300">{category.name}</span>
+            <CategoryBadge categoryId={category.id} name={category.name} />
             <div className="flex items-center gap-2">
               <select
                 value={category.budgetType ?? ''}

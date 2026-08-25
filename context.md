@@ -6,24 +6,23 @@ Nutzer bat darum, Phase 12 (UI/UX Redesign) und Phase 13 (Auswertungen, Tags & P
 
 ## Aktueller Stand
 
-- **Erledigt in dieser Runde:** Privacy-Mode (Blickschutz), Moderne Chart-Ästhetik (Bézier-Kurven, Farbverläufe, Donut-Chart, gestrichelte Prognoselinie) — beide vollständig implementiert, verifiziert, committed, gepusht.
-  - Kein Backend-Code betroffen, keine Migration in beiden Teilscheiben.
-  - Frontend: `npx tsc --noEmit` und `npm run build` jeweils fehlerfrei, visuell per Playwright-Screenshots geprüft (Chart-Rendering über eine eigenständige Chart.js-UMD-HTML-Datei, da React-Komponenten nicht trivial isoliert testbar sind).
+- **Erledigt in dieser Runde:** Privacy-Mode (Blickschutz), Moderne Chart-Ästhetik (Bézier-Kurven, Farbverläufe, Donut-Chart, gestrichelte Prognoselinie), Kategorie-Icon-Badges — alle drei vollständig implementiert, verifiziert, committed, gepusht.
+  - Kein Backend-Code betroffen, keine Migration in allen drei Teilscheiben.
+  - Frontend: `npx tsc --noEmit` und `npm run build` jeweils fehlerfrei. Chart-Ästhetik und Privacy-Mode zusätzlich visuell per Playwright-Screenshots geprüft (eigenständige HTML-Datei, da React-Komponenten nicht trivial isoliert testbar sind); Icon-Badges nur über Build/Typecheck verifiziert (triviale, rein deklarative Komponente — Span mit bereits im Projekt etablierten Tailwind-Pastellklassen).
 - **Noch NICHT deployed** (weiterhin kein Docker/SSH in dieser Session) — wie der gesamte Rest dieser Session.
 
 ## Offene TODOs — Reihenfolge für den Rest dieser Session
 
 Verbleibend aus Phase 12:
-1. **Pill-Progress-Bars & Category Badges:** abgerundete Budgetbalken mit Ampel-Farbübergängen (`BudgetProgressBar.tsx` hat schon abgerundete Balken — ggf. nur Feinschliff) und pastellfarbene Icon-Badges pro Kategorie (Kategorien haben aktuell kein Icon-/Farbfeld — würde eine Migration brauchen, falls dauerhaft gespeichert statt clientseitig aus dem Namen abgeleitet).
-2. **Micro-Interactions:** Zähl-Animationen für Beträge, Skeleton-Loader mit Shimmer-Effekt, Transaktions-Gruppierung nach Datumsblöcken (Heute/Gestern). Reine Frontend-Aufgabe.
+1. **Micro-Interactions:** Zähl-Animationen für Beträge, Skeleton-Loader mit Shimmer-Effekt, Transaktions-Gruppierung nach Datumsblöcken (Heute/Gestern). Reine Frontend-Aufgabe.
 
 Verbleibend aus Phase 13:
-3. **Sankey-Geldflussdiagramm** — größter Einzelposten, keine Chart.js-Sankey-Fähigkeit im Projekt, braucht eigenen Ansatz (SVG von Hand oder neue Bibliothek).
-4. **Projektbezogene Tags** (`#Urlaub2026` etc.) — braucht neues Datenmodell (Migration).
-5. **Steuer-Marker** — Flag + gefilterter Jahres-Export samt Belegen (Export-Teil ggf. mit Phase 7 überschneidend, aber laut Roadmap hier als eigener, engerer Scope gemeint — nur steuerrelevante Buchungen).
-6. **Web Push Notifications** — braucht VAPID-Keys/Push-Subscription-Backend, größerer technischer Umfang.
-7. **App Shortcuts** — kleinster Punkt, reine Web-Manifest-Erweiterung, kein neuer Code.
-8. **Batch-Bearbeitung** in der Transaktionsliste — Mehrfachauswahl + Massenbearbeitung/-löschung.
+2. **Sankey-Geldflussdiagramm** — größter Einzelposten, keine Chart.js-Sankey-Fähigkeit im Projekt, braucht eigenen Ansatz (SVG von Hand oder neue Bibliothek).
+3. **Projektbezogene Tags** (`#Urlaub2026` etc.) — braucht neues Datenmodell (Migration).
+4. **Steuer-Marker** — Flag + gefilterter Jahres-Export samt Belegen (Export-Teil ggf. mit Phase 7 überschneidend, aber laut Roadmap hier als eigener, engerer Scope gemeint — nur steuerrelevante Buchungen).
+5. **Web Push Notifications** — braucht VAPID-Keys/Push-Subscription-Backend, größerer technischer Umfang.
+6. **App Shortcuts** — kleinster Punkt, reine Web-Manifest-Erweiterung, kein neuer Code.
+7. **Batch-Bearbeitung** in der Transaktionsliste — Mehrfachauswahl + Massenbearbeitung/-löschung.
 
 Nach jedem einzelnen Punkt: Doku (`features.md`, `doku/LOG_DOKUMENTATION.md`, dieses `context.md`) aktualisieren, committen, auf `claude/remote-control-finanzplaner-gbmdlb` **und** `main` pushen (etabliertes Muster dieser Session — Nutzer nutzt `main` für den Mini-PC-Pull).
 

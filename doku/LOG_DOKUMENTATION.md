@@ -2,6 +2,30 @@
 
 ---
 
+### 📋 Schritt-Log: Kategorie-Icon-Badges (Phase 12, vierte Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 10:30`
+
+#### 1. Was wurde getan?
+*   Vierter Punkt aus Phase 12: "Pill-förmige Fortschrittsbalken mit pastellfarbenen Icon-Badges je Kategorie." Die Pill-Form der Fortschrittsbalken selbst existierte bereits aus einer früheren Phase (`BudgetProgressBar.tsx`) — neu gebaut wurden ausschließlich die pastellfarbenen Icon-Badges.
+*   **Neu `frontend/src/lib/categoryStyle.ts`:** zwei reine Ableitungsfunktionen, beide ohne neues Datenbankfeld.
+    *   `categoryIcon(name)`: Stichwort-Regex auf den Kategorienamen (nach demselben "Substring-Match"-Prinzip wie `matchCategoryId` in `voiceParse.ts`, nur umgekehrt — Name statt Transkript als Eingabe), 15 deutsche Stichwortmuster (Miete/Wohnen → Haus-Icon, Lebensmittel/Supermarkt → Einkaufswagen, Auto/Tanken → Auto, Strom/Gas → Blitz, usw.), Fallback auf ein generisches Tag-Icon für alles Unerkannte — bewusst kein Rate-Versuch, da ein falsches aber "sicher aussehendes" Icon (z. B. Einkaufswagen für "Yoga") verwirrender wäre als ein neutrales.
+    *   `categoryColor(categoryId)`: String-Hash der Kategorie-ID wählt aus 8 fest definierten Pastellfarbpaaren (Tailwind `-100`/`-700` hell, `-900/40`/`-300` dunkel) — deterministisch und über Reloads stabil, da auf der unveränderlichen ID basierend statt zufällig; reine visuelle Unterscheidbarkeit, kein kodiertes Signal (anders als die Einnahme/Ausgabe/Status-Farben an anderer Stelle in der App).
+*   **Neu `frontend/src/components/CategoryBadge.tsx`:** pillenförmiger `<span>`, kombiniert Icon + Name auf pastellfarbenem Hintergrund.
+*   **Eingebaut an allen Stellen, die bisher nur den reinen Kategorienamen als Text zeigten:** `BudgetProgressBar.tsx` (neue `categoryId`-Prop, Aufrufstelle in `DashboardPage.tsx` angepasst), `TransactionsPage.tsx` (Tabellenspalte), `BudgetsPage.tsx` (Tabellenspalte), `RecurringTransactionsPanel.tsx` (Tabellenspalte), `CategoryManager.tsx` (Einstellungen-Liste) — überall mit "Unbekannt"-Textfallback für den (seltenen) Fall einer nicht mehr auffindbaren Kategorie-ID.
+*   **Verifiziert:** kein Backend-Code betroffen, keine Migration. Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei (nur die bekannte, unkritische Vite-Chunk-Size-Warnung). Alle 16 verwendeten `lucide-react`-Icons vor Verwendung als tatsächlich vorhanden im Paket geprüft.
+
+#### 2. Warum wurde es getan?
+*   Fortsetzung des Nutzerauftrags ("finish phase 12/13").
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — Icon und Farbe werden rein clientseitig aus bereits vorhandenen Daten (Name, ID) abgeleitet, kein neues Feld am `Category`-Modell.
+*   Kein neues npm-Package — `lucide-react` war bereits Projektabhängigkeit.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (echter Browser-Check der Badges mit echten Kategorienamen)
+
+---
+
 ### 📋 Schritt-Log: Moderne Chart-Ästhetik (Phase 12, dritte Teilscheibe) — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 09:15`
 

@@ -1,5 +1,6 @@
 import { AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Amount } from './Amount';
+import { CategoryBadge } from './CategoryBadge';
 
 type Status = 'good' | 'warning' | 'critical';
 
@@ -18,12 +19,13 @@ function statusFor(pct: number): Status {
 }
 
 interface BudgetProgressBarProps {
+  categoryId: string;
   categoryName: string;
   budgetCents: number;
   spentCents: number;
 }
 
-export function BudgetProgressBar({ categoryName, budgetCents, spentCents }: BudgetProgressBarProps) {
+export function BudgetProgressBar({ categoryId, categoryName, budgetCents, spentCents }: BudgetProgressBarProps) {
   const pct = budgetCents > 0 ? (spentCents / budgetCents) * 100 : 0;
   const status = statusFor(pct);
   const { color, label, Icon } = STATUS[status];
@@ -31,7 +33,7 @@ export function BudgetProgressBar({ categoryName, budgetCents, spentCents }: Bud
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-neutral-900 dark:text-neutral-100">{categoryName}</span>
+        <CategoryBadge categoryId={categoryId} name={categoryName} />
         <span className="text-neutral-500 dark:text-neutral-400">
           <Amount cents={spentCents} /> / <Amount cents={budgetCents} />
         </span>

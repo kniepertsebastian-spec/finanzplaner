@@ -379,6 +379,7 @@ export function DashboardPage() {
             {budgets.map((b) => (
               <BudgetProgressBar
                 key={b.id}
+                categoryId={b.categoryId}
                 categoryName={categoryById.get(b.categoryId)?.name ?? 'Unbekannt'}
                 budgetCents={b.amount}
                 spentCents={spentForCategory(transactions, b.categoryId)}

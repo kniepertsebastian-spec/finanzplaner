@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { ArrowUpCircle, Flag, Pause, Pencil, Play, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Amount } from '../Amount';
+import { CategoryBadge } from '../CategoryBadge';
 import { categoriesApi } from '../../lib/api/categories';
 import { recurringTransactionsApi } from '../../lib/api/recurringTransactions';
 import type { Category, RecurringTransaction } from '../../lib/api/types';
@@ -348,8 +349,12 @@ export function RecurringTransactionsPanel() {
                   {intervalLabel(item.intervalMonths)}
                 </td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{item.description}</td>
-                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
-                  {categoryById.get(item.categoryId)?.name ?? 'Unbekannt'}
+                <td className="px-4 py-2">
+                  {categoryById.get(item.categoryId) ? (
+                    <CategoryBadge categoryId={item.categoryId} name={categoryById.get(item.categoryId)!.name} />
+                  ) : (
+                    <span className="text-neutral-700 dark:text-neutral-300">Unbekannt</span>
+                  )}
                 </td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   <Amount cents={item.amount} />

@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Amount } from '../components/Amount';
+import { CategoryBadge } from '../components/CategoryBadge';
 import { useAuth } from '../context/AuthContext';
 import { budgetsApi } from '../lib/api/budgets';
 import { categoriesApi } from '../lib/api/categories';
@@ -190,8 +191,12 @@ export function BudgetsPage() {
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {periodLabelFormatter.format(new Date(b.month))}
                 </td>
-                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
-                  {categoryById.get(b.categoryId)?.name ?? 'Unbekannt'}
+                <td className="px-4 py-2">
+                  {categoryById.get(b.categoryId) ? (
+                    <CategoryBadge categoryId={b.categoryId} name={categoryById.get(b.categoryId)!.name} />
+                  ) : (
+                    <span className="text-neutral-700 dark:text-neutral-300">Unbekannt</span>
+                  )}
                 </td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   <Amount cents={b.amount} />

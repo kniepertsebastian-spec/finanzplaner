@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { Flag, Pencil, Plus, SplitSquareHorizontal, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Amount } from '../components/Amount';
+import { CategoryBadge } from '../components/CategoryBadge';
 import { categoriesApi } from '../lib/api/categories';
 import { transactionsApi } from '../lib/api/transactions';
 import type { Category, Transaction } from '../lib/api/types';
@@ -479,8 +480,12 @@ export function TransactionsPage() {
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
-                  {categoryById.get(t.categoryId)?.name ?? 'Unbekannt'}
+                <td className="px-4 py-2">
+                  {categoryById.get(t.categoryId) ? (
+                    <CategoryBadge categoryId={t.categoryId} name={categoryById.get(t.categoryId)!.name} />
+                  ) : (
+                    <span className="text-neutral-700 dark:text-neutral-300">Unbekannt</span>
+                  )}
                 </td>
                 <td
                   className={clsx(
