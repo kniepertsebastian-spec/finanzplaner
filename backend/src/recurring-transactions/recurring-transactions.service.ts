@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { CreateRecurringTransactionDto } from './dto/create-recurring-transaction.dto';
 import { UpdateRecurringTransactionDto } from './dto/update-recurring-transaction.dto';
+import { currentPeriodEndUTC } from './financial-period';
 
 @Injectable()
 export class RecurringTransactionsService {
@@ -88,8 +89,14 @@ export class RecurringTransactionsService {
     return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
   }
 
-  private isDue(recurring: { nextDueDate: Date }, today: Date): boolean {
-    return RecurringTransactionsService.dateOnly(recurring.nextDueDate) <= RecurringTransactionsService.dateOnly(today);
+  // A rule is due as soon as its due date falls anywhere within the owning user's *current*
+  // financial period — not only once the literal calendar day arrives. This posts a period's
+  // fixed costs all at once at the start of the cycle (so the dashboard reflects the full
+  // month's costs from day one) rather than drip-feeding them in as each due date passes; the
+  // user reviews/edits/deletes individual postings by hand if a bill turns out different.
+  private isDue(recurring: { nextDueDate: Date; user: { monthStartDay: number } }, today: Date): boolean {
+    const periodEndUTC = currentPeriodEndUTC(recurring.user.monthStartDay, today);
+    return RecurringTransactionsService.dateOnly(recurring.nextDueDate) <= periodEndUTC;
   }
 
   /** Advances a date by N months, clamping day overflow to the last day of the target month
@@ -106,7 +113,10 @@ export class RecurringTransactionsService {
   }
 
   async runDueRecurringTransactions(today: Date = new Date()): Promise<number> {
-    const active = await this.prisma.recurringTransaction.findMany({ where: { active: true } });
+    const active = await this.prisma.recurringTransaction.findMany({
+      where: { active: true },
+      include: { user: { select: { monthStartDay: true } } },
+    });
     const due = active.filter((recurring) => this.isDue(recurring, today));
 
     for (const recurring of due) {

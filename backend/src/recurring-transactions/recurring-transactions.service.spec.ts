@@ -184,6 +184,7 @@ describe('RecurringTransactionsService', () => {
           intervalMonths: 1,
           active: true,
           lastRunAt: null,
+          user: { monthStartDay: 1 },
         },
       ]);
 
@@ -202,15 +203,38 @@ describe('RecurringTransactionsService', () => {
       });
     });
 
-    it('skips a rule whose nextDueDate is still in the future', async () => {
+    it('pulls a rule forward when its due date falls later in the current financial period', async () => {
       prisma.recurringTransaction.findMany.mockResolvedValue([
         {
           id: 'rec-2',
           userId: 'user-1',
+          amount: -1200,
+          description: 'Netflix',
+          categoryId: 'cat-1',
           nextDueDate: new Date('2026-08-18T00:00:00.000Z'),
           intervalMonths: 1,
           active: true,
           lastRunAt: null,
+          user: { monthStartDay: 1 },
+        },
+      ]);
+
+      const count = await service.runDueRecurringTransactions(today);
+
+      expect(count).toBe(1);
+      expect(transactionsService.create).toHaveBeenCalled();
+    });
+
+    it('skips a rule whose nextDueDate falls in a future financial period', async () => {
+      prisma.recurringTransaction.findMany.mockResolvedValue([
+        {
+          id: 'rec-2b',
+          userId: 'user-1',
+          nextDueDate: new Date('2026-09-05T00:00:00.000Z'),
+          intervalMonths: 1,
+          active: true,
+          lastRunAt: null,
+          user: { monthStartDay: 1 },
         },
       ]);
 
@@ -218,6 +242,48 @@ describe('RecurringTransactionsService', () => {
 
       expect(count).toBe(0);
       expect(transactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it('respects a custom monthStartDay: does not pull a rule from the next cycle forward early', async () => {
+      // today = Aug 17 with monthStartDay=23 -> still inside the Jul23-Aug22 cycle.
+      prisma.recurringTransaction.findMany.mockResolvedValue([
+        {
+          id: 'rec-2c',
+          userId: 'user-1',
+          nextDueDate: new Date('2026-08-25T00:00:00.000Z'), // falls in the Aug23-Sep22 cycle, not the current one
+          intervalMonths: 1,
+          active: true,
+          lastRunAt: null,
+          user: { monthStartDay: 23 },
+        },
+      ]);
+
+      const count = await service.runDueRecurringTransactions(today);
+
+      expect(count).toBe(0);
+      expect(transactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it('respects a custom monthStartDay: pulls a rule forward within the current cycle', async () => {
+      prisma.recurringTransaction.findMany.mockResolvedValue([
+        {
+          id: 'rec-2d',
+          userId: 'user-1',
+          amount: -8400,
+          description: 'Miete',
+          categoryId: 'cat-1',
+          nextDueDate: new Date('2026-08-20T00:00:00.000Z'), // still inside Jul23-Aug22
+          intervalMonths: 1,
+          active: true,
+          lastRunAt: null,
+          user: { monthStartDay: 23 },
+        },
+      ]);
+
+      const count = await service.runDueRecurringTransactions(today);
+
+      expect(count).toBe(1);
+      expect(transactionsService.create).toHaveBeenCalled();
     });
 
     it('catches up an overdue rule whose nextDueDate is in the past', async () => {
@@ -232,6 +298,7 @@ describe('RecurringTransactionsService', () => {
           intervalMonths: 1,
           active: true,
           lastRunAt: new Date('2026-07-10T00:00:00.000Z'),
+          user: { monthStartDay: 1 },
         },
       ]);
 
@@ -253,6 +320,7 @@ describe('RecurringTransactionsService', () => {
           intervalMonths: 3,
           active: true,
           lastRunAt: new Date('2026-05-17T00:00:00.000Z'),
+          user: { monthStartDay: 1 },
         },
       ]);
 
@@ -280,6 +348,7 @@ describe('RecurringTransactionsService', () => {
           intervalMonths: 12,
           active: true,
           lastRunAt: null,
+          user: { monthStartDay: 1 },
         },
       ]);
 
@@ -302,6 +371,7 @@ describe('RecurringTransactionsService', () => {
           intervalMonths: 12,
           active: true,
           lastRunAt: null,
+          user: { monthStartDay: 1 },
         },
       ]);
 
@@ -327,6 +397,7 @@ describe('RecurringTransactionsService', () => {
           intervalMonths: 1,
           active: true,
           lastRunAt: null,
+          user: { monthStartDay: 1 },
         },
       ]);
 

@@ -2,6 +2,32 @@
 
 ---
 
+### 📋 Schritt-Log: Fixkosten werden zu Zeitraum-Beginn statt am exakten Kalendertag gebucht — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 06:45`
+
+#### 1. Was wurde getan?
+*   Nutzer erklärte die zuvor beschriebene Verwirrung ("Fixkosten scheinen erst nach und nach über den Monat verteilt aufzutauchen") als eigentlichen Wunsch: Fixkosten-Regeln sollen bereits zu Beginn des Abrechnungszeitraums vollständig als Buchung vorhanden sein, nicht erst am jeweiligen Kalendertag der Fälligkeit — mit der Möglichkeit, eine einzelne Buchung danach manuell zu korrigieren/löschen, falls sich etwas ändert.
+*   **Neue Datei `backend/src/recurring-transactions/financial-period.ts`:** minimaler Backend-Port von `frontend/src/lib/financialPeriod.ts` (nur `currentPeriodEndUTC()`, das Einzige, was hier gebraucht wird — kein npm-Workspace/Shared-Package zwischen Frontend und Backend, daher manueller Port statt Import). Arbeitet bewusst durchgehend mit UTC-Kalendertagen für "heute" (anders als das Frontend, das dafür lokale `Date`-Getter des Browsers nutzt) — passend zum bereits bestehenden `dateOnly()`-Muster in `RecurringTransactionsService`, da der Backend-Cron kein Konzept einer "lokalen Zeit des Nutzers" hat.
+*   **`RecurringTransactionsService.isDue()`:** Kernänderung — statt `nextDueDate <= heute` jetzt `nextDueDate <= Ende des aktuellen Abrechnungszeitraums des jeweiligen Nutzers` (`currentPeriodEndUTC(user.monthStartDay, today)`). Damit feuert eine Regel, sobald ihre Fälligkeit irgendwo im laufenden Zyklus liegt, nicht erst am exakten Tag — faktisch: alle für den Zyklus erwarteten Fixkosten erscheinen bereits beim ersten Cron-Lauf nach Zyklus-Beginn.
+*   **`runDueRecurringTransactions()`:** lädt jetzt zusätzlich `user: { select: { monthStartDay: true } }` per Prisma-`include`, da `isDue()` das pro Regel braucht (jede Regel gehört zu genau einem Nutzer mit eigenem `monthStartDay`).
+*   **Korrektheit geprüft:** Für eine monatliche Regel (`intervalMonths = 1`) verschieben sich Zeiträume und `nextDueDate` nach dem Feuern immer strikt in den nächsten, nicht überlappenden Zyklus — kein Risiko einer Doppelbuchung innerhalb desselben Zeitraums (Zeiträume sind per Konstruktion eine lückenlose, nicht überlappende Partition des Kalenders).
+*   **Tests:** bestehende `runDueRecurringTransactions()`-Tests um `user: { monthStartDay: N }` in den Mocks ergänzt (nötig, da `isDue()` das jetzt liest). Ehemaliger Test "skips a rule whose nextDueDate is still in the future" umbenannt/umgebaut zu "pulls a rule forward when its due date falls later in the current financial period" (erwartetes Verhalten hat sich bewusst geändert). Drei neue Tests ergänzt: Regel mit Fälligkeit in einem *künftigen* Zeitraum wird weiterhin korrekt übersprungen; zwei Tests für einen benutzerdefinierten `monthStartDay = 23` (eine Regel mit Fälligkeit im laufenden Zyklus wird vorgezogen, eine mit Fälligkeit im *nächsten* Zyklus nicht).
+*   **Verifiziert:** `npm run build` fehlerfrei, `npm test` → 16 Suites / 58 Tests grün (55 vorher + 3 neue). Kein Frontend-Code betroffen, keine Migration nötig (reine Verhaltensänderung im Cron-Job).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag, nachdem sich die vorherige "Fixkosten wächst über den Monat"-Diskussion als eigentlicher Feature-Wunsch statt reinem Missverständnis herausstellte.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — reine Verhaltensänderung des bestehenden täglichen Cron-Jobs, kein Schema-Change.
+*   **Betrifft alle Nutzer-Fixkosten gleichermaßen**, nicht nur solche mit custom `monthStartDay` — da die App Single-User ist, ist das hier unkritisch, aber relevant falls das Projekt je Multi-User werden sollte.
+*   **Beim ersten Cron-Lauf nach diesem Deployment** werden voraussichtlich mehrere, aktuell noch nicht gebuchte Fixkosten-Regeln auf einmal als Transaktionen gebucht (alle, deren Fälligkeit im laufenden Zeitraum liegt, unabhängig vom exakten Tag) — erwartet und gewünscht, aber gut zu wissen, falls die Buchungsliste nach dem Deploy plötzlich "voller" aussieht als gewohnt.
+*   Der bereits erwähnte, noch ausstehende manuelle Datenabgleich (Miete/Kredit-Vorzeichen, Saldo-Abgleich) bleibt davon unberührt und weiterhin nötig.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (Nutzer sollte nach dem Deploy die Transaktionsliste auf plötzlich neu gebuchte Fixkosten prüfen)
+
+---
+
 ### 📋 Schritt-Log: "Netto (Zeitraum)"-Kachel vom Dashboard entfernt — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 06:10`
 
