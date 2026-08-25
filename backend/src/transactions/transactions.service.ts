@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import * as path from 'node:path';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Response } from 'express';
+// `import archiver from 'archiver'` compiles under allowSyntheticDefaultImports but resolves to
+// `.default` at runtime, which archiver's actual CommonJS export doesn't have — this
+// require-style import matches the module's real CJS shape (module.exports = archiver fn).
+import archiver = require('archiver');
+import { UPLOADS_DIR } from '../invoices/invoices.multer-options';
 import { PrismaService } from '../prisma/prisma.service';
 import { CategorizationService } from './categorization.service';
+import { csvEscape } from './csv-escape';
 import { BulkRemoveTransactionsDto } from './dto/bulk-remove-transactions.dto';
 import { BulkUpdateTransactionsDto } from './dto/bulk-update-transactions.dto';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -56,6 +65,7 @@ export class TransactionsService {
         avoidable: dto.avoidable,
         inefficient: dto.inefficient,
         tooExpensive: dto.tooExpensive,
+        taxRelevant: dto.taxRelevant,
         tags: dto.tags ? normalizeTags(dto.tags) : undefined,
       },
     });
@@ -134,6 +144,7 @@ export class TransactionsService {
         avoidable: dto.avoidable,
         inefficient: dto.inefficient,
         tooExpensive: dto.tooExpensive,
+        taxRelevant: dto.taxRelevant,
         tags: dto.tags ? normalizeTags(dto.tags) : undefined,
       },
     });
@@ -166,6 +177,7 @@ export class TransactionsService {
         avoidable: dto.patch.avoidable,
         inefficient: dto.patch.inefficient,
         tooExpensive: dto.patch.tooExpensive,
+        taxRelevant: dto.patch.taxRelevant,
       },
     });
     return { count: result.count };
@@ -179,5 +191,58 @@ export class TransactionsService {
       _sum: { amount: true },
     });
     return result._sum.amount ?? 0;
+  }
+
+  // Bundles every tax-relevant transaction of the given year (CSV) together with whatever invoices
+  // were uploaded in that same year (PDF/JPEG/PNG receipts) into one ZIP for handing to a
+  // Steuerberater. Note: invoices auto-delete after 30 days unless marked "Wichtig" (see
+  // InvoicesService.deleteExpired) — this export can only bundle what still exists on disk, so
+  // receipts meant for a tax filing should be marked important when uploaded.
+  async streamTaxExport(userId: string, year: number, res: Response): Promise<void> {
+    const rangeStart = new Date(Date.UTC(year, 0, 1));
+    const rangeEnd = new Date(Date.UTC(year + 1, 0, 1));
+
+    const [transactions, invoices] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: { userId, taxRelevant: true, date: { gte: rangeStart, lt: rangeEnd } },
+        include: { category: true },
+        orderBy: { date: 'asc' },
+      }),
+      this.prisma.invoice.findMany({
+        where: { userId, uploadedAt: { gte: rangeStart, lt: rangeEnd } },
+        orderBy: { uploadedAt: 'asc' },
+      }),
+    ]);
+
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="Steuerexport-${year}.zip"`,
+    });
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.pipe(res);
+
+    const csvLines = [
+      ['Datum', 'Beschreibung', 'Kategorie', 'Betrag (EUR)', 'Tags'].join(';'),
+      ...transactions.map((t) =>
+        [
+          t.date.toISOString().slice(0, 10),
+          csvEscape(t.description),
+          csvEscape(t.category.name),
+          (t.amount / 100).toFixed(2).replace('.', ','),
+          csvEscape(t.tags.join(', ')),
+        ].join(';'),
+      ),
+    ];
+    archive.append(csvLines.join('\n'), { name: 'steuerrelevante-buchungen.csv' });
+
+    for (const invoice of invoices) {
+      const filePath = path.join(UPLOADS_DIR, invoice.storagePath);
+      if (!existsSync(filePath)) continue; // e.g. auto-deleted since upload; skip rather than fail the whole export
+      const datePrefix = invoice.uploadedAt.toISOString().slice(0, 10);
+      archive.file(filePath, { name: `belege/${datePrefix}_${invoice.filename}` });
+    }
+
+    await archive.finalize();
   }
 }

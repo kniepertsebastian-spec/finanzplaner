@@ -1,10 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BulkRemoveTransactionsDto } from './dto/bulk-remove-transactions.dto';
 import { BulkUpdateTransactionsDto } from './dto/bulk-update-transactions.dto';
 import { CreateTransactionSplitDto } from './dto/create-transaction-split.dto';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { FindTransactionsQueryDto } from './dto/find-transactions-query.dto';
+import { TaxExportQueryDto } from './dto/tax-export-query.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { TransactionsService } from './transactions.service';
 
@@ -38,6 +40,16 @@ export class TransactionsController {
   @Get()
   findAll(@CurrentUser() user: { id: string }, @Query() query: FindTransactionsQueryDto) {
     return this.transactionsService.findAll(user.id, query);
+  }
+
+  // Literal route, registered before ':id' for the same reason as the bulk POST routes above.
+  @Get('tax-export')
+  taxExport(
+    @CurrentUser() user: { id: string },
+    @Query() query: TaxExportQueryDto,
+    @Res() res: Response,
+  ) {
+    return this.transactionsService.streamTaxExport(user.id, query.year, res);
   }
 
   @Get(':id')

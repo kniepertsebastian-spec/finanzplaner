@@ -2,7 +2,7 @@ import { Type } from 'class-transformer';
 import { ArrayMinSize, IsArray, IsBoolean, IsOptional, IsUUID, ValidateNested } from 'class-validator';
 
 // Bulk edits only cover fields that make sense applied identically to many transactions at once —
-// category and the three flags. Amount/description/date stay single-transaction-only edits.
+// category and the four flags. Amount/description/date stay single-transaction-only edits.
 export class BulkUpdateTransactionsPatchDto {
   @IsOptional()
   @IsUUID()
@@ -19,6 +19,10 @@ export class BulkUpdateTransactionsPatchDto {
   @IsOptional()
   @IsBoolean()
   tooExpensive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  taxRelevant?: boolean;
 }
 
 export class BulkUpdateTransactionsDto {

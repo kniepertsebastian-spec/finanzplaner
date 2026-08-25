@@ -2,6 +2,31 @@
 
 ---
 
+### 📋 Schritt-Log: Steuer-Marker & Jahres-Export (Phase 13, vierte Teilscheibe) — Code fertig, noch nicht deployed — **Migration erforderlich**
+**Zeitstempel:** `2026-08-25 14:05`
+
+#### 1. Was wurde getan?
+*   Vierter Punkt aus Phase 13: "Steuer-Marker — Flag für steuerrelevante Buchungen inklusive gefiltertem Jahres-Export samt Belegen."
+*   **Datenmodell:** viertes Buchungs-Flag `taxRelevant Boolean @default(false)` am `Transaction`-Modell, nach demselben Muster wie `avoidable`/`inefficient`/`tooExpensive`. Neue Migration `20260825060000_add_tax_relevant`.
+*   **Backend — Flag:** `taxRelevant` in `CreateTransactionDto` (und automatisch per `PartialType` im Update-DTO), `create()`/`update()` sowie im Batch-Bearbeitung-Patch (`BulkUpdateTransactionsPatchDto`/`bulkUpdate()`) ergänzt — Steuer-relevant lässt sich also auch für mehrere ausgewählte Buchungen auf einmal setzen.
+*   **Backend — Export:** neuer Endpunkt `GET /transactions/tax-export?year=YYYY` (literal registriert, vor `:id`, aus demselben Grund wie die `bulk-*`-Routen). Streamt eine ZIP-Datei (`archiver`, neue Abhängigkeit) mit zwei Teilen: `steuerrelevante-buchungen.csv` (alle Buchungen mit `taxRelevant=true` im gewählten Jahr: Datum, Beschreibung, Kategorie, Betrag, Tags) sowie ein `belege/`-Ordner mit allen im selben Kalenderjahr hochgeladenen Rechnungen/Belegen (Dateien, die zwischenzeitlich vom Aufräum-Cronjob gelöscht wurden, werden übersprungen statt den Export scheitern zu lassen). **Bewusste Vereinfachung:** Belege sind im Datenmodell nicht mit einzelnen Buchungen verknüpft (kein `Invoice.transactionId`) — der Export bündelt daher alle in diesem Jahr hochgeladenen Belege, nicht nur die zu steuerrelevanten Buchungen passenden. Da nicht als "Wichtig" markierte Belege nach 30 Tagen automatisch gelöscht werden, ist der Beleg-Teil des Exports in der Praxis nur für als "Wichtig" markierte bzw. kürzlich hochgeladene Belege vollständig — dokumentiert in `features.md` als Nutzerhinweis, nicht stillschweigend verschwiegen.
+*   **`archiver`-Abhängigkeit:** Version **7.0.1** bewusst gewählt statt der aktuellsten 8.x — v8 hat die CommonJS-Factory-API (`archiver('zip', opts)`) zugunsten eines reinen ESM-Pakets mit benannten Klassen-Exports (`ZipArchive` etc.) aufgegeben, was mit dem Projekt-Setup (`module: commonjs`, kein `esModuleInterop`) nicht sauber zusammenspielt. v7 ist die letzte Major-Version mit der klassischen, breit dokumentierten API. Import als `import archiver = require('archiver')` (TypeScript-CommonJS-Import), da ein normaler `import archiver from 'archiver'` zwar durchkompiliert (`allowSyntheticDefaultImports`), zur Laufzeit aber auf ein nicht existierendes `.default` zugreift und crasht — im Test aufgefallen, nicht erst beim Deploy.
+*   **Frontend:** `Transaction.taxRelevant` im Typ ergänzt. `TransactionsPage.tsx`: viertes Flag-Icon (Landmark/Bankgebäude-Symbol) je Zeile neben Vermeidbar/Ineffizient/Zu hoch, vierter Bulk-Button ("Als steuerrelevant markieren") in der Batch-Toolbar, sowie ein Jahres-Dropdown + "Steuer-Export"-Link im Seitenkopf (`transactionsApi.taxExportUrl(year)`, exakt nach dem bestehenden Muster von `invoicesApi.fileUrl()` — ein direkter `<a href>`-Link auf die Backend-URL, kein Blob-Fetch über Axios nötig, Cookie-Auth läuft über die normale Browser-Navigation).
+*   **Verifiziert:** Backend — neue/erweiterte Unit-Tests (`bulkUpdate`-Test für `taxRelevant`, neuer `streamTaxExport`-Test der über einen echten `PassThrough`-Stream die tatsächlichen ZIP-Bytes einsammelt und die `PK`-Signatur sowie den `Content-Type`-Header prüft), komplette Backend-Suite grün (68/68). `npx prisma generate` nach dem Schema-Update ausgeführt. `npm run build` (Nest) erfolgreich. Frontend — `npx tsc --noEmit` und `npm run build` beide fehlerfrei. Visuell per eigenständigem HTML-Mockup + Playwright-Screenshot geprüft (Jahres-Dropdown, Export-Button, viertes Flag-Icon je Zeile).
+
+#### 2. Warum wurde es getan?
+*   Fortsetzung des Nutzerauftrags ("finish phase 12/13") in Phase 13.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **⚠️ Migration erforderlich** — beim nächsten Deploy zusätzlich `docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy` (wie schon bei der Tags-Teilscheibe; beide stehen jetzt zusammen aus).
+*   **Neue npm-Abhängigkeit:** `archiver@^7.0.1` (+ `@types/archiver@^7.0.0` als Dev-Dependency) — reine JS-Bibliothek ohne native Bindings, keine bekannten Breaking-Change-Risiken für das restliche Backend.
+*   Wie bei der Tags-Teilscheibe: kein funktionaler Live-Test mit echten Daten möglich (kein Backend/DB in dieser Remote-Session) — insbesondere der Export-Endpunkt sollte nach dem Deploy einmal mit echten Belegen/Buchungen durchprobiert werden.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus (inkl. Migration!) — [x] Visuell geprüft (isoliertes HTML-Mockup/Playwright) — [ ] Funktionaler Live-Test mit echten Daten (insbesondere Export-ZIP mit echten Belegen) steht aus
+
+---
+
 ### 📋 Schritt-Log: Projektbezogene Tags (Phase 13, dritte Teilscheibe) — Code fertig, noch nicht deployed — **Migration erforderlich**
 **Zeitstempel:** `2026-08-25 13:10`
 

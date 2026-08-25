@@ -1,3 +1,4 @@
+import { PassThrough } from 'node:stream';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,8 +8,15 @@ import { TransactionsService } from './transactions.service';
 describe('TransactionsService', () => {
   let service: TransactionsService;
   let prisma: {
-    transaction: { aggregate: jest.Mock; create: jest.Mock; deleteMany: jest.Mock; updateMany: jest.Mock };
+    transaction: {
+      aggregate: jest.Mock;
+      create: jest.Mock;
+      deleteMany: jest.Mock;
+      updateMany: jest.Mock;
+      findMany: jest.Mock;
+    };
     category: { findFirst: jest.Mock };
+    invoice: { findMany: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -16,8 +24,15 @@ describe('TransactionsService', () => {
 
   beforeEach(async () => {
     prisma = {
-      transaction: { aggregate: jest.fn(), create: jest.fn(), deleteMany: jest.fn(), updateMany: jest.fn() },
+      transaction: {
+        aggregate: jest.fn(),
+        create: jest.fn(),
+        deleteMany: jest.fn(),
+        updateMany: jest.fn(),
+        findMany: jest.fn(),
+      },
       category: { findFirst: jest.fn() },
+      invoice: { findMany: jest.fn() },
       $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
     };
     categorization = { learn: jest.fn(), suggestCategoryId: jest.fn() };
@@ -183,9 +198,25 @@ describe('TransactionsService', () => {
 
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
         where: { id: { in: ['tx-1', 'tx-2', 'tx-3'] }, userId: 'user-1' },
-        data: { categoryId: undefined, avoidable: true, inefficient: undefined, tooExpensive: undefined },
+        data: {
+          categoryId: undefined,
+          avoidable: true,
+          inefficient: undefined,
+          tooExpensive: undefined,
+          taxRelevant: undefined,
+        },
       });
       expect(result).toEqual({ count: 3 });
+    });
+
+    it('can bulk-mark transactions as tax-relevant', async () => {
+      prisma.transaction.updateMany.mockResolvedValue({ count: 2 });
+
+      await service.bulkUpdate('user-1', { ids: ['tx-1', 'tx-2'], patch: { taxRelevant: true } });
+
+      expect(prisma.transaction.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ taxRelevant: true }) }),
+      );
     });
 
     it('rejects when the patch references a category the user does not own', async () => {
@@ -196,6 +227,49 @@ describe('TransactionsService', () => {
       ).rejects.toThrow(ForbiddenException);
 
       expect(prisma.transaction.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('streamTaxExport', () => {
+    it('streams a ZIP containing a CSV of tax-relevant transactions for the given year', async () => {
+      prisma.transaction.findMany.mockResolvedValue([
+        {
+          date: new Date('2026-03-01'),
+          description: 'Handwerker',
+          amount: -50000,
+          tags: ['Renovierung'],
+          category: { name: 'Wohnen' },
+        },
+      ]);
+      prisma.invoice.findMany.mockResolvedValue([]);
+
+      const passThrough = new PassThrough();
+      const setMock = jest.fn();
+      const res = Object.assign(passThrough, { set: setMock }) as unknown as Parameters<
+        TransactionsService['streamTaxExport']
+      >[2];
+
+      const chunks: Buffer[] = [];
+      passThrough.on('data', (chunk) => chunks.push(chunk));
+      const finished = new Promise((resolve) => passThrough.on('end', resolve));
+
+      await service.streamTaxExport('user-1', 2026, res);
+      passThrough.end();
+      await finished;
+
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: 'user-1',
+            taxRelevant: true,
+            date: { gte: new Date(Date.UTC(2026, 0, 1)), lt: new Date(Date.UTC(2027, 0, 1)) },
+          }),
+        }),
+      );
+      expect(setMock).toHaveBeenCalledWith(expect.objectContaining({ 'Content-Type': 'application/zip' }));
+      const zipBuffer = Buffer.concat(chunks);
+      expect(zipBuffer.length).toBeGreaterThan(0);
+      expect(zipBuffer.subarray(0, 2).toString('ascii')).toBe('PK'); // ZIP local file header signature
     });
   });
 });

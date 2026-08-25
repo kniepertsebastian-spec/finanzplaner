@@ -29,6 +29,10 @@ export class CreateTransactionDto {
   tooExpensive?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  taxRelevant?: boolean;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   tags?: string[];

@@ -15,6 +15,7 @@ export interface TransactionInput {
   avoidable?: boolean;
   inefficient?: boolean;
   tooExpensive?: boolean;
+  taxRelevant?: boolean;
   tags?: string[];
 }
 
@@ -29,6 +30,7 @@ export interface BulkUpdatePatch {
   avoidable?: boolean;
   inefficient?: boolean;
   tooExpensive?: boolean;
+  taxRelevant?: boolean;
 }
 
 export const transactionsApi = {
@@ -44,4 +46,5 @@ export const transactionsApi = {
     apiClient.post<{ count: number }>('/transactions/bulk-delete', { ids }).then((r) => r.data),
   bulkUpdate: (ids: string[], patch: BulkUpdatePatch) =>
     apiClient.post<{ count: number }>('/transactions/bulk-update', { ids, patch }).then((r) => r.data),
+  taxExportUrl: (year: number) => `${apiClient.defaults.baseURL}/transactions/tax-export?year=${year}`,
 };

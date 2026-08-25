@@ -1,5 +1,16 @@
 import clsx from 'clsx';
-import { Flag, Pencil, Plus, SplitSquareHorizontal, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
+import {
+  Download,
+  Flag,
+  Landmark,
+  Pencil,
+  Plus,
+  SplitSquareHorizontal,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  X,
+} from 'lucide-react';
 import { Fragment, useEffect, useState, type FormEvent } from 'react';
 import { Amount } from '../components/Amount';
 import { CategoryBadge } from '../components/CategoryBadge';
@@ -75,6 +86,7 @@ export function TransactionsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [taxExportYear, setTaxExportYear] = useState(new Date().getFullYear());
 
   const [splitting, setSplitting] = useState(false);
   const [splitSign, setSplitSign] = useState<Sign>('expense');
@@ -163,6 +175,11 @@ export function TransactionsPage() {
     load();
   };
 
+  const handleToggleTaxRelevant = async (t: Transaction) => {
+    await transactionsApi.update(t.id, { taxRelevant: !t.taxRelevant });
+    load();
+  };
+
   const handleDelete = async (t: Transaction) => {
     if (!window.confirm(`Buchung "${t.description}" wirklich löschen?`)) return;
     await transactionsApi.remove(t.id);
@@ -223,7 +240,7 @@ export function TransactionsPage() {
     }
   };
 
-  const handleBulkFlag = async (flag: 'avoidable' | 'inefficient' | 'tooExpensive') => {
+  const handleBulkFlag = async (flag: 'avoidable' | 'inefficient' | 'tooExpensive' | 'taxRelevant') => {
     setBulkBusy(true);
     try {
       await transactionsApi.bulkUpdate([...selectedIds], { [flag]: true });
@@ -318,19 +335,44 @@ export function TransactionsPage() {
         <div>
           <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Transaktionen</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Markiere Buchungen als vermeidbar, ineffizient (z. B. schlechte Bankgebühren) oder zu hoch.
+            Markiere Buchungen als vermeidbar, ineffizient (z. B. schlechte Bankgebühren), zu hoch oder
+            steuerrelevant.
           </p>
         </div>
-        {!splitting && (
-          <button
-            type="button"
-            onClick={() => setSplitting(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <select
+            value={taxExportYear}
+            onChange={(e) => setTaxExportYear(Number(e.target.value))}
+            aria-label="Jahr für Steuer-Export"
+            className="rounded-md border border-neutral-300 px-2 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
           >
-            <SplitSquareHorizontal size={16} />
-            Buchung aufteilen
-          </button>
-        )}
+            {Array.from({ length: 5 }).map((_, i) => {
+              const year = new Date().getFullYear() - i;
+              return (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              );
+            })}
+          </select>
+          <a
+            href={transactionsApi.taxExportUrl(taxExportYear)}
+            className="flex items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            <Download size={16} />
+            Steuer-Export
+          </a>
+          {!splitting && (
+            <button
+              type="button"
+              onClick={() => setSplitting(true)}
+              className="flex items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            >
+              <SplitSquareHorizontal size={16} />
+              Buchung aufteilen
+            </button>
+          )}
+        </div>
       </div>
 
       {splitting && (
@@ -656,6 +698,14 @@ export function TransactionsPage() {
           <button
             type="button"
             disabled={bulkBusy}
+            onClick={() => handleBulkFlag('taxRelevant')}
+            className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-600 hover:bg-white disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            Als steuerrelevant markieren
+          </button>
+          <button
+            type="button"
+            disabled={bulkBusy}
             onClick={handleBulkDelete}
             className="flex items-center gap-1 rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
           >
@@ -787,6 +837,18 @@ export function TransactionsPage() {
                     )}
                   >
                     <TrendingUp size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleTaxRelevant(t)}
+                    aria-label={t.taxRelevant ? 'Als steuerrelevant entfernen' : 'Als steuerrelevant markieren'}
+                    title="Steuerrelevant"
+                    className={clsx(
+                      'mr-2 rounded p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+                      t.taxRelevant ? 'text-emerald-600 dark:text-emerald-400' : 'text-neutral-500 dark:text-neutral-400',
+                    )}
+                  >
+                    <Landmark size={16} />
                   </button>
                   <button
                     type="button"

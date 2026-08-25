@@ -12,17 +12,20 @@ Nutzer bat darum, Phase 12 (UI/UX Redesign) und Phase 13 (Auswertungen, Tags & P
 - **Aus Phase 13 bereits erledigt:**
   - App Shortcuts (`vite.config.ts`, `shortcuts`-Array im PWA-Manifest — "Neue Buchung"/"Transaktionen"/"Budgets"). Keine Migration, kein Backend betroffen.
   - Batch-Bearbeitung in der Transaktionsliste (Mehrfachauswahl per Checkbox + Toolbar für Massen-Kategorieänderung/-Flags/-Löschung). Backend: neue `POST /transactions/bulk-delete`/`bulk-update`-Endpunkte, immer zusätzlich nach `userId` gefiltert. Keine Migration.
-  - Projektbezogene Tags (`#Urlaub2026` etc.) — neues `tags String[]`-Feld direkt am `Transaction`-Modell (kein eigenes Tag-Modell), editierbar im Bearbeiten-Formular, Filter-Chip-Leiste über der Transaktionsliste mit Summenanzeige für den gefilterten Tag. **⚠️ Neue Migration `20260825050000_add_transaction_tags` — muss beim nächsten Deploy per `prisma migrate deploy` angewendet werden**, sonst schlägt jede Transaktion mit Tags fehl (Feld existiert dann im Prisma-Client, aber nicht in der DB-Tabelle).
-  - Alle drei committed & gepusht. Backend-Testsuite komplett grün (66/66 nach der Tags-Teilscheibe).
-- **Nächster Schritt:** mit dem nächsten Phase-13-Punkt weitermachen (Steuer-Marker), siehe TODO-Liste unten.
+  - Projektbezogene Tags (`#Urlaub2026` etc.) — neues `tags String[]`-Feld direkt am `Transaction`-Modell (kein eigenes Tag-Modell), editierbar im Bearbeiten-Formular, Filter-Chip-Leiste über der Transaktionsliste mit Summenanzeige für den gefilterten Tag. Migration `20260825050000_add_transaction_tags`.
+  - Steuer-Marker & Jahres-Export — viertes Flag `taxRelevant` (wie `avoidable`/`inefficient`/`tooExpensive`), auch per Batch-Bearbeitung setzbar. Neuer `GET /transactions/tax-export?year=`-Endpunkt streamt eine ZIP mit CSV der steuerrelevanten Buchungen + allen im selben Jahr hochgeladenen Belegen (neue Abhängigkeit `archiver@7`, bewusst nicht v8 — siehe Log, v8 ist ESM-only und passt nicht zum `module: commonjs`-Setup). Migration `20260825060000_add_tax_relevant`.
+  - **⚠️ Zwei neue Migrationen ausstehend** (`add_transaction_tags`, `add_tax_relevant`) — müssen beim nächsten Deploy per `prisma migrate deploy` angewendet werden, sonst schlagen Buchungen mit Tags bzw. das Steuerrelevant-Flag fehl (Felder existieren dann im Prisma-Client, aber nicht in der DB-Tabelle).
+  - Alle vier committed & gepusht. Backend-Testsuite komplett grün (68/68).
+- **Nächster Schritt:** mit dem nächsten Phase-13-Punkt weitermachen (Web Push Notifications), siehe TODO-Liste unten.
 - **Noch NICHT deployed** (weiterhin kein Docker/SSH in dieser Session) — wie der gesamte Rest dieser Session.
 
 ## Offene TODOs — Reihenfolge für den Rest dieser Session
 
-Phase 12 ist komplett abgeschlossen. Aus Phase 13 bereits erledigt: App Shortcuts, Batch-Bearbeitung, Projektbezogene Tags. Verbleibend aus Phase 13 (Reihenfolge: kleinster/einfachster Punkt zuerst):
-1. **Steuer-Marker** — Flag + gefilterter Jahres-Export samt Belegen (Export-Teil ggf. mit Phase 7 überschneidend, aber laut Roadmap hier als eigener, engerer Scope gemeint — nur steuerrelevante Buchungen).
-2. **Web Push Notifications** — braucht VAPID-Keys/Push-Subscription-Backend, größerer technischer Umfang.
-3. **Sankey-Geldflussdiagramm** — größter Einzelposten, keine Chart.js-Sankey-Fähigkeit im Projekt, braucht eigenen Ansatz (SVG von Hand oder neue Bibliothek).
+Phase 12 ist komplett abgeschlossen. Aus Phase 13 bereits erledigt: App Shortcuts, Batch-Bearbeitung, Projektbezogene Tags, Steuer-Marker & Jahres-Export. Verbleibend aus Phase 13 (Reihenfolge: kleinster/einfachster Punkt zuerst):
+1. **Web Push Notifications** — braucht VAPID-Keys/Push-Subscription-Backend, größerer technischer Umfang.
+2. **Sankey-Geldflussdiagramm** — größter Einzelposten, keine Chart.js-Sankey-Fähigkeit im Projekt, braucht eigenen Ansatz (SVG von Hand oder neue Bibliothek).
+
+Damit ist Phase 13 danach ebenfalls abgeschlossen — anschließend laut Nutzerauftrag: CSV-Import (Phase-11-Rest, wartet auf das echte Bank-CSV-Format des Nutzers) und zuletzt Phase 7.
 
 Nach jedem einzelnen Punkt: Doku (`features.md`, `doku/LOG_DOKUMENTATION.md`, dieses `context.md`) aktualisieren, committen, auf `claude/remote-control-finanzplaner-gbmdlb` **und** `main` pushen (etabliertes Muster dieser Session — Nutzer nutzt `main` für den Mini-PC-Pull).
 
