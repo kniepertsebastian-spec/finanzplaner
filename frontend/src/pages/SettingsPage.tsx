@@ -2,6 +2,7 @@ import { useAuth } from '../context/AuthContext';
 import { BalanceSettings } from '../components/settings/BalanceSettings';
 import { CategoryManager } from '../components/settings/CategoryManager';
 import { MonthCycleSettings } from '../components/settings/MonthCycleSettings';
+import { NotificationSettings } from '../components/settings/NotificationSettings';
 import { PasskeyManager } from '../components/settings/PasskeyManager';
 import { RecurringTransactionsPanel } from '../components/settings/RecurringTransactionsPanel';
 import { SavingsPotsPanel } from '../components/settings/SavingsPotsPanel';
@@ -19,6 +20,7 @@ export function SettingsPage() {
 
       <PasskeyManager />
       <TotpEnrollment />
+      <NotificationSettings />
       <BalanceSettings />
       <MonthCycleSettings />
       <CategoryManager />

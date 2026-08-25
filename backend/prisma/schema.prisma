@@ -29,6 +29,7 @@ model User {
   recurringTransactions RecurringTransaction[]
   invoices              Invoice[]
   savingsPots           SavingsPot[]
+  pushSubscriptions     PushSubscription[]
 }
 
 model Authenticator {
@@ -175,6 +176,19 @@ model Invoice {
   storagePath String // filename on disk (random, not user-controlled) under the invoices upload dir
   important   Boolean  @default(false) // exempts this invoice from the 30-day auto-delete
   uploadedAt  DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  endpoint  String   @unique // uniquely identifies one browser/device subscription; also the dedup key on re-subscribe
+  p256dh    String // PushSubscriptionJSON.keys.p256dh
+  auth      String // PushSubscriptionJSON.keys.auth
+  createdAt DateTime @default(now())
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

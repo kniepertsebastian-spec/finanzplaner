@@ -17,9 +17,7 @@ function periodStartUTC(monthStartDay: number, year: number, monthIndex: number)
   return Date.UTC(year, monthIndex, clampDay(year, monthIndex, monthStartDay));
 }
 
-// End-of-period timestamp (ms) — one ms before the next period's start — for the financial period
-// that contains `today`.
-export function currentPeriodEndUTC(monthStartDay: number, today: Date): number {
+function currentCycle(monthStartDay: number, today: Date): { year: number; monthIndex: number } {
   const year = today.getUTCFullYear();
   const monthIndex = today.getUTCMonth();
   const day = today.getUTCDate();
@@ -33,9 +31,21 @@ export function currentPeriodEndUTC(monthStartDay: number, today: Date): number 
       cycleYear -= 1;
     }
   }
+  return { year: cycleYear, monthIndex: cycleMonth };
+}
 
-  let nextMonth = cycleMonth + 1;
-  let nextYear = cycleYear;
+// Start-of-period timestamp (ms) for the financial period that contains `today`.
+export function currentPeriodStartUTC(monthStartDay: number, today: Date): number {
+  const { year, monthIndex } = currentCycle(monthStartDay, today);
+  return periodStartUTC(monthStartDay, year, monthIndex);
+}
+
+// End-of-period timestamp (ms) — one ms before the next period's start — for the financial period
+// that contains `today`.
+export function currentPeriodEndUTC(monthStartDay: number, today: Date): number {
+  const { year, monthIndex } = currentCycle(monthStartDay, today);
+  let nextMonth = monthIndex + 1;
+  let nextYear = year;
   if (nextMonth > 11) {
     nextMonth = 0;
     nextYear += 1;

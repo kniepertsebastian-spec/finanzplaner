@@ -2,6 +2,42 @@
 
 ---
 
+### 📋 Schritt-Log: Web Push Notifications (Phase 13, fünfte Teilscheibe) — Code fertig, noch nicht deployed — **Migration + neue Server-Konfiguration erforderlich**
+**Zeitstempel:** `2026-08-25 15:20`
+
+#### 1. Was wurde getan?
+*   Fünfter Punkt aus Phase 13, laut Roadmap-Text der technisch größte verbleibende: "Web Push Notifications — Service-Worker-Benachrichtigungen bei Budgetüberschreitungen und anstehenden Großbuchungen."
+*   **Datenmodell:** neues Modell `PushSubscription` (`endpoint` als Unique-Key, `p256dh`/`auth` — die vom Browser gelieferten Verschlüsselungsschlüssel einer Subscription, Kaskaden-Löschung mit `User`). Neue Migration `20260825070000_add_push_subscriptions`.
+*   **Backend — neues `push`-Modul:**
+    *   `GET /push/vapid-public-key` — liefert den öffentlichen VAPID-Schlüssel (oder `null`, wenn serverseitig nicht konfiguriert).
+    *   `POST /push/subscribe` / `DELETE /push/subscribe` — Subscription anlegen (Upsert nach `endpoint`) bzw. entfernen.
+    *   `PushService.sendToUser()`: sendet an alle Subscriptions eines Nutzers, räumt bei einer `410`/`404`-Antwort (vom Browser widerrufene/abgelaufene Subscription) automatisch auf, statt endlos weiter zuzustellen.
+    *   Zwei tägliche Prüfungen (`@Cron(EVERY_DAY_AT_8AM)`, wie der bestehende Fixkosten-Cron):
+        *   `checkBudgetOverruns()`: für jeden Nutzer, jedes Budget im *aktuellen* Finanzzeitraum — Ist-Ausgaben der Kategorie vs. Budget, eine gesammelte Benachrichtigung pro Nutzer mit allen überschrittenen Kategorien (nicht eine Einzelbenachrichtigung je Kategorie).
+        *   `checkUpcomingLargeTransactions()`: aktive wiederkehrende Buchungen mit `nextDueDate` in den nächsten 3 Tagen und Betrag ≥ 200 € (fester Schwellenwert, bewusst *nicht* nutzerkonfigurierbar — hält die Einstellungen-Oberfläche schlank; 200 € als grobe, plausible Grenze für "das ist keine Kleinigkeit mehr").
+    *   **Wiederverwendung/Refactoring:** `financial-period.ts` (bisher nur `currentPeriodEndUTC`) um `currentPeriodStartUTC` ergänzt (verhaltensgleiches Refactoring der gemeinsamen Zyklus-Berechnung in eine private `currentCycle()`-Hilfsfunktion) — wird für den Budget-Zeitraum-Abgleich gebraucht.
+    *   **Neue Abhängigkeit `web-push@^3.6.7`** (+ `@types/web-push`). VAPID-Schlüssel kommen ausschließlich aus `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` in `.env` (Muster wie `JWT_SECRET`: `.env.example` dokumentiert die Erzeugung per `npx web-push generate-vapid-keys`) — **absichtlich nicht selbst generiert und committed**, da es sich um ein Schlüsselpaar für den Produktionsserver des Nutzers handelt. Ohne gesetzte Schlüssel bleibt die Funktion inaktiv (kein Fehler, `PushService` loggt beim Start eine Warnung).
+*   **Frontend:**
+    *   `frontend/src/sw.ts`: neuer `push`-Event-Handler (zeigt die vom Server gesendete `{title, body}`-Payload per `showNotification()` an) sowie `notificationclick` (fokussiert ein offenes App-Fenster oder öffnet eines).
+    *   `frontend/src/lib/pushSubscribe.ts`: Browser-seitige Subscription-Logik (`Notification.requestPermission()`, `PushManager.subscribe()` mit dem vom Server geholten VAPID-Schlüssel, base64→Uint8Array-Konvertierung nach Push-API-Spezifikation) sowie das Gegenstück zum Abbestellen.
+    *   Neue Komponente `components/settings/NotificationSettings.tsx`: Ein/Aus-Toggle unter *Einstellungen*, erkennt fehlende Browser-Unterstützung (`serviceWorker`/`PushManager`/`Notification` nicht vorhanden — z. B. iOS Safari außerhalb des installierten Homescreen-Modus) und zeigt dafür einen Hinweis statt eines nicht-funktionalen Buttons.
+*   **Verifiziert:** Backend — 11 neue `PushService`-Unit-Tests (Subscribe/Unsubscribe, Budget-Überschreitung erkannt/nicht erkannt, "keine Budgets → keine Transaktions-Abfrage" als Kurzschluss-Optimierung, Großbuchungs-Erkennung inkl. Schwellenwert-Filterung und Zusammenfassung pro Nutzer, abgelaufene Subscription wird bei `410` gelöscht, gesamte Funktion no-opt ohne VAPID-Konfiguration), komplette Backend-Suite grün (80/80). `npm run build` (Nest) erfolgreich. Frontend — `npx tsc --noEmit` (Haupt-App) **und** `npx tsc --noEmit -p tsconfig.sw.json` (Service-Worker hat eine eigene, separate tsconfig — bewusst zusätzlich geprüft, da der reguläre Build-Befehl das SW-Bundling über einen eigenen esbuild-Schritt macht, der Typfehler dort nicht zwingend auffangen würde) beide fehlerfrei, `npm run build` komplett fehlerfrei. Visuell per eigenständigem HTML-Mockup + Playwright-Screenshot geprüft (Einstellungen-Panel-Layout).
+
+#### 2. Warum wurde es getan?
+*   Fortsetzung des Nutzerauftrags ("finish phase 12/13") in Phase 13.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **⚠️ Migration erforderlich** — `20260825070000_add_push_subscriptions` beim nächsten Deploy per `prisma migrate deploy`.
+*   **⚠️ Neue, vom Nutzer selbst zu setzende Server-Konfiguration:** `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in `backend/.env` (siehe `.env.example`) — **ohne das bleibt die Funktion einfach inaktiv, es ist also kein Blocker für den Rest des Deploys**, aber Push-Benachrichtigungen funktionieren erst, nachdem der Nutzer einmal `npx web-push generate-vapid-keys` ausgeführt und die beiden Werte in seine `.env` auf dem Mini-PC eingetragen hat.
+*   **Neue npm-Abhängigkeit:** `web-push@^3.6.7`.
+*   Der 200-€-Schwellenwert für "Großbuchung" ist hart codiert (siehe oben) — falls der Nutzer eine andere Grenze möchte, wäre das eine kleine Folgeänderung (`LARGE_TRANSACTION_THRESHOLD_CENTS` in `push.service.ts`), aber bewusst kein Setting in dieser Teilscheibe.
+*   Kein funktionaler Live-Test möglich (kein Backend/DB/Browser mit echter Push-Zustellung in dieser Remote-Session) — nach dem Deploy sollte einmal eine echte Subscription angelegt und der Cron-Job manuell ausgelöst oder abgewartet werden, um die End-to-End-Zustellung zu bestätigen.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus (inkl. Migration + VAPID-Schlüssel in `.env`!) — [x] Visuell geprüft (isoliertes HTML-Mockup/Playwright) — [ ] Funktionaler Live-Test einer echten Zustellung steht aus
+
+---
+
 ### 📋 Schritt-Log: Steuer-Marker & Jahres-Export (Phase 13, vierte Teilscheibe) — Code fertig, noch nicht deployed — **Migration erforderlich**
 **Zeitstempel:** `2026-08-25 14:05`
 

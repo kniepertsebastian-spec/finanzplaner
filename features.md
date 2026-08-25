@@ -85,6 +85,7 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 - **SPA-Offline-Fallback:** ein Reload auf einer Unterseite (z. B. `/budgets`) funktioniert auch offline dank gecachtem `index.html`.
 - **Lokaler Datencache (IndexedDB):** Kategorien, Transaktionen und Budgets werden gecacht und bei fehlender Verbindung aus dem Cache angezeigt.
 - **Offline-Warteschlange + Background Sync** für neu angelegte Transaktionen (siehe oben).
+- **Web Push Notifications:** unter *Einstellungen* aktivierbar (Browser-Berechtigung + Service-Worker-Subscription). Ein täglicher Hintergrund-Check benachrichtigt bei Budgetüberschreitungen im laufenden Zeitraum sowie bei anstehenden großen wiederkehrenden Buchungen (fester Schwellenwert 200 €, Fälligkeit innerhalb der nächsten 3 Tage). Serverseitig per VAPID-Schlüsselpaar (`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` in `.env`) — ohne konfigurierte Schlüssel bleibt die Funktion inaktiv, kein Fehler.
 - **Dark Mode:** manuell umschaltbar, respektiert System-Einstellung als Startwert, Wahl wird lokal gespeichert.
 - **Safe-Area-Unterstützung** (Notch/Statusleiste) für die installierte App auf Mobilgeräten.
 
