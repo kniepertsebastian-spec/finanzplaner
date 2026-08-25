@@ -2,7 +2,8 @@ import { Pencil, PiggyBank, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { savingsPotsApi } from '../../lib/api/savingsPots';
 import type { SavingsPot } from '../../lib/api/types';
-import { eurosToCents, formatCents } from '../../lib/money';
+import { eurosToCents } from '../../lib/money';
+import { Amount } from '../Amount';
 
 export function SavingsPotsPanel() {
   const [pots, setPots] = useState<SavingsPot[] | null>(null);
@@ -177,9 +178,11 @@ export function SavingsPotsPanel() {
                     {pot.name}
                   </span>
                 </td>
-                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{formatCents(pot.amountCents)}</td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
-                  {pot.targetCents != null ? formatCents(pot.targetCents) : '—'}
+                  <Amount cents={pot.amountCents} />
+                </td>
+                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
+                  {pot.targetCents != null ? <Amount cents={pot.targetCents} /> : '—'}
                 </td>
                 <td className="px-4 py-2 text-right">
                   <button
@@ -214,7 +217,10 @@ export function SavingsPotsPanel() {
 
       {pots.length > 0 && (
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
-          Insgesamt gesperrt: <span className="font-medium">{formatCents(totalLockedCents)}</span>
+          Insgesamt gesperrt:{' '}
+          <span className="font-medium">
+            <Amount cents={totalLockedCents} />
+          </span>
         </p>
       )}
     </div>

@@ -2,6 +2,31 @@
 
 ---
 
+### 📋 Schritt-Log: Privacy-Mode / Blickschutz (Phase 12, zweite Teilscheibe) — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 08:00`
+
+#### 1. Was wurde getan?
+*   Nutzer bat darum, Phase 12 und Phase 13 fertigzustellen (Phase 7 explizit ans Ende verschoben). Erste gewählte Teilscheibe: Privacy-Mode — globaler Header-Toggle zum Verwischen sensibler Beträge, zweiter Punkt aus Phase 12.
+*   **`frontend/src/context/PrivacyModeContext.tsx`** (neu, exaktes Muster von `DarkModeContext.tsx`): `isPrivate`-Flag + `toggle()`, in `localStorage` unter dem Key `privacyMode` persistiert. In `main.tsx` als weiterer Provider eingehängt (innerhalb von `DarkModeProvider`, außerhalb von `AuthProvider`).
+*   **`frontend/src/components/Amount.tsx`** (neu): dünner Wrapper um `formatCents()`, der bei aktivem Privacy-Mode `blur-sm select-none` (Tailwinds `filter: blur()`, **nicht** `backdrop-blur` — es müssen die Ziffern selbst verwischt werden, nicht was hinter dem Element liegt) auf den gerenderten Betrag anwendet.
+*   **`StatTile.tsx`** direkt um Privacy-Unterstützung erweitert (`sensitive?: boolean`, Default `true`) statt jeden Aufrufer einzeln auf `<Amount>` umzustellen — da praktisch jede StatTile auf dem Dashboard einen Euro-Betrag zeigt, deckt das die meisten Dashboard-Kacheln automatisch ab. Die eine Ausnahme (Sparquote, eine Prozentzahl statt eines Betrags) bekommt explizit `sensitive={false}`.
+*   **Header-Toggle in `AppShell.tsx`:** Augen-/Augen-durchgestrichen-Icon (`Eye`/`EyeOff`) neben dem bestehenden Dark-Mode-Toggle, exakt gleiches Interaktionsmuster.
+*   **Alle übrigen JSX-`formatCents()`-Aufrufstellen auf `<Amount>` umgestellt** (Betrag statt bereits formatierter String als Prop): `HeroCard.tsx` (Gesamtsaldo, Frei verfügbar, Tagesbudget), `BudgetProgressBar.tsx`, `BalanceSettings.tsx` (berechneter Saldo — die sensibelste Einzelzahl der App), `TransactionsPage.tsx` (Split-Summe-Vorschau, Betragsspalte der Tabelle), `BudgetsPage.tsx` (Budget-Tabelle), `SavingsPotsPanel.tsx` (Topf-Tabelle, Gesamt-gesperrt-Zeile), `RecurringTransactionsPanel.tsx` (Betragsspalte), `DashboardPage.tsx` (Preiserhöhungs-Banner, 50/30/20-Zeilen, nicht-zugeordnet-Hinweis, Einsparpotenzial-Karte, Rücklagen-Karte, Unterdeckungs-Warnbanner).
+*   **Bewusst ausgenommen** (technische Grenzen dokumentiert, kein Bug): Chart.js-Tooltips/Achsenbeschriftungen in `IncomeExpenseChart.tsx`/`CashflowChart.tsx` (Canvas-gerendert, kein DOM-Element zum Blur-Ansetzen), native `title`-Attribute (Preiserhöhungs-Tooltip, Split-Gruppen-Tooltip — Browser-natives Hover-Tooltip, nicht per CSS beeinflussbar), sowie die "Frei verfügbar"-Caption der Hero-Card (reiner `string`-Prop, kein JSX — Betrag darin bleibt unverwischt, geringe Priorität da nur eine Zusatzinfo neben der bereits verwischten Hauptzahl).
+*   **Verifiziert:** kein Backend-Code betroffen. Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei (nur die bekannte, unkritische Vite-Chunk-Size-Warnung). Blur-Effekt visuell per isoliertem HTML-Snippet + Playwright-Screenshot geprüft (Betrag unleserlich, Label bleibt lesbar, kein Layout-Sprung).
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag ("finish phase 12/13").
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — rein clientseitiges Feature, `isPrivate` lebt nur in `localStorage` des Browsers (kein Server-State, keine Synchronisierung zwischen Geräten).
+*   `formatCents`-Import in mehreren Dateien jetzt ungenutzt und entfernt (`BudgetsPage.tsx`, `SavingsPotsPanel.tsx`), wo `<Amount>` den einzigen Aufrufer ersetzt hat.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [ ] Überprüfung erforderlich (visueller Check durch den Nutzer im echten Dashboard, mit echten Beträgen, in Hell- und Dunkelmodus)
+
+---
+
 ### 📋 Schritt-Log: Fixkosten werden zu Zeitraum-Beginn statt am exakten Kalendertag gebucht — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 06:45`
 

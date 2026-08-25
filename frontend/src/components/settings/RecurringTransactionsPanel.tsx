@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { ArrowUpCircle, Flag, Pause, Pencil, Play, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
+import { Amount } from '../Amount';
 import { categoriesApi } from '../../lib/api/categories';
 import { recurringTransactionsApi } from '../../lib/api/recurringTransactions';
 import type { Category, RecurringTransaction } from '../../lib/api/types';
@@ -351,7 +352,7 @@ export function RecurringTransactionsPanel() {
                   {categoryById.get(item.categoryId)?.name ?? 'Unbekannt'}
                 </td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
-                  {formatCents(item.amount)}
+                  <Amount cents={item.amount} />
                   {priceIncreaseByRuleId.has(item.id) && (
                     <span
                       title={`Preiserhöhung: ${formatCents(priceIncreaseByRuleId.get(item.id)!)} → ${formatCents(item.amount)}`}

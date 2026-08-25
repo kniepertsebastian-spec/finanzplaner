@@ -1,11 +1,12 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
+import { Amount } from '../components/Amount';
 import { useAuth } from '../context/AuthContext';
 import { budgetsApi } from '../lib/api/budgets';
 import { categoriesApi } from '../lib/api/categories';
 import type { Budget, Category } from '../lib/api/types';
 import { financialPeriodLabel, listFinancialPeriods, type FinancialPeriod } from '../lib/financialPeriod';
-import { eurosToCents, formatCents } from '../lib/money';
+import { eurosToCents } from '../lib/money';
 import { listWithCache } from '../lib/offlineDb';
 
 const periodLabelFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -192,7 +193,9 @@ export function BudgetsPage() {
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {categoryById.get(b.categoryId)?.name ?? 'Unbekannt'}
                 </td>
-                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">{formatCents(b.amount)}</td>
+                <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
+                  <Amount cents={b.amount} />
+                </td>
                 <td className="px-4 py-2 text-right">
                   <button
                     type="button"

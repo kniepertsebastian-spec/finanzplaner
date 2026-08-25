@@ -2,52 +2,68 @@
 
 ## Ziel
 
-Fixkosten-Regeln sollen bereits zu Beginn des Abrechnungszeitraums (z. B. am 23. bei `monthStartDay = 23`) vollständig als Transaktion gebucht sein, statt tröpfchenweise am jeweiligen Kalendertag der Fälligkeit über den Monat verteilt zu erscheinen — direkter Nutzerauftrag nach mehreren Runden Live-Test-Feedback zum bestehenden Fixkosten-System.
+Nutzer bat darum, Phase 12 (UI/UX Redesign) und Phase 13 (Auswertungen, Tags & PWA-Power-Features) der Roadmap fertigzustellen, bevor Phase 7 (Datenexport/DSGVO/Unit-Tests, explizit ans Ende verschoben) angegangen wird. Diese Session arbeitet die verbleibenden Punkte beider Phasen einzeln als Teilscheiben ab (gleiches Muster wie die gesamte bisherige Session: implementieren → verifizieren → dokumentieren → committen → pushen, pro Feature).
 
 ## Aktueller Stand
 
-- Feature vollständig implementiert und lokal verifiziert:
-  - Backend: `npm run build` fehlerfrei, `npm test` → 16 Suites / 58 Tests grün (55 vorher + 3 neue für die geänderte `isDue()`-Logik).
-  - Kein Frontend-Code betroffen, keine Migration nötig — reine Verhaltensänderung des bestehenden täglichen Cron-Jobs (`RecurringTransactionsService.handleDailyCron()` / `runDueRecurringTransactions()`).
-- **Noch NICHT deployed** (weiterhin kein Docker/SSH in dieser Session).
-- **Diese Session hat außerdem mehrere kleinere Bugfixes/Anpassungen aus einer Live-Test-Runde des Nutzers gemacht** (siehe `doku/LOG_DOKUMENTATION.md` für Details, jeweils eigene Einträge): Vorzeichen-Doppelnegation bei manuell eingegebenem Minus, neue "Fixkosten (aktueller Zeitraum)"-Kachel, Beleg-Upload statt nur Kamera bei OCR, "Netto (Zeitraum)"-Kachel entfernt. Alle bereits gepusht, alle noch nicht deployed.
+- **Erste Teilscheibe dieser Runde: Privacy-Mode (Blickschutz)** — vollständig implementiert, verifiziert, committed, gepusht.
+  - Kein Backend-Code betroffen, keine Migration.
+  - Frontend: `npx tsc --noEmit` und `npm run build` fehlerfrei, Blur-Effekt visuell per Playwright-Screenshot geprüft.
+- **Noch NICHT deployed** (weiterhin kein Docker/SSH in dieser Session) — wie der gesamte Rest dieser Session.
 
-## Offene TODOs
+## Offene TODOs — Reihenfolge für den Rest dieser Session
 
-1. **Deployment auf dem Mini-PC steht aus** (deckt jetzt auch diese und die vorherigen ungedeployten Änderungen ab):
-   ```
-   git pull
-   docker compose -f docker-compose.prod.yml build backend frontend
-   docker compose -f docker-compose.prod.yml up -d backend frontend
-   docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
-   ```
-2. **Wichtig — nach diesem Deploy erwartungsgemäß ungewohntes Verhalten:** Beim ersten Cron-Lauf (täglich 1 Uhr) werden voraussichtlich mehrere, bisher noch nicht gebuchte Fixkosten-Regeln auf einmal als Transaktionen erscheinen — alle, deren Fälligkeit im *laufenden* Zeitraum liegt, unabhängig vom exakten Tag. Das ist erwünschtes, neues Verhalten, kein Fehler — dem Nutzer proaktiv mitteilen, falls die Transaktionsliste nach dem Deploy plötzlich "voller" aussieht.
-3. Weiterhin ausstehend aus vorherigen Sessions (unverändert, siehe frühere `LOG_DOKUMENTATION.md`-Einträge):
-   - Nutzer muss "Miete"/"Kredit" manuell auf "Ausgabe" korrigieren (waren durch den früheren Vorzeichen-Bug fälschlich positiv gespeichert).
-   - Nutzer muss danach den Gesamtsaldo per "Saldo abgleichen" (Einstellungen → Kontostand) korrigieren.
-4. Rest von Phase 13, Phase 12, CSV-Import (Phase 11) weiterhin offen — siehe `claude/roadmap.md`.
-5. Falls in einer künftigen Session wieder ein Mini-PC-Deploy ansteht: vorab prüfen, ob `docker`-Daemon bzw. SSH-Zugang in der jeweiligen Umgebung überhaupt verfügbar sind — war in den letzten neun Sessions durchgehend nicht der Fall.
+Verbleibend aus Phase 12:
+1. **Moderne Chart-Ästhetik:** Bézier-Kurven (`tension: 0.4`), transparente Farbverläufe, Donut-Chart für Kategorie-Anteile, gestrichelte Prognoselinie. Betrifft `IncomeExpenseChart.tsx`/`CashflowChart.tsx`, evtl. neue Donut-Komponente.
+2. **Pill-Progress-Bars & Category Badges:** abgerundete Budgetbalken mit Ampel-Farbübergängen (`BudgetProgressBar.tsx` hat schon abgerundete Balken — ggf. nur Feinschliff) und pastellfarbene Icon-Badges pro Kategorie (Kategorien haben aktuell kein Icon-/Farbfeld — würde eine Migration brauchen, falls dauerhaft gespeichert statt clientseitig aus dem Namen abgeleitet).
+3. **Micro-Interactions:** Zähl-Animationen für Beträge, Skeleton-Loader mit Shimmer-Effekt, Transaktions-Gruppierung nach Datumsblöcken (Heute/Gestern). Reine Frontend-Aufgabe.
 
-## Relevante Dateien/Pfade
+Verbleibend aus Phase 13:
+4. **Sankey-Geldflussdiagramm** — größter Einzelposten, keine Chart.js-Sankey-Fähigkeit im Projekt, braucht eigenen Ansatz (SVG von Hand oder neue Bibliothek).
+5. **Projektbezogene Tags** (`#Urlaub2026` etc.) — braucht neues Datenmodell (Migration).
+6. **Steuer-Marker** — Flag + gefilterter Jahres-Export samt Belegen (Export-Teil ggf. mit Phase 7 überschneidend, aber laut Roadmap hier als eigener, engerer Scope gemeint — nur steuerrelevante Buchungen).
+7. **Web Push Notifications** — braucht VAPID-Keys/Push-Subscription-Backend, größerer technischer Umfang.
+8. **App Shortcuts** — kleinster Punkt, reine Web-Manifest-Erweiterung, kein neuer Code.
+9. **Batch-Bearbeitung** in der Transaktionsliste — Mehrfachauswahl + Massenbearbeitung/-löschung.
 
-- `backend/src/recurring-transactions/financial-period.ts` — neu: minimaler Backend-Port von `frontend/src/lib/financialPeriod.ts` (nur `currentPeriodEndUTC()`).
-- `backend/src/recurring-transactions/recurring-transactions.service.ts` — `isDue()` vergleicht jetzt gegen das Ende des aktuellen Abrechnungszeitraums des Nutzers statt gegen "heute"; `runDueRecurringTransactions()` lädt dafür `user.monthStartDay` per Prisma-`include` mit.
-- `backend/src/recurring-transactions/recurring-transactions.service.spec.ts` — Mocks um `user: { monthStartDay }` ergänzt, Tests für die neue "Vorziehen innerhalb des Zeitraums"-Semantik.
+Nach jedem einzelnen Punkt: Doku (`features.md`, `doku/LOG_DOKUMENTATION.md`, dieses `context.md`) aktualisieren, committen, auf `claude/remote-control-finanzplaner-gbmdlb` **und** `main` pushen (etabliertes Muster dieser Session — Nutzer nutzt `main` für den Mini-PC-Pull).
 
-## Entscheidungen & Begründungen
+## Deployment (gilt für den gesamten noch ausstehenden Rückstand dieser Session)
 
-- **Backend-Port von `financial-period.ts` statt Code-Sharing** — Frontend und Backend sind getrennte npm-Projekte ohne gemeinsames Package; ein Shared-Package wäre für eine einzelne, kleine Funktion unverhältnismäßiger Infrastruktur-Aufwand gewesen. Nur `currentPeriodEndUTC()` portiert (das Einzige, was `isDue()` braucht), nicht die volle `FinancialPeriod`-API des Frontends.
-- **UTC-Kalendertage für "heute" im Backend, nicht lokale Zeit** — anders als das Frontend (das die lokale Browserzeit des Nutzers für "heute" nutzt), hat der Backend-Cron kein Konzept einer "Nutzer-Ortszeit". Konsistent mit dem bereits bestehenden `dateOnly()`-Muster in derselben Datei, das ebenfalls durchgehend UTC-Kalendertage vergleicht.
-- **Keine Sonderbehandlung für Multi-User** — die Änderung wirkt sich auf ALLE aktiven Fixkosten-Regeln aus (nicht nur solche mit einem vom Standard abweichenden `monthStartDay`), da die App laut Projektbeschreibung Single-User ist. Für den jetzigen Zweck ausreichend.
-- **Kein Daten-Backfill/Sonderlauf für bereits überfällige Regeln nötig** — das bestehende "Nachholen verpasster Buchungen"-Verhalten (Regeln mit `nextDueDate` in der Vergangenheit feuern beim nächsten Cron-Lauf sofort) deckt den Übergang ab; keine zusätzliche Logik nötig.
+```
+git pull
+docker compose -f docker-compose.prod.yml build backend frontend
+docker compose -f docker-compose.prod.yml up -d backend frontend
+docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
+```
+
+Weiterhin ausstehend aus vorherigen Sessions (unverändert):
+- Nutzer muss "Miete"/"Kredit" manuell auf "Ausgabe" korrigieren (früherer Vorzeichen-Bug).
+- Nutzer muss danach den Gesamtsaldo per "Saldo abgleichen" korrigieren.
+- Nach dem nächsten Deploy: erster Cron-Lauf bucht ggf. mehrere Fixkosten auf einmal (neues, gewolltes Verhalten aus der letzten Teilscheibe).
+
+## Relevante Dateien/Pfade (Privacy-Mode)
+
+- `frontend/src/context/PrivacyModeContext.tsx` — neu.
+- `frontend/src/components/Amount.tsx` — neu, zentraler Wrapper um `formatCents()` mit Blur.
+- `frontend/src/components/StatTile.tsx` — `sensitive?: boolean`-Prop (Default `true`), blurt intern.
+- `frontend/src/components/layout/AppShell.tsx` — Header-Toggle (Eye/EyeOff-Icon).
+- `frontend/src/main.tsx` — `PrivacyModeProvider` eingehängt.
+- Umgestellt auf `<Amount>`: `HeroCard.tsx`, `BudgetProgressBar.tsx`, `BalanceSettings.tsx`, `TransactionsPage.tsx`, `BudgetsPage.tsx`, `SavingsPotsPanel.tsx`, `RecurringTransactionsPanel.tsx`, `DashboardPage.tsx`.
+- **Bewusst nicht abgedeckt** (technische Grenzen): Chart.js-Tooltips/Achsen (Canvas), native `title`-Attribute, `HeroCard`s `availableIncomeCaption`-String-Prop.
+
+## Entscheidungen & Begründungen (Privacy-Mode)
+
+- **`StatTile` direkt privacy-fähig gemacht statt jeden Aufrufer umzustellen** — deckt die meisten Dashboard-Kacheln automatisch ab, ein einziger Opt-out (`sensitive={false}`) für die einzige Nicht-Geld-Kachel (Sparquote).
+- **`filter: blur()` (Tailwind `blur-sm`), nicht `backdrop-blur`** — trotz Roadmap-Wortlaut "backdrop-blur" ist das technisch das falsche CSS-Feature (blurt nur, was hinter einem halbtransparenten Element liegt, nicht dessen eigenen Text) — als Terminologie-Ungenauigkeit im Roadmap-Text gewertet, korrekt mit `filter: blur()` umgesetzt.
+- **Kein Versuch, Chart-Tooltips oder native `title`-Attribute zu verwischen** — technisch nicht mit CSS erreichbar (Canvas-Rendering bzw. Browser-natives UI-Element), als bewusste, dokumentierte Grenze akzeptiert statt unnötig komplexer Workarounds (z. B. eigene HTML-Tooltip-Implementierung nur für diesen Zweck).
 
 ## Bekannte Fallstricke / Gotchas
 
-- **Docker-Projektname-Kollision** (weiterhin gültig, siehe frühere Einträge): niemals `docker compose -f docker-compose.yml up` auf dem Mini-PC ohne `-p <anderer-projektname>`.
-- **Diese Session hatte weder Docker-Daemon noch SSH-Zugang, auch keinen laufenden Backend/DB-Stack** — Verifikation lief ausschließlich über `npm run build`/`npm test` (Backend) bzw. `tsc`/`vite build` (Frontend), kein echter Login/Dashboard-Aufruf möglich.
-- **Beim ersten Cron-Lauf nach diesem Deploy können mehrere Fixkosten-Regeln gleichzeitig feuern** (siehe TODO 2 oben) — kein Fehler, aber unbedingt dem Nutzer proaktiv ankündigen, sonst wirkt es wie ein Bug.
-- Migrations-Deploy-Befehl auf dem Mini-PC (falls in einer künftigen Teilscheibe wieder nötig — für diese Änderung selbst nicht erforderlich): `docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy`.
+- **Docker-Projektname-Kollision** (weiterhin gültig): niemals `docker compose -f docker-compose.yml up` auf dem Mini-PC ohne `-p <anderer-projektname>`.
+- **Diese Session hat weiterhin weder Docker-Daemon noch SSH-Zugang** — Verifikation läuft über `tsc`/`vite build`/`npm test` plus isolierten Playwright-Screenshots, nicht über einen echten Login/Dashboard-Aufruf.
+- Migrations-Deploy-Befehl auf dem Mini-PC: `docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy`.
 
 ## NICHT relevant
 
-- Alte Inhalte dieser Datei zur allgemeinen Projektübersicht (Tech-Stack, vollständige Repo-Struktur, Phasen 1–9-Historie) sind in `features.md` (Ist-Zustand) bzw. `claude/roadmap.md` (Planung) und `doku/LOG_DOKUMENTATION.md` (Verlauf) besser aufgehoben — bei Bedarf dort nachschlagen statt hier zu duplizieren.
+- Alte Inhalte dieser Datei zur allgemeinen Projektübersicht (Tech-Stack, vollständige Repo-Struktur, Phasen 1–9-Historie) sind in `features.md` (Ist-Zustand) bzw. `claude/roadmap.md` (Planung) und `doku/LOG_DOKUMENTATION.md` (Verlauf) besser aufgehoben.

@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { Flag, Pencil, Plus, SplitSquareHorizontal, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
+import { Amount } from '../components/Amount';
 import { categoriesApi } from '../lib/api/categories';
 import { transactionsApi } from '../lib/api/transactions';
 import type { Category, Transaction } from '../lib/api/types';
@@ -312,7 +313,10 @@ export function TransactionsPage() {
           </div>
 
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Summe: <span className="font-medium text-neutral-700 dark:text-neutral-300">{formatCents(splitSign === 'income' ? splitTotalCents : -splitTotalCents)}</span>
+            Summe:{' '}
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">
+              <Amount cents={splitSign === 'income' ? splitTotalCents : -splitTotalCents} />
+            </span>
           </p>
 
           {splitError && <p className="text-sm text-red-600 dark:text-red-400">{splitError}</p>}
@@ -484,7 +488,7 @@ export function TransactionsPage() {
                     t.amount >= 0 ? 'text-[#2a78d6]' : 'text-[#eb6834]',
                   )}
                 >
-                  {formatCents(t.amount)}
+                  <Amount cents={t.amount} />
                 </td>
                 <td className="px-4 py-2 text-right">
                   <button

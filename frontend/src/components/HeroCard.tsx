@@ -1,4 +1,4 @@
-import { formatCents } from '../lib/money';
+import { Amount } from './Amount';
 
 interface HeroCardProps {
   balanceCents: number;
@@ -34,21 +34,21 @@ export function HeroCard({
     >
       <div className="text-sm font-medium text-white/70">Gesamtsaldo</div>
       <div className="mt-1 text-5xl font-semibold tracking-tight" style={{ fontVariantNumeric: 'proportional-nums' }}>
-        {formatCents(balanceCents)}
+        <Amount cents={balanceCents} />
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 border-t border-white/15 pt-4">
         <div>
           <div className="text-xs text-white/60">Frei verfügbar</div>
           <div className={`mt-0.5 text-lg font-semibold ${availableIncomeCents < 0 ? 'text-red-300' : 'text-white'}`}>
-            {formatCents(availableIncomeCents)}
+            <Amount cents={availableIncomeCents} />
           </div>
           <div className="mt-0.5 text-xs text-white/50">{availableIncomeCaption}</div>
         </div>
         <div>
           <div className="text-xs text-white/60">Tagesbudget</div>
           <div className={`mt-0.5 text-lg font-semibold ${dailyBurnRateCents < 0 ? 'text-red-300' : 'text-white'}`}>
-            {formatCents(dailyBurnRateCents)}
+            <Amount cents={dailyBurnRateCents} />
           </div>
           <div className="mt-0.5 text-xs text-white/50">{burnRateCaption}</div>
         </div>

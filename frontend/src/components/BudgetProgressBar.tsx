@@ -1,5 +1,5 @@
 import { AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { formatCents } from '../lib/money';
+import { Amount } from './Amount';
 
 type Status = 'good' | 'warning' | 'critical';
 
@@ -33,7 +33,7 @@ export function BudgetProgressBar({ categoryName, budgetCents, spentCents }: Bud
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium text-neutral-900 dark:text-neutral-100">{categoryName}</span>
         <span className="text-neutral-500 dark:text-neutral-400">
-          {formatCents(spentCents)} / {formatCents(budgetCents)}
+          <Amount cents={spentCents} /> / <Amount cents={budgetCents} />
         </span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">

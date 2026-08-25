@@ -1,5 +1,7 @@
 import {
   CloudOff,
+  Eye,
+  EyeOff,
   LayoutDashboard,
   List,
   LogOut,
@@ -16,6 +18,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '../../context/AuthContext';
 import { useDarkMode } from '../../context/DarkModeContext';
+import { usePrivacyMode } from '../../context/PrivacyModeContext';
 import { countPendingTransactions } from '../../lib/offlineDb';
 
 const navItems = [
@@ -38,6 +41,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 export function AppShell() {
   const { logout } = useAuth();
   const { isDark, toggle } = useDarkMode();
+  const { isPrivate, toggle: togglePrivacy } = usePrivacyMode();
   const [pendingCount, setPendingCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -127,6 +131,18 @@ export function AppShell() {
                 {pendingCount}
               </span>
             )}
+            <button
+              type="button"
+              onClick={togglePrivacy}
+              aria-label={isPrivate ? 'Blickschutz ausschalten' : 'Blickschutz einschalten'}
+              title="Beträge verwischen"
+              className={clsx(
+                'rounded-md p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+                isPrivate ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-600 dark:text-neutral-300',
+              )}
+            >
+              {isPrivate ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
             <button
               type="button"
               onClick={toggle}

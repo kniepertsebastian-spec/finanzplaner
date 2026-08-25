@@ -86,6 +86,7 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 - Kompaktes Dropdown-Menü (statt Zeilennavigation) für mobile Bildschirme, schließt automatisch bei Routenwechsel, Klick außerhalb oder Escape.
 - Anzeige der Anzahl noch nicht synchronisierter Offline-Buchungen im Header.
 - Konsistentes, responsives Layout (Tailwind CSS) über alle Seiten.
+- **Privacy-Mode (Blickschutz):** Augen-Symbol im Header verwischt alle Cent-Beträge in der App (Hero-Card, Dashboard-Kacheln, Transaktions-/Fixkosten-/Budget-/Rücklagen-Listen, Kontostand-Anzeige) per `filter: blur()`, ohne Layout zu verschieben — praktisch für die Nutzung in der Öffentlichkeit. Zustand wird lokal gespeichert und bleibt über Sitzungen hinweg erhalten. Chart-Tooltips/-Achsenbeschriftungen (Canvas-gerendert) und native Browser-Tooltips (`title`-Attribute) sind aus technischen Gründen ausgenommen.
 
 ## ⚙️ Backend-Infrastruktur
 

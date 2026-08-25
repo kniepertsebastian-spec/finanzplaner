@@ -1,5 +1,6 @@
 import { AlertCircle, AlertTriangle, CheckCircle2, Flag, TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Amount } from '../components/Amount';
 import { BudgetProgressBar } from '../components/BudgetProgressBar';
 import { CashflowChart } from '../components/charts/CashflowChart';
 import { IncomeExpenseChart } from '../components/charts/IncomeExpenseChart';
@@ -179,8 +180,8 @@ export function DashboardPage() {
           <ul className="space-y-1 text-sm text-purple-700 dark:text-purple-400">
             {increasedRules.map(({ recurring: r, previousAmount }) => (
               <li key={r.id}>
-                <span className="font-medium">{r.description}</span>: {formatCents(previousAmount)} →{' '}
-                {formatCents(r.amount)}
+                <span className="font-medium">{r.description}</span>: <Amount cents={previousAmount} /> →{' '}
+                <Amount cents={r.amount} />
               </li>
             ))}
           </ul>
@@ -198,6 +199,7 @@ export function DashboardPage() {
           value={savingsRatePct !== null ? `${savingsRatePct.toFixed(0)}%` : '–'}
           valueClassName={savingsRatePct !== null && savingsRatePct < 0 ? 'text-[#d03b3b]' : undefined}
           caption="Anteil der Einnahmen, der im Zeitraum nicht ausgegeben wurde"
+          sensitive={false}
         />
       </div>
 
@@ -234,7 +236,7 @@ export function DashboardPage() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-neutral-900 dark:text-neutral-100">{row.label}</span>
                   <span className="text-neutral-500 dark:text-neutral-400">
-                    {formatCents(row.cents)} · {pct.toFixed(0)}% (Ziel {row.direction === 'atMost' ? '≤' : '≥'}
+                    <Amount cents={row.cents} /> · {pct.toFixed(0)}% (Ziel {row.direction === 'atMost' ? '≤' : '≥'}
                     {row.target}%)
                   </span>
                 </div>
@@ -253,7 +255,7 @@ export function DashboardPage() {
           })}
           {rule503020.unassignedCents > 0 && (
             <p className="text-xs text-neutral-400 dark:text-neutral-500">
-              {formatCents(rule503020.unassignedCents)} in nicht zugeordneten Kategorien nicht enthalten — unter
+              <Amount cents={rule503020.unassignedCents} /> in nicht zugeordneten Kategorien nicht enthalten — unter
               Einstellungen → Kategorien als Bedarf/Wunsch/Sparen einordnen.
             </p>
           )}
@@ -278,9 +280,15 @@ export function DashboardPage() {
                   {row.label}
                 </span>
                 <span className="text-right text-neutral-600 dark:text-neutral-300">
-                  {row.data.transactionCents > 0 && <div>{formatCents(row.data.transactionCents)} im Zeitraum</div>}
+                  {row.data.transactionCents > 0 && (
+                    <div>
+                      <Amount cents={row.data.transactionCents} /> im Zeitraum
+                    </div>
+                  )}
                   {row.data.recurringMonthlyCents > 0 && (
-                    <div>~{formatCents(row.data.recurringMonthlyCents)} / Monat aus Fixkosten</div>
+                    <div>
+                      ~<Amount cents={row.data.recurringMonthlyCents} /> / Monat aus Fixkosten
+                    </div>
                   )}
                 </span>
               </div>
@@ -298,8 +306,13 @@ export function DashboardPage() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-neutral-900 dark:text-neutral-100">{pot.name}</span>
                   <span className="text-neutral-500 dark:text-neutral-400">
-                    {formatCents(pot.amountCents)}
-                    {pot.targetCents != null && ` / ${formatCents(pot.targetCents)}`}
+                    <Amount cents={pot.amountCents} />
+                    {pot.targetCents != null && (
+                      <>
+                        {' / '}
+                        <Amount cents={pot.targetCents} />
+                      </>
+                    )}
                   </span>
                 </div>
                 {pct !== null && (
@@ -332,7 +345,7 @@ export function DashboardPage() {
         {shortfall && (
           <p className="mb-4 rounded-md bg-[#d03b3b]/10 px-3 py-2 text-sm text-[#d03b3b] dark:bg-[#e0554f]/10 dark:text-[#e0554f]">
             ⚠ Drohende Unterdeckung: Der Kontostand rutscht laut Prognose am {shortfallLabel} ins Minus (
-            {formatCents(shortfall.balanceCents)}).
+            <Amount cents={shortfall.balanceCents} />).
           </p>
         )}
         <CashflowChart points={cashflowPoints} isDark={isDark} />

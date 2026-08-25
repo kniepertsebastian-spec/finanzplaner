@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { usersApi } from '../../lib/api/users';
 import { eurosToCents, formatCents } from '../../lib/money';
+import { Amount } from '../Amount';
 
 export function BalanceSettings() {
   const { user, refreshUser } = useAuth();
@@ -75,7 +76,7 @@ export function BalanceSettings() {
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
           Berechneter Saldo (Startsaldo + alle Buchungen):{' '}
           <span className="font-medium text-neutral-900 dark:text-neutral-100">
-            {calculatedBalance !== null ? formatCents(calculatedBalance) : '…'}
+            {calculatedBalance !== null ? <Amount cents={calculatedBalance} /> : '…'}
           </span>
         </p>
       </div>
