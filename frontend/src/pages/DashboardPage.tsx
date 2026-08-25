@@ -99,7 +99,6 @@ export function DashboardPage() {
   const days = daysInFinancialPeriod(period);
   const elapsed = dayOfFinancialPeriod(monthStartDay);
   const { incomeCents, expenseCents } = monthlyTotals(transactions);
-  const netCents = incomeCents - expenseCents;
   const categoryById = new Map(categories.map((c) => [c.id, c]));
   const savingsRatePct = savingsRate(incomeCents, expenseCents);
   const rule503020 = budgetTypeBreakdown(transactions, categories, incomeCents);
@@ -191,10 +190,9 @@ export function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile label="Einnahmen (Zeitraum)" value={formatCents(incomeCents)} valueClassName="text-[#2a78d6]" />
         <StatTile label="Ausgaben (Zeitraum)" value={formatCents(expenseCents)} valueClassName="text-[#eb6834]" />
-        <StatTile label="Netto (Zeitraum)" value={formatCents(netCents)} />
         <StatTile
           label="Sparquote"
           value={savingsRatePct !== null ? `${savingsRatePct.toFixed(0)}%` : '–'}

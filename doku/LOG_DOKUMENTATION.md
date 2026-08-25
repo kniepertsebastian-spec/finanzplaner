@@ -2,6 +2,24 @@
 
 ---
 
+### 📋 Schritt-Log: "Netto (Zeitraum)"-Kachel vom Dashboard entfernt — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 06:10`
+
+#### 1. Was wurde getan?
+*   Auf Nutzerwunsch die Dashboard-Kachel "Netto (Zeitraum)" entfernt (nach den vorherigen Diskussionen um fehlerhafte Bestandsdaten, bei denen dieser abgeleitete Wert zusätzliche Verwirrung stiftete). `DashboardPage.tsx`: Kachel sowie die nur dafür verwendete `netCents`-Variable entfernt, Grid der verbleibenden drei Kacheln (Einnahmen/Ausgaben/Sparquote) von 4 auf 3 Spalten angepasst.
+*   **Verifiziert:** kein Backend-Code betroffen. Frontend — `npx tsc --noEmit` und `npm run build` (`tsc && vite build`) beide fehlerfrei.
+
+#### 2. Warum wurde es getan?
+*   Direkter Nutzerauftrag.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   Keine Migration nötig. Rein kosmetische Reduktion — die zugrundeliegende Berechnung (`incomeCents - expenseCents`) wird nirgendwo sonst im Code benötigt und wurde komplett entfernt statt nur ausgeblendet.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus
+
+---
+
 ### 📋 Schritt-Log: Bugfixes aus Live-Test — Vorzeichen-Doppelnegation, fehlende "Fixkosten (aktueller Zeitraum)"-Kachel, Beleg-Upload statt nur Kamera — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 05:20`
 

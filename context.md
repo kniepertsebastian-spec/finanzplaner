@@ -2,11 +2,11 @@
 
 ## Ziel
 
-Bugfixes aus einer Live-Test-Session des Nutzers nach dem letzten Deployment: (1) Vorzeichen-Doppelnegation bei manuell eingegebenem Minus in Betragsfeldern mit Ausgabe/Einnahme-Umschalter, (2) fehlende "Fixkosten (aktueller Zeitraum)"-Kachel auf dem Dashboard, (3) OCR-Belegscan sollte auch ein bereits vorhandenes Bild statt zwingend eine Live-Kamera-Aufnahme erlauben.
+Bugfixes aus einer Live-Test-Session des Nutzers nach dem letzten Deployment: (1) Vorzeichen-Doppelnegation bei manuell eingegebenem Minus in Betragsfeldern mit Ausgabe/Einnahme-Umschalter, (2) fehlende "Fixkosten (aktueller Zeitraum)"-Kachel auf dem Dashboard, (3) OCR-Belegscan sollte auch ein bereits vorhandenes Bild statt zwingend eine Live-Kamera-Aufnahme erlauben, (4) auf Nutzerwunsch zusätzlich die "Netto (Zeitraum)"-Kachel wieder vom Dashboard entfernt (siehe unten, kleiner Nachtrag zur selben Session).
 
 ## Aktueller Stand
 
-- Alle drei Fixes vollständig implementiert und lokal verifiziert:
+- Alle vier Punkte vollständig implementiert und lokal verifiziert:
   - Kein Backend-Code betroffen — rein Frontend-Fixes, keine neue Migration.
   - Frontend: `npx tsc --noEmit` fehlerfrei, `npm run build` (`tsc && vite build`) fehlerfrei (nur die bekannte, unkritische Vite-Chunk-Size-Warnung).
 - **Noch NICHT deployed** (weiterhin kein Docker/SSH in dieser Session). Mehrere additive Migrationen aus vorherigen Teilscheiben stehen ebenfalls noch aus.
