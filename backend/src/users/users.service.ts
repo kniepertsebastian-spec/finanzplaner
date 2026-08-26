@@ -31,19 +31,15 @@ export class UsersService {
     return { balance: user.startingBalance + transactionsSum };
   }
 
-  private async findOrCreateReconciliationCategory(userId: string) {
-    const existing = await this.prisma.category.findFirst({
-      where: { userId, name: RECONCILIATION_CATEGORY_NAME },
-    });
-    if (existing) {
-      return existing;
-    }
-    return this.prisma.category.create({ data: { userId, name: RECONCILIATION_CATEGORY_NAME } });
-  }
-
   // "Saldo abgleichen": user provides the real balance from their bank, we book an automatic
   // adjustment transaction for whatever cent difference remains vs. our own calculated balance —
   // no attempt to guess which real-world booking is missing, just closes the gap.
+  //
+  // The category find-or-create and the transaction create both run inside one
+  // `$transaction`, not as two independent queries — otherwise a connection drop between them
+  // could leave a freshly-created "Kontoabgleich" category with no adjustment transaction (or,
+  // on a retry, a second duplicate category), an inconsistent state the old two-step version
+  // couldn't roll back from.
   async reconcile(userId: string, dto: ReconcileBalanceDto) {
     const { balance: calculatedBalance } = await this.getBalance(userId);
     const diff = dto.actualBalance - calculatedBalance;
@@ -52,15 +48,20 @@ export class UsersService {
       return { transaction: null, previousBalance: calculatedBalance, actualBalance: dto.actualBalance, diff };
     }
 
-    const category = await this.findOrCreateReconciliationCategory(userId);
-    const transaction = await this.prisma.transaction.create({
-      data: {
-        userId,
-        categoryId: category.id,
-        amount: diff,
-        description: RECONCILIATION_DESCRIPTION,
-        isReconciliation: true,
-      },
+    const transaction = await this.prisma.$transaction(async (tx) => {
+      const category =
+        (await tx.category.findFirst({ where: { userId, name: RECONCILIATION_CATEGORY_NAME } })) ??
+        (await tx.category.create({ data: { userId, name: RECONCILIATION_CATEGORY_NAME } }));
+
+      return tx.transaction.create({
+        data: {
+          userId,
+          categoryId: category.id,
+          amount: diff,
+          description: RECONCILIATION_DESCRIPTION,
+          isReconciliation: true,
+        },
+      });
     });
 
     return { transaction, previousBalance: calculatedBalance, actualBalance: dto.actualBalance, diff };

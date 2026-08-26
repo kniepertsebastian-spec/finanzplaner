@@ -9,6 +9,7 @@ describe('UsersService', () => {
     user: { update: jest.Mock; findUniqueOrThrow: jest.Mock };
     category: { findFirst: jest.Mock; create: jest.Mock };
     transaction: { create: jest.Mock };
+    $transaction: jest.Mock;
   };
   let transactionsService: { getBalance: jest.Mock };
 
@@ -17,6 +18,10 @@ describe('UsersService', () => {
       user: { update: jest.fn(), findUniqueOrThrow: jest.fn() },
       category: { findFirst: jest.fn(), create: jest.fn() },
       transaction: { create: jest.fn() },
+      // reconcile() runs its work inside `prisma.$transaction(async (tx) => ...)` — the mock
+      // just invokes the callback with `prisma` itself, so the same category/transaction mocks
+      // above are what the callback ends up calling (no real transactional isolation needed here).
+      $transaction: jest.fn((fn: (tx: unknown) => unknown) => fn(prisma)),
     };
     transactionsService = { getBalance: jest.fn() };
 
@@ -65,6 +70,10 @@ describe('UsersService', () => {
 
       const result = await service.reconcile('user-1', { actualBalance: 10250 });
 
+      // Category lookup/creation and the adjustment booking must run inside one $transaction —
+      // not as two independent queries that could leave a category with no matching booking if
+      // the connection drops in between.
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
       expect(prisma.category.create).not.toHaveBeenCalled();
       expect(prisma.transaction.create).toHaveBeenCalledWith({
         data: {

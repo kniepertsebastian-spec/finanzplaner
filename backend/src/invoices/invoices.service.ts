@@ -14,16 +14,27 @@ export class InvoicesService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  create(userId: string, file: Express.Multer.File) {
-    return this.prisma.invoice.create({
-      data: {
-        userId,
-        filename: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        storagePath: file.filename,
-      },
-    });
+  // Multer has already written the file to disk by the time this runs (see invoiceMulterOptions'
+  // diskStorage) — if the DB insert then fails, that file would otherwise sit there forever as an
+  // orphan with no row pointing at it (and so no way for the retention cron or "delete" endpoint
+  // to ever find and remove it). Roll it back on failure instead.
+  async create(userId: string, file: Express.Multer.File) {
+    try {
+      return await this.prisma.invoice.create({
+        data: {
+          userId,
+          filename: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          storagePath: file.filename,
+        },
+      });
+    } catch (err) {
+      await unlink(path.join(UPLOADS_DIR, file.filename)).catch(() => {
+        // Best-effort — the DB error above is the one that actually matters to the caller.
+      });
+      throw err;
+    }
   }
 
   findAll(userId: string) {

@@ -14,23 +14,27 @@ Stattdessen hat der Nutzer `claude/roadmap.md` um einen neuen Abschnitt **"secur
 - **WebAuthn-Multi-User-Fix:** `webauthn.service.ts`s `generateLoginOptions()` nutzte `prisma.user.findFirst()` und schränkte `allowCredentials` auf dessen Passkeys ein — brach den Login für jeden Nutzer außer dem ersten. Umgestellt auf Discoverable-Credential-Flow (kein `allowCredentials`), Login-Challenge jetzt pro Challenge-Wert statt pro `userId` in Redis abgelegt, `verifyLogin()` liest die Challenge aus `clientDataJSON` der Antwort.
 - **Serverseitige JWT-Invalidierung beim Logout:** `AuthService.logout()` trägt das Token jetzt zusätzlich zum Cookie-Löschen (Hash, mit Rest-TTL) in eine Redis-Blacklist ein; `JwtAuthGuard.canActivate()` (jetzt async) prüft diese Blacklist zusätzlich zur Signaturprüfung.
 - Neue Datei `backend/src/auth/token-blacklist.util.ts` (gemeinsame Hash-Key-Funktion).
-- **12 neue Unit-Tests** (`auth.service.spec.ts`, `guards/jwt-auth.guard.spec.ts`, `webauthn.service.spec.ts` — Letztere war zuvor komplett ungetestet). Komplette Backend-Suite grün (92/92).
+- **12 neue Unit-Tests** (`auth.service.spec.ts`, `guards/jwt-auth.guard.spec.ts`, `webauthn.service.spec.ts` — Letztere war zuvor komplett ungetestet).
 - **Test-Infra-Hinweis:** `otplib` importiert transitiv ein ESM-only-Paket (`@scure/base`), das Jests Standard-Transform nicht parsen kann — in beiden neuen Specs mit `jest.mock('otplib', () => ({...}))` umgangen statt die globale Jest-Config anzufassen. Bei künftigen Specs, die `auth.service.ts` oder `webauthn.service.ts` (importiert `AuthService`) einbinden, denselben Trick anwenden.
-- Committed & gepusht auf `claude/remote-control-finanzplaner-gbmdlb` **und** `main`.
-- **Keine Migration nötig, kein neues npm-Package.**
+
+**Security-Patch, Punkt 17 (Datenkonsistenz & Fehlerbehandlung) ist abgeschlossen:**
+- **Transaktionale Saldo-Abstimmung:** `UsersService.reconcile()` kapselt Kategorie-Suche/-Erstellung und das Anlegen der Ausgleichsbuchung jetzt in `prisma.$transaction(async (tx) => {...})` (interactive transaction, da der zweite Schritt von der ID des ersten abhängt).
+- **Dateileichen-Rollback:** `InvoicesService.create()` löscht die von Multer bereits geschriebene Datei per `unlink()`, wenn der anschließende DB-Insert fehlschlägt, und wirft den Originalfehler weiter.
+- Neue Tests in `users.service.spec.ts` (`$transaction`-Nutzung geprüft) und `invoices.service.spec.ts` (Rollback-Verhalten bei DB-Fehler).
+
+Beide Punkte committed & gepusht auf `claude/remote-control-finanzplaner-gbmdlb` **und** `main`. **Keine Migration nötig, kein neues npm-Package.** Backend-Testsuite komplett grün (94/94).
 
 **Noch NICHT deployed** (weiterhin kein Docker/SSH in dieser Session).
 
 ## Offene TODOs — Reihenfolge für den Rest dieser Session
 
-Aus dem neuen "security patch"-Abschnitt in `claude/roadmap.md` (Nutzer bat, bei 16 zu beginnen — 16 ist erledigt, weiter mit 17 und 18):
+Aus dem neuen "security patch"-Abschnitt in `claude/roadmap.md` — Punkte 16 und 17 sind erledigt, weiter mit 18:
 
-1. **Punkt 17 — Datenkonsistenz & Fehlerbehandlung:**
-   - DB-Transaktion für Saldo-Abstimmung (`users.service.ts`, `reconcile`) — Kategorie-Suche/-Erstellung und Buchungs-Erstellung aktuell separate Queries, sollen wie bei `createSplit` in ein `prisma.$transaction([...])`.
-   - Dateileichen-Rollback bei Rechnungs-Uploads (`invoices.controller.ts`/`invoices.service.ts`) — bei fehlgeschlagenem DB-Insert nach Multer-Upload soll die Datei per `node:fs/promises.unlink()` wieder entfernt werden.
-2. **Punkt 18 — Monitoring & Wartung:**
+1. **Punkt 18 — Monitoring & Wartung:**
    - Prometheus-Metrics-Endpunkt (`@willsoto/nestjs-prometheus`) für HTTP-Latenzen/Request-Counts/DB-Pool.
    - Cronjob-Heartbeats (`recurring-transactions.service.ts`, `push.service.ts`) — Ping an Uptime Kuma/Healthchecks.io bei erfolgreichem täglichem Cron-Lauf.
+
+Nach Punkt 18 ist der komplette "security patch"-Abschnitt abgeschlossen.
 
 **Explizit ignoriert, nicht von selbst wieder aufgreifen:** CSV-Import (Phase 11) und Phase 7 (Datenexport/DSGVO/Unit-Tests/Sentry) — Nutzer hat das ausdrücklich gesagt.
 

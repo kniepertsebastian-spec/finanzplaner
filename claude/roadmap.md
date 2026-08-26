@@ -169,11 +169,11 @@
   - **Problem:** In `auth.service.ts` (`logout`) wird lediglich das Cookie im Browser gelöscht[cite: 3]. Ein abgefangenes Token bleibt bis zum Ablauf (`7d`) kryptografisch valide.
   - **Lösung:** Beim Logout das Token (oder dessen Hash/JTI) mit der verbleibenden Rest-TTL als Blacklist-Eintrag in Redis schreiben (`redis.set(token, 'revoked', 'EX', ttl)`) und im `JwtAuthGuard` gegenprüfen.
 
-### 17. Datenkonsistenz & Fehlerbehandlung
-- [ ] **DB-Transaktion für Saldo-Abstimmung (`reconcile`)**
+### 17. Datenkonsistenz & Fehlerbehandlung ✅
+- [x] **DB-Transaktion für Saldo-Abstimmung (`reconcile`)**
   - **Problem:** In `users.service.ts` (`reconcile`) laufen die Kategorie-Suche/-Erstellung und das Erstellen der Buchung als separate Queries[cite: 3]. Bei Verbindungsabbrüchen entstehen inkonsistente Zustände.
   - **Lösung:** Beide Operationen wie bei `createSplit` in ein `prisma.$transaction([...])` kapseln.
-- [ ] **Dateileichen-Rollback bei Rechnungs-Uploads**
+- [x] **Dateileichen-Rollback bei Rechnungs-Uploads**
   - **Problem:** In `invoices.controller.ts` speichert Multer die Datei auf der Festplatte[cite: 3]. Schlägt der DB-Insert in `InvoicesService.create()` fehl, verbleibt die Datei dauerhaft als verwaiste Leiche im Storage.
   - **Lösung:** In `invoices.controller.ts` oder `invoices.service.ts` einen `try/catch`-Block einbauen, der im Fehlerfall `node:fs/promises.unlink(filePath)` ausführt.
 

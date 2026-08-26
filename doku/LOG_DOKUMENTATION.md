@@ -2,6 +2,28 @@
 
 ---
 
+### 📋 Schritt-Log: Security-Patch 17 — Transaktionale Saldo-Abstimmung & Dateileichen-Rollback — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 17:45`
+
+#### 1. Was wurde getan?
+*   Zweiter Abschnitt aus dem vom Nutzer ergänzten "security patch"-Teil der Roadmap: "Datenkonsistenz & Fehlerbehandlung", beide Punkte umgesetzt.
+*   **DB-Transaktion für Saldo-Abstimmung (`users.service.ts`, `reconcile`):** Kategorie-Suche/-Erstellung ("Kontoabgleich") und das Anlegen der Ausgleichsbuchung liefen bisher als zwei unabhängige Queries — bei einem Verbindungsabbruch dazwischen hätte eine Kategorie ohne zugehörige Buchung entstehen können (oder bei einem Retry eine doppelte Kategorie). Beide Schritte jetzt in `prisma.$transaction(async (tx) => {...})` gekapselt (die "interactive transaction"-Form, da der zweite Schritt von der ID aus dem ersten abhängt — anders als bei `createSplit`s Array-Form, wo alle Operationen unabhängig voneinander feststehen).
+*   **Dateileichen-Rollback bei Rechnungs-Uploads (`invoices.service.ts`, `create`):** Multer schreibt die Datei bereits auf die Festplatte, bevor der DB-Insert läuft. Schlug Letzterer fehl, blieb die Datei als Leiche im Upload-Verzeichnis liegen — ohne zugehörige DB-Zeile hätte sie weder die Retention-Cron-Aufgabe noch der Lösch-Endpunkt je wieder gefunden. `create()` fängt DB-Fehler jetzt ab, löscht die zugehörige Datei per `node:fs/promises.unlink()` (best-effort, ein Fehler dabei wird verschluckt — der ursprüngliche DB-Fehler ist der eigentlich relevante) und wirft den ursprünglichen Fehler danach unverändert weiter.
+*   **Verifiziert:** `users.service.spec.ts` um eine Assertion erweitert, dass `reconcile()` tatsächlich `$transaction` nutzt (Prisma-Mock ruft die übergebene Callback-Funktion mit dem Prisma-Mock selbst als `tx` auf — keine echte Transaktions-Isolation im Unit-Test nötig/möglich, aber die Verdrahtung ist geprüft). `invoices.service.spec.ts` um zwei neue Tests für `create()` ergänzt (Erfolgsfall räumt nichts auf; DB-Fehler löst `unlink()` mit dem korrekten Pfad aus und wirft den Originalfehler weiter). Komplette Backend-Suite grün (94/94). `npx tsc --noEmit` und `npm run build` (Nest) beide fehlerfrei.
+
+#### 2. Warum wurde es getan?
+*   Nutzerauftrag: Fortsetzung des "security patch"-Abschnitts nach Punkt 16.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — reine Code-Robustheit, kein Schema-Wechsel.
+*   Kein neues npm-Package.
+*   Rein internes Verhalten — für den Nutzer aus der App heraus nicht sichtbar (Ausnahme: der seltene Fehlerfall, den es jetzt sauber statt inkonsistent behandelt), daher keine Ergänzung in `features.md`.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [x] Unit-getestet (94/94 gesamt) — [ ] Funktionaler Live-Test (Verbindungsabbruch/DB-Fehler künstlich provozieren) steht aus, kein Backend/DB in dieser Remote-Session verfügbar
+
+---
+
 ### 📋 Schritt-Log: Security-Patch 16 — WebAuthn-Multi-User-Fix & JWT-Blacklist beim Logout — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 17:15`
 
