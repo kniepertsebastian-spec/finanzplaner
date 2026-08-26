@@ -14,6 +14,7 @@ import {
   verifyAuthenticationResponse,
   type AuthenticatorTransportFuture,
 } from '@simplewebauthn/server';
+import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS_CLIENT } from '../common/redis/redis.module';
 import { AuthService } from './auth.service';
@@ -22,7 +23,10 @@ import { WebauthnLoginVerifyDto } from './dto/webauthn-login-verify.dto';
 
 const CHALLENGE_TTL_SECONDS = 300;
 const registrationChallengeKey = (userId: string) => `webauthn:reg:${userId}`;
-const loginChallengeKey = (userId: string) => `webauthn:login:${userId}`;
+// Keyed by the challenge itself, not a user id — generateLoginOptions() no longer knows which
+// user is logging in (see below), so there's no user id available to key by until verifyLogin()
+// looks up the authenticator afterward.
+const loginChallengeKey = (challenge: string) => `webauthn:login:${challenge}`;
 
 @Injectable()
 export class WebauthnService {
@@ -128,21 +132,17 @@ export class WebauthnService {
   }
 
   async generateLoginOptions() {
-    const user = await this.prisma.user.findFirst({ include: { authenticators: true } });
-    if (!user || user.authenticators.length === 0) {
-      throw new BadRequestException('No passkeys registered yet');
-    }
-
+    // No `allowCredentials` — this is the discoverable-credential (resident key) flow: the
+    // browser/OS shows every passkey registered for this RP and lets the person pick which
+    // account to sign in as. Previously this looked up `prisma.user.findFirst()` and restricted
+    // `allowCredentials` to that one arbitrary user's credentials, which silently broke login for
+    // every other registered user as soon as a second account existed.
     const options = await generateAuthenticationOptions({
       rpID: this.rpID,
-      allowCredentials: user.authenticators.map((a) => ({
-        id: a.credentialId,
-        transports: a.transports as AuthenticatorTransportFuture[],
-      })),
       userVerification: 'preferred',
     });
 
-    await this.redis.set(loginChallengeKey(user.id), options.challenge, 'EX', CHALLENGE_TTL_SECONDS);
+    await this.redis.set(loginChallengeKey(options.challenge), '1', 'EX', CHALLENGE_TTL_SECONDS);
     return options;
   }
 
@@ -154,14 +154,19 @@ export class WebauthnService {
       throw new UnauthorizedException('Unknown passkey');
     }
 
-    const expectedChallenge = await this.redis.get(loginChallengeKey(authenticator.userId));
-    if (!expectedChallenge) {
+    // The challenge isn't known upfront anymore (see generateLoginOptions), so it's read back out
+    // of the response's own clientDataJSON, then checked against Redis to confirm it's one we
+    // actually issued and it hasn't already been consumed/expired — not just trusting whatever
+    // the client claims, which is also exactly what expectedChallenge below re-validates.
+    const { challenge } = decodeClientDataJSON(response.response.clientDataJSON);
+    const challengeIsValid = await this.redis.get(loginChallengeKey(challenge));
+    if (!challengeIsValid) {
       throw new BadRequestException('No pending login challenge, request new options first');
     }
 
     const verification = await verifyAuthenticationResponse({
       response,
-      expectedChallenge,
+      expectedChallenge: challenge,
       expectedOrigin: this.origin,
       expectedRPID: this.rpID,
       credential: {
@@ -183,7 +188,7 @@ export class WebauthnService {
         lastUsedAt: new Date(),
       },
     });
-    await this.redis.del(loginChallengeKey(authenticator.userId));
+    await this.redis.del(loginChallengeKey(challenge));
 
     this.authService.issueJwtCookie(res, authenticator.userId);
     return { verified: true };

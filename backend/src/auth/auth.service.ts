@@ -1,11 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Response } from 'express';
 import * as argon2 from 'argon2';
+import type Redis from 'ioredis';
 import { verify as verifyTotp } from 'otplib';
+import { REDIS_CLIENT } from '../common/redis/redis.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { decryptSecret } from './crypto.util';
 import { LoginDto } from './dto/login.dto';
+import { tokenBlacklistKey } from './token-blacklist.util';
 
 const AUTH_COOKIE_NAME = 'auth_token';
 const AUTH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -16,6 +19,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   async login(dto: LoginDto, res: Response) {
@@ -65,8 +69,19 @@ export class AuthService {
     };
   }
 
-  logout(res: Response) {
+  // `token` is the still-valid cookie value for the request making this call (the JwtAuthGuard
+  // already verified it before this handler ran) — blacklisting it, not just clearing the
+  // browser's cookie, is what stops a copy of the token intercepted elsewhere from staying usable
+  // until its 7-day expiry.
+  async logout(res: Response, token?: string) {
     res.clearCookie(AUTH_COOKIE_NAME);
+    if (token) {
+      const decoded = this.jwtService.decode(token) as { exp?: number } | null;
+      const remainingSeconds = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 0;
+      if (remainingSeconds > 0) {
+        await this.redis.set(tokenBlacklistKey(token), 'revoked', 'EX', remainingSeconds);
+      }
+    }
     return { success: true };
   }
 

@@ -2,6 +2,31 @@
 
 ---
 
+### 📋 Schritt-Log: Security-Patch 16 — WebAuthn-Multi-User-Fix & JWT-Blacklist beim Logout — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-25 17:15`
+
+#### 1. Was wurde getan?
+*   Nutzer hat `claude/roadmap.md` um einen neuen Abschnitt "security patch" erweitert (Punkte 16–18: Security & Authentifizierung, Datenkonsistenz & Fehlerbehandlung, Monitoring & Wartung) und darum gebeten, bei Punkt 16 zu beginnen. Beide Punkte aus 16 umgesetzt.
+*   **WebAuthn-Multi-User-Fix (`webauthn.service.ts`):** `generateLoginOptions()` rief bisher `prisma.user.findFirst()` auf und beschränkte `allowCredentials` auf die Passkeys genau dieses einen (beliebigen) Nutzers — sobald ein zweiter Nutzer registriert war, schlug dessen Passkey-Login lautlos fehl (falscher/leerer `allowCredentials`). Umgestellt auf den Discoverable-Credential-Flow: `generateAuthenticationOptions()` wird ganz ohne `allowCredentials` aufgerufen, wodurch der Browser/das Betriebssystem alle für diese Domain hinterlegten Passkeys zur Auswahl anzeigt. Da vor der Verifikation nicht mehr bekannt ist, welcher Nutzer sich einloggt, wird die Challenge jetzt nicht mehr pro `userId`, sondern pro Challenge-Wert selbst in Redis abgelegt (`webauthn:login:<challenge>`); `verifyLogin()` liest die Challenge aus der `clientDataJSON` der Antwort (`decodeClientDataJSON` aus `@simplewebauthn/server/helpers`) heraus und prüft gegen Redis, dass sie tatsächlich von uns ausgestellt und noch nicht verbraucht/abgelaufen ist — der eigentliche Nutzer wird danach wie schon zuvor über die `credentialId` aus der Datenbank ermittelt.
+*   **Serverseitige JWT-Invalidierung beim Logout:** `AuthService.logout()` löscht weiterhin das Cookie, trägt das aktuelle Token jetzt aber zusätzlich mit seiner verbleibenden Rest-TTL (aus dem `exp`-Claim berechnet) als Blacklist-Eintrag in Redis ein (`jwt:blacklist:<sha256(token)>`, nicht der Token im Klartext). `JwtAuthGuard.canActivate()` ist jetzt async und prüft nach erfolgreicher Signatur-Verifikation zusätzlich, ob das Token in dieser Blacklist steht, und lehnt in dem Fall mit `UnauthorizedException` ab. Ein abgefangenes/kopiertes Token bleibt damit nach einem Logout nicht mehr bis zum reguären 7-Tage-Ablauf gültig.
+*   **Neue Datei `backend/src/auth/token-blacklist.util.ts`:** gemeinsame Hilfsfunktion `tokenBlacklistKey()` (SHA-256-Hash des Tokens als Redis-Key), von `AuthService` und `JwtAuthGuard` geteilt.
+*   **Verifiziert:** neue Unit-Tests für alle drei geänderten Stellen — `auth.service.spec.ts` (Logout blacklistet mit korrekter TTL, kein Blacklist-Eintrag ohne Token bzw. bei bereits abgelaufenem Token), `guards/jwt-auth.guard.spec.ts` (Public-Route ohne Prüfung durch, fehlendes/ungültiges Token abgelehnt, blacklistetes Token abgelehnt, gültiges Token akzeptiert + Nutzer an Request gehängt), `webauthn.service.spec.ts` (Login funktioniert für einen Nutzer, der *nicht* der erste in der Tabelle ist — der eigentliche Regressionstest für den behobenen Bug — sowie unbekannte Credential-ID und ungültige/fehlende Challenge werden abgelehnt). Alle 12 neuen Tests grün, komplette Backend-Suite weiterhin grün (92/92). `npx tsc --noEmit` und `npm run build` (Nest) beide fehlerfrei.
+*   **Test-Infrastruktur-Randnotiz:** `auth.service.ts`/`webauthn.service.ts` importieren transitiv `otplib`, dessen `@otplib/plugin-base32-scure`-Abhängigkeit auf dem ESM-only-Paket `@scure/base` aufbaut — Jests Standard-Transform (kein `esModuleInterop`/ESM-Support in der Jest-Konfig dieses Projekts) kann das nicht parsen. In beiden neuen Spec-Dateien mit `jest.mock('otplib', () => ({...}))` (nur die tatsächlich verwendeten Exports gestubbt) umgangen, statt die globale Jest-Konfiguration anzufassen — das ist vermutlich auch der Grund, warum der gesamte `auth`-Ordner bisher komplett ohne Tests war.
+
+#### 2. Warum wurde es getan?
+*   Nutzerauftrag: "we stopped at finishing phase 15. start with step 16 then and begin from there" (bezogen auf den neuen "security patch"-Abschnitt in `claude/roadmap.md`).
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — keine Schema-Änderung, nur Redis-Keys (kein persistentes Schema).
+*   Kein neues npm-Package.
+*   **Sicherheitsrelevant:** Login mit mehreren Nutzern über Passkeys funktioniert jetzt korrekt (vorher: nur der laut Datenbank-Reihenfolge "erste" Nutzer konnte sich per Passkey einloggen). Logout entwertet das Token jetzt tatsächlich serverseitig, nicht nur clientseitig.
+*   `JwtAuthGuard` macht pro authentifizierter Anfrage jetzt einen zusätzlichen Redis-Read (`GET`) — bei der Größenordnung dieser Single-User-App vernachlässigbar, aber technisch ein zusätzlicher Hop pro Request.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [x] Unit-getestet (12 neue Tests, 92/92 gesamt) — [ ] Funktionaler Live-Test (Login mit zwei echten Nutzern, Logout-Blacklist-Verhalten) steht aus, kein Backend/DB/Browser in dieser Remote-Session verfügbar
+
+---
+
 ### 📋 Schritt-Log: Sankey-Geldflussdiagramm (Phase 13, sechste und letzte Teilscheibe) — Code fertig, noch nicht deployed — **Phase 13 vollständig abgeschlossen**
 **Zeitstempel:** `2026-08-25 16:30`
 

@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Post, Res } from '@nestjs/common';
-import type { Response } from 'express';
+import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -18,8 +18,8 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response) {
-    return this.authService.logout(res);
+  logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    return this.authService.logout(res, req.cookies?.auth_token);
   }
 
   @Get('me')

@@ -7,9 +7,9 @@ Vollständige Liste aller aktuell implementierten Features, gruppiert nach Berei
 ## 🔐 Authentifizierung & Sicherheit
 
 - **Passwort-Login** (E-Mail + Passwort, Argon2-Hashing).
-- **Passkeys (WebAuthn):** Registrierung neuer Passkeys direkt im Browser (`@simplewebauthn/browser`), Login ganz ohne Passwort, Verwaltung (Liste, benannte Geräte, Löschen) unter *Einstellungen*.
+- **Passkeys (WebAuthn):** Registrierung neuer Passkeys direkt im Browser (`@simplewebauthn/browser`), Login ganz ohne Passwort (Discoverable-Credential-Flow — der Browser zeigt alle für diese Domain hinterlegten Passkeys zur Auswahl, funktioniert korrekt mit mehreren registrierten Nutzern), Verwaltung (Liste, benannte Geräte, Löschen) unter *Einstellungen*.
 - **TOTP (Zwei-Faktor / Authenticator-App):** Aktivierung per QR-Code, Pflicht-Verifizierungscode beim Enrollment, TOTP-Code als zweiter Faktor beim Passwort-Login, Deaktivierung möglich.
-- **JWT-Session** in einem `HttpOnly`-Cookie (kein Zugriff per JavaScript), `Secure` + `SameSite=Lax` in Produktion.
+- **JWT-Session** in einem `HttpOnly`-Cookie (kein Zugriff per JavaScript), `Secure` + `SameSite=Lax` in Produktion. **Serverseitige Logout-Invalidierung:** das Token wird beim Logout zusätzlich zum Cookie-Löschen für seine restliche Gültigkeitsdauer in einer Redis-Blacklist (per Hash, nicht im Klartext) eingetragen — ein zwischenzeitlich abgefangenes Token bleibt so nicht bis zum regulären 7-Tage-Ablauf nutzbar.
 - **Rate-Limiting** über Redis (global 30 Anfragen/Minute, Login zusätzlich auf 5 Versuche/Minute begrenzt).
 - **Security-Header** via Helmet, striktes CORS auf die konfigurierte Origin.
 

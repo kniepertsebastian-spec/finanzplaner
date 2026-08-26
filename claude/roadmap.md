@@ -161,11 +161,11 @@
 
 # Roadmap & Refactoring: Finanzplaner - security patch
 
-### 16. Security & Authentifizierung
-- [ ] **WebAuthn Multi-User-Fix für Passkey-Logins**
+### 16. Security & Authentifizierung ✅
+- [x] **WebAuthn Multi-User-Fix für Passkey-Logins**
   - **Problem:** In `webauthn.service.ts` (`generateLoginOptions`) wird starr `prisma.user.findFirst()` aufgerufen[cite: 3]. Bei mehreren registrierten Nutzern schlägt der passwortlose Passkey-Login fehl.
   - **Lösung:** Bei Discoverable Credentials (Resident Keys) `allowCredentials` in `generateAuthenticationOptions` leer bzw. `undefined` übergeben, damit der Browser die Account-Auswahl anhand der Domain selbst übernimmt.
-- [ ] **Serverseitige JWT-Invalidierung via Redis beim Logout**
+- [x] **Serverseitige JWT-Invalidierung via Redis beim Logout**
   - **Problem:** In `auth.service.ts` (`logout`) wird lediglich das Cookie im Browser gelöscht[cite: 3]. Ein abgefangenes Token bleibt bis zum Ablauf (`7d`) kryptografisch valide.
   - **Lösung:** Beim Logout das Token (oder dessen Hash/JTI) mit der verbleibenden Rest-TTL als Blacklist-Eintrag in Redis schreiben (`redis.set(token, 'revoked', 'EX', ttl)`) und im `JwtAuthGuard` gegenprüfen.
 
