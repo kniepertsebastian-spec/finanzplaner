@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as webpush from 'web-push';
+import { pingHeartbeat } from '../common/heartbeat.util';
 import { currentPeriodEndUTC, currentPeriodStartUTC } from '../recurring-transactions/financial-period';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscribePushDto } from './dto/subscribe-push.dto';
@@ -132,5 +133,6 @@ export class PushService {
   async handleDailyChecks(): Promise<void> {
     await this.checkBudgetOverruns();
     await this.checkUpcomingLargeTransactions();
+    await pingHeartbeat(process.env.PUSH_CRON_HEARTBEAT_URL, 'push daily checks');
   }
 }

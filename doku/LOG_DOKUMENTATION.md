@@ -2,6 +2,34 @@
 
 ---
 
+### 📋 Schritt-Log: Security-Patch 18 — Prometheus-Metrics & Cronjob-Heartbeats — Code fertig, noch nicht deployed — **kompletter "security patch"-Abschnitt abgeschlossen**
+**Zeitstempel:** `2026-08-25 18:15`
+
+#### 1. Was wurde getan?
+*   Dritter und letzter Abschnitt aus dem vom Nutzer ergänzten "security patch"-Teil der Roadmap: "Monitoring & Wartung", beide Punkte umgesetzt. Damit ist der komplette Abschnitt (16–18) fertig.
+*   **Prometheus-Metrics-Endpunkt (neues Modul `backend/src/metrics/`):**
+    *   `@willsoto/nestjs-prometheus` (+ `prom-client`) registriert, exponiert `GET /metrics` (Prometheus-Textformat). Eigener `MetricsController` (erbt von `PrometheusController` der Bibliothek) mit `@Public()`, da Prometheus-Scraper kein Auth-Cookie mitschicken — bewusst über den bestehenden `@Public()`-Mechanismus gelöst statt den Pfad hart im `JwtAuthGuard` zu verdrahten.
+    *   **HTTP-Latenzen & Request-Counts:** neuer globaler `HttpMetricsInterceptor` (`APP_INTERCEPTOR`) misst jede Anfrage — `http_requests_total` (Counter) und `http_request_duration_seconds` (Histogram), gelabelt nach Methode, parametrisierter Route (`/transactions/:id`, nicht die rohe URL — hält die Label-Kardinalität begrenzt) und Status-Code. Bei einem Fehler wird der Status direkt aus der geworfenen `HttpException` gelesen, nicht aus `response.statusCode` — Letzteres ist zum Zeitpunkt des Interceptor-Fehlerpfads noch nicht vom Exception-Filter gesetzt und würde fälschlich `200` loggen.
+    *   **Aktive DB-Pool-Verbindungen:** `PrismaService` konstruiert jetzt selbst einen `pg.Pool` (statt `PrismaPg` intern einen erstellen zu lassen) und legt ihn als `readonly pool`-Property offen, damit `DbPoolMetricsService` `pool.totalCount`/`idleCount`/`waitingCount` alle 5s in drei Gauges (`db_pool_total_connections`, `db_pool_idle_connections`, `db_pool_waiting_requests`) einträgt — reines Auslesen der bereits im Pool geführten Zähler, keine zusätzliche DB-Query. `disposeExternalPool: true` an `PrismaPg` übergeben, damit der jetzt extern gehaltene Pool beim `$disconnect()` trotzdem sauber geschlossen wird (sonst Verbindungs-Leck bei jedem Shutdown).
+*   **Cronjob-Heartbeats:** neue gemeinsame Hilfsfunktion `backend/src/common/heartbeat.util.ts` (`pingHeartbeat(url, jobName)`) — pingt eine optionale "Dead-Man's-Switch"-URL (Uptime Kuma Push-Monitor, healthchecks.io) nach erfolgreichem Cron-Lauf, no-opt ohne konfigurierte URL, verschluckt einen fehlgeschlagenen Ping (nur geloggt) statt den eigentlich erfolgreichen Cron-Job nachträglich fehlschlagen zu lassen. Eingebaut in `RecurringTransactionsService.handleDailyCron()` (`RECURRING_TRANSACTIONS_HEARTBEAT_URL`) und `PushService.handleDailyChecks()` (`PUSH_CRON_HEARTBEAT_URL`), beide `.env`-Variablen in `.env.example` dokumentiert (gleiches "leer lassen = Funktion inaktiv, kein Fehler"-Muster wie die VAPID-Keys).
+*   **Verifiziert:** neue Unit-Tests für alle neuen Bausteine — `heartbeat.util.spec.ts` (no-op ohne URL, pingt mit URL, schluckt einen fehlschlagenden Ping), `http-metrics.interceptor.spec.ts` (Nicht-HTTP-Kontexte übersprungen, parametrisierte Route + Methode + Status bei Erfolg erfasst, Fallback auf rohe URL ohne Routen-Muster, Status aus der Exception statt aus `response.statusCode` bei Fehlern, inkl. Fallback auf 500 für Nicht-`HttpException`-Fehler), `db-pool-metrics.service.spec.ts` (Sampling-Intervall setzt die drei Gauges korrekt, wiederholtes Sampling spiegelt den aktuellen Pool-Zustand). Bestehende `recurring-transactions.service.spec.ts`/`push.service.spec.ts` um je einen Test erweitert, der den Heartbeat-Aufruf mit korrekter URL/Job-Name prüft. Komplette Backend-Suite grün (106/106). `npx tsc --noEmit` und `npm run build` (Nest) beide fehlerfrei. **Kein Live-Smoke-Test des DI-Graphen möglich** — ein Testlauf, der `AppModule` komplett auflöst, blieb hängen, da `RedisModule`/`PrismaService` beim Modul-Bootstrap eine echte Verbindung zu Redis/Postgres aufzubauen versuchen und in dieser Remote-Session keine erreichbar sind (kein Docker/DB/Redis, wie im gesamten restlichen Rückstand dieser Session) — Verifikation bleibt bei `tsc`/`nest build`/Unit-Tests, konsistent mit dem etablierten Muster dieser Session.
+
+#### 2. Warum wurde es getan?
+*   Nutzerauftrag: Fortsetzung und Abschluss des "security patch"-Abschnitts.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig** — kein Schema-Wechsel.
+*   **Zwei neue npm-Abhängigkeiten:** `@willsoto/nestjs-prometheus@^6.1.0`, `prom-client@^15.1.3`.
+*   **`/metrics` ist ein neuer, ungeschützter (aber nicht sensibler) Endpunkt** — liefert nur Zähler/Histogramme, keine Nutzerdaten. Unterliegt weiterhin dem globalen Rate-Limit (30/min), was für ein typisches 15–60s-Scrape-Intervall unproblematisch ist.
+*   **`PrismaService` konstruiert jetzt selbst den `pg.Pool`** statt `PrismaPg` das intern zu überlassen — funktional gleichwertig, aber ein Implementierungsdetail, das bei künftigen Prisma-Updates im Auge zu behalten ist (falls sich `PrismaPg`s Pool-Handling ändert).
+*   Reine Infrastruktur/Ops-Funktion, für den Nutzer aus der App heraus nicht sichtbar — daher keine Ergänzung in `features.md`.
+*   Grafana/Uptime-Kuma-Dashboards selbst einzurichten liegt außerhalb des Codes und ist Sache des Nutzers auf dem Mini-PC.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [x] Unit-getestet (106/106 gesamt) — [ ] Funktionaler Live-Test (`/metrics` abrufen, echten Heartbeat-Ping gegen Uptime Kuma/healthchecks.io testen) steht aus, kein Backend/Redis/DB in dieser Remote-Session verfügbar
+
+---
+
 ### 📋 Schritt-Log: Security-Patch 17 — Transaktionale Saldo-Abstimmung & Dateileichen-Rollback — Code fertig, noch nicht deployed
 **Zeitstempel:** `2026-08-25 17:45`
 

@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import * as webpush from 'web-push';
+import { pingHeartbeat } from '../common/heartbeat.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from './push.service';
+
+jest.mock('../common/heartbeat.util', () => ({ pingHeartbeat: jest.fn() }));
 
 jest.mock('web-push', () => ({
   setVapidDetails: jest.fn(),
@@ -193,6 +196,20 @@ describe('PushService', () => {
       await service.checkBudgetOverruns(new Date('2026-08-15'));
 
       expect(prisma.pushSubscription.delete).toHaveBeenCalledWith({ where: { id: 'sub-1' } });
+    });
+  });
+
+  describe('handleDailyChecks', () => {
+    it('pings the configured heartbeat URL after both checks run', async () => {
+      service = await buildService();
+      prisma.user.findMany.mockResolvedValue([]);
+      prisma.recurringTransaction.findMany.mockResolvedValue([]);
+      process.env.PUSH_CRON_HEARTBEAT_URL = 'https://hc-ping.com/push';
+
+      await service.handleDailyChecks();
+
+      expect(pingHeartbeat).toHaveBeenCalledWith('https://hc-ping.com/push', 'push daily checks');
+      delete process.env.PUSH_CRON_HEARTBEAT_URL;
     });
   });
 });

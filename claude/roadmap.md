@@ -177,8 +177,8 @@
   - **Problem:** In `invoices.controller.ts` speichert Multer die Datei auf der Festplatte[cite: 3]. Schlägt der DB-Insert in `InvoicesService.create()` fehl, verbleibt die Datei dauerhaft als verwaiste Leiche im Storage.
   - **Lösung:** In `invoices.controller.ts` oder `invoices.service.ts` einen `try/catch`-Block einbauen, der im Fehlerfall `node:fs/promises.unlink(filePath)` ausführt.
 
-### 18. Monitoring & Wartung
-- [ ] **Prometheus Metrics Endpunkt**
+### 18. Monitoring & Wartung ✅
+- [x] **Prometheus Metrics Endpunkt**
   - **Ziel:** `@willsoto/nestjs-prometheus` registrieren, um HTTP-Latenzen, Request-Counts und aktive DB-Pool-Verbindungen für Grafana bereitzustellen.
-- [ ] **Cronjob-Heartbeats**
+- [x] **Cronjob-Heartbeats**
   - **Ziel:** In `recurring-transactions.service.ts` und `push.service.ts` bei erfolgreichem Durchlauf der täglichen Cronjobs einen Ping an Uptime Kuma oder Healthchecks.io absetzen[cite: 3].

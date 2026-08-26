@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { pingHeartbeat } from '../common/heartbeat.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { RecurringTransactionsService } from './recurring-transactions.service';
+
+jest.mock('../common/heartbeat.util', () => ({ pingHeartbeat: jest.fn() }));
 
 describe('RecurringTransactionsService', () => {
   let service: RecurringTransactionsService;
@@ -408,6 +411,22 @@ describe('RecurringTransactionsService', () => {
         where: { id: 'rec-7' },
         data: { lastRunAt: jan31, nextDueDate: new Date('2026-02-28T00:00:00.000Z') },
       });
+    });
+  });
+
+  describe('handleDailyCron', () => {
+    it('runs due recurring transactions and pings the configured heartbeat URL afterwards', async () => {
+      prisma.recurringTransaction.findMany.mockResolvedValue([]);
+      process.env.RECURRING_TRANSACTIONS_HEARTBEAT_URL = 'https://hc-ping.com/recurring';
+
+      await service.handleDailyCron();
+
+      expect(prisma.recurringTransaction.findMany).toHaveBeenCalled();
+      expect(pingHeartbeat).toHaveBeenCalledWith(
+        'https://hc-ping.com/recurring',
+        'recurring-transactions daily cron',
+      );
+      delete process.env.RECURRING_TRANSACTIONS_HEARTBEAT_URL;
     });
   });
 });

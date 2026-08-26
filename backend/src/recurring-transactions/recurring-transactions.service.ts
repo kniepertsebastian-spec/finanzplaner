@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { pingHeartbeat } from '../common/heartbeat.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { CreateRecurringTransactionDto } from './dto/create-recurring-transaction.dto';
@@ -144,5 +145,6 @@ export class RecurringTransactionsService {
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async handleDailyCron() {
     await this.runDueRecurringTransactions();
+    await pingHeartbeat(process.env.RECURRING_TRANSACTIONS_HEARTBEAT_URL, 'recurring-transactions daily cron');
   }
 }
