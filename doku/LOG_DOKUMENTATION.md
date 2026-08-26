@@ -2,6 +2,28 @@
 
 ---
 
+### 📋 Schritt-Log: Bugfix — Fixkosten-Kachel zeigte 0,00 € trotz bereits gebuchter Fixkosten — Code fertig, noch nicht deployed
+**Zeitstempel:** `2026-08-26 21:55`
+
+#### 1. Was wurde getan?
+*   Nutzer meldete per Screenshot: Dashboard zeigte "Fixkosten 23. Aug – 22. Sept 2026" (laufender Zeitraum) als **0,00 €**, obwohl "Ausgaben (Zeitraum)" bereits 2.180,52 € auswies — und "Fixkosten 23. Sept – 22. Okt 2026" (kommender Zeitraum) zeigte stattdessen 1.940,00 €. Auftrag: "everything in wiederkehrende buchungen sollen für den monat kalkuliert werden."
+*   **Ursache gefunden:** `frontend/src/lib/budgetCalc.ts`s `upcomingFixedCosts()` zählte eine wiederkehrende Regel nur dann zu einem Zeitraum, wenn ihr `nextDueDate` in dessen Fenster fällt. Das kollidiert mit dem in einer früheren Sitzung bewusst geänderten Backend-Verhalten (`RecurringTransactionsService.isDue()`): Fixkosten werden jetzt sofort zu Beginn des Finanzzeitraums gebucht, wobei `nextDueDate` im selben Moment auf den *nächsten* Zyklus vorrückt. Sobald eine Regel also für den laufenden Zeitraum bereits gefeuert hat (was praktisch sofort nach Zeitraumbeginn passiert), zeigt ihr `nextDueDate` nicht mehr in den laufenden, sondern in den kommenden Zeitraum — die Kachel für den laufenden Zeitraum blieb dadurch strukturell fast immer leer, während der volle Betrag stattdessen unter "kommender Zeitraum" auftauchte.
+*   **Fix:** `upcomingFixedCosts()` zählt eine Regel jetzt zu einem Zeitraum, wenn *entweder* ihr `nextDueDate` **oder** ihr `lastRunAt` in dessen Fenster fällt. `lastRunAt` liegt per Definition immer in der Vergangenheit, daher greift die zusätzliche Bedingung nur bei der laufenden-Zeitraum-Abfrage und beeinflusst die kommende-Zeitraum-Vorschau (rein `nextDueDate`-basiert, weiterhin korrekt als reine Vorausschau) nicht.
+*   **Bewusst nicht angefasst:** `nextIncomeDueDate()` und `cashflowProjection()` — beide sind bereits rein vorausschauend konzipiert (suchen/projizieren Vorkommen "ab heute"), für die ist reine `nextDueDate`-Logik weiterhin korrekt, dort besteht keine vergleichbare Verzerrung.
+*   **Verifiziert:** Logik isoliert mit einer Beispiel-Regel durchgerechnet (monatliche Regel, am Zeitraumbeginn gefeuert) — laufender Zeitraum zeigt jetzt korrekt den vollen Betrag, kommender Zeitraum weiterhin als Vorausschau denselben Betrag (erwartet, da beide je nach Blickwinkel derselben Regel entsprechen). `npx tsc --noEmit` und `npm run build` (Vite) beide fehlerfrei. Kein Backend-Code geändert, kein Unit-Test-Setup im Frontend vorhanden (Phase 7, vom Nutzer explizit zurückgestellt) — daher keine automatisierten Tests ergänzt, nur die manuelle Verifikation oben.
+
+#### 2. Warum wurde es getan?
+*   Nutzer-Bugreport: falsche Fixkosten-Zuordnung zwischen laufendem und kommendem Zeitraum auf dem Dashboard.
+
+#### 3. Auswirkungen / Nebenwirkungen
+*   **Keine Migration nötig, kein neues npm-Package** — reine Frontend-Berechnungsänderung.
+*   Rückwirkend korrekt für alle Nutzer mit aktiven Fixkosten-Regeln, sobald deployed — kein Datenbank-Zustand betroffen, nur wie vorhandene Felder (`nextDueDate`, `lastRunAt`) interpretiert werden.
+
+#### 4. Status der Aufgabe
+*   [x] Code abgeschlossen, committed & gepusht — [ ] Deployment auf den Mini-PC steht aus — [x] Logik manuell verifiziert (Node-Skript mit Beispieldaten) — [ ] Visueller Live-Test mit echten Daten steht aus, kein Backend/DB in dieser Remote-Session verfügbar
+
+---
+
 ### 📋 Schritt-Log: Security-Patch 18 — Prometheus-Metrics & Cronjob-Heartbeats — Code fertig, noch nicht deployed — **kompletter "security patch"-Abschnitt abgeschlossen**
 **Zeitstempel:** `2026-08-25 18:15`
 

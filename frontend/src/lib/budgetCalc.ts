@@ -2,15 +2,25 @@ import type { Category, RecurringTransaction, Transaction } from './api/types';
 
 // Sums active, expense-only (negative amount) recurring rules whose nextDueDate falls
 // within [startISO, endISO) — i.e. what's due to post next calendar month.
+// A rule counts toward a period if its nextDueDate falls within that period (not yet posted for
+// it), OR it already posted within that period (lastRunAt falls within it) — the backend cron
+// posts a rule for the *current* period as soon as the period starts and immediately advances
+// nextDueDate to the following cycle (see RecurringTransactionsService.isDue's comment), so by
+// the time someone looks at the dashboard, every rule that's relevant to the current period has
+// already had its nextDueDate pushed into the *next* one. Without the lastRunAt check here, a
+// rule that already posted this period would vanish from "this period's fixed costs" and appear
+// to belong to next period instead, even though the money already left this period.
+// lastRunAt is always in the past, so this check never matches when called for a future period.
 export function upcomingFixedCosts(recurring: RecurringTransaction[], startISO: string, endISO: string): number {
   const start = new Date(startISO).getTime();
   const end = new Date(endISO).getTime();
+  const inRange = (iso: string) => {
+    const t = new Date(iso).getTime();
+    return t >= start && t <= end;
+  };
   return recurring
     .filter((r) => r.active && r.amount < 0)
-    .filter((r) => {
-      const due = new Date(r.nextDueDate).getTime();
-      return due >= start && due <= end;
-    })
+    .filter((r) => inRange(r.nextDueDate) || (r.lastRunAt && inRange(r.lastRunAt)))
     .reduce((sum, r) => sum + Math.abs(r.amount), 0);
 }
 

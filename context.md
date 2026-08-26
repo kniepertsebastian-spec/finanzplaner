@@ -26,6 +26,8 @@ Alle drei Punkte committed & gepusht auf `claude/remote-control-finanzplaner-gbm
 
 **Keine offenen Punkte aus dem "security patch"-Abschnitt mehr** — 16, 17 und 18 sind alle fertig.
 
+**Zwischendurch behobener Bug (nicht Teil der Roadmap):** Dashboard zeigte "Fixkosten [laufender Zeitraum]" fälschlich als 0,00 €, weil `upcomingFixedCosts()` in `frontend/src/lib/budgetCalc.ts` nur `nextDueDate` prüfte — nach dem "Fixkosten posten sofort bei Zeitraumbeginn"-Verhalten (frühere Sitzung) zeigt `nextDueDate` einer bereits gefeuerten Regel aber schon auf den nächsten Zyklus. Fix: zählt eine Regel jetzt auch, wenn ihr `lastRunAt` im Zeitraum liegt. Details in `doku/LOG_DOKUMENTATION.md`.
+
 Falls der Nutzer keine neuen Anweisungen gibt: nichts von selbst aus initiieren. Insbesondere **nicht** von selbst wieder aufgreifen: CSV-Import (Phase 11) und Phase 7 (Datenexport/DSGVO/Unit-Tests/Sentry) — Nutzer hat das ausdrücklich gesagt.
 
 Falls der Nutzer die Roadmap weiter ergänzt (wie schon einmal geschehen): `claude/roadmap.md` gezielt nach neuen/offenen Punkten durchsuchen (nicht komplett lesen, siehe Nutzerhinweis aus der letzten Runde), dann nach demselben Muster abarbeiten: implementieren → verifizieren (`tsc`, `npm test`, `npm run build`) → dokumentieren (`features.md` nur bei echtem Nutzer-sichtbarem Effekt, `doku/LOG_DOKUMENTATION.md` immer, `claude/roadmap.md`-Checkbox abhaken, dieses `context.md`) → committen → auf `claude/remote-control-finanzplaner-gbmdlb` **und** `main` pushen.
