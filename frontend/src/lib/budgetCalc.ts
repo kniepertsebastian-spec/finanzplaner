@@ -24,6 +24,25 @@ export function upcomingFixedCosts(recurring: RecurringTransaction[], startISO: 
     .reduce((sum, r) => sum + Math.abs(r.amount), 0);
 }
 
+// Subset of upcomingFixedCosts(): only the active, expense-only recurring rules that have
+// ALREADY posted a transaction within [startISO, endISO) this period (lastRunAt falls within
+// it) — i.e. the slice of "this period's fixed costs" that's already reflected in the period's
+// booked transactions/expense total. Needed to strip already-posted fixed costs back out of
+// "costs of the day" before subtracting the *total* fixed-costs figure on top of it, which would
+// otherwise deduct those postings twice (see availableIncome()).
+export function postedFixedCosts(recurring: RecurringTransaction[], startISO: string, endISO: string): number {
+  const start = new Date(startISO).getTime();
+  const end = new Date(endISO).getTime();
+  const inRange = (iso: string) => {
+    const t = new Date(iso).getTime();
+    return t >= start && t <= end;
+  };
+  return recurring
+    .filter((r) => r.active && r.amount < 0)
+    .filter((r) => r.lastRunAt && inRange(r.lastRunAt))
+    .reduce((sum, r) => sum + Math.abs(r.amount), 0);
+}
+
 export function spentForCategory(transactions: Transaction[], categoryId: string): number {
   return transactions
     .filter((t) => t.categoryId === categoryId && t.amount < 0)
@@ -119,14 +138,21 @@ export function projectRemainingBudget(
   return totalBudgetCents - projectedExpense;
 }
 
-// Verfügbar = Gesamtsaldo - ausstehende Fixkosten - Rücklagen (virtuelle Töpfe, die Teile des
-// Saldos sperren, z. B. Notgroschen/Kfz-Steuer/Urlaub).
+// Verfügbar = (Kontostand + Einnahmen des Zeitraums) - Fixkosten des Zeitraums - Ausgaben des
+// Zeitraums (ohne bereits gebuchte Fixkosten) - Rücklagen (virtuelle Töpfe, die Teile des Saldos
+// sperren, z. B. Notgroschen/Kfz-Steuer/Urlaub).
+//
+// `totalFixedCostsCents` (from upcomingFixedCosts()) covers *every* fixed cost due this period,
+// including ones that already posted as a transaction. `variableExpenseCents` must therefore have
+// those already-posted fixed costs stripped back out (expenseCents - postedFixedCosts()) — passing
+// the period's raw, unfiltered expense total here would subtract those postings a second time.
 export function availableIncome(
-  balanceCents: number,
-  outstandingFixedCostsCents: number,
+  baseCents: number,
+  totalFixedCostsCents: number,
+  variableExpenseCents: number,
   lockedInPotsCents: number,
 ): number {
-  return balanceCents - outstandingFixedCostsCents - lockedInPotsCents;
+  return baseCents - totalFixedCostsCents - variableExpenseCents - lockedInPotsCents;
 }
 
 // Earliest active, income-type (positive-amount) recurring rule due today or later. `nextDueDate`
