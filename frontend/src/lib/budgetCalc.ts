@@ -147,11 +147,10 @@ export function projectRemainingBudget(
 // period's *total* fixed-costs figure (posted + unposted) here would deduct the posted share a
 // second time.
 //
-// balanceCents must be the live, cumulative account balance (startingBalance + every transaction
-// ever posted, not just this period's) — Kontostand only equals that for the very first tracked
-// period; from the second period on they diverge; using anything scoped to just the current
-// period as the base would silently drop every prior period's result and let "Frei verfügbar"
-// come out higher than Gesamtsaldo itself.
+// balanceCents is whatever the caller has defined as "Gesamtsaldo" for the same period this
+// period's fixed-cost/pot figures are scoped to — this function stays agnostic to how that number
+// is derived (e.g. Kontostand + this period's booked transactions), it just must be the SAME
+// baseline the other two figures are subtracted from, or the result is meaningless.
 export function availableIncome(
   balanceCents: number,
   outstandingFixedCostsCents: number,

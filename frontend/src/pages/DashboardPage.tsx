@@ -17,7 +17,6 @@ import { recurringTransactionsApi } from '../lib/api/recurringTransactions';
 import { savingsPotsApi } from '../lib/api/savingsPots';
 import { transactionsApi } from '../lib/api/transactions';
 import type { Budget, Category, RecurringTransaction, SavingsPot, Transaction } from '../lib/api/types';
-import { usersApi } from '../lib/api/users';
 import {
   availableIncome,
   budgetTypeBreakdown,
@@ -66,7 +65,6 @@ export function DashboardPage() {
   const [budgets, setBudgets] = useState<Budget[] | null>(null);
   const [recurring, setRecurring] = useState<RecurringTransaction[] | null>(null);
   const [savingsPots, setSavingsPots] = useState<SavingsPot[] | null>(null);
-  const [balance, setBalance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -80,15 +78,13 @@ export function DashboardPage() {
       listWithCache('budgets', () => budgetsApi.list({ month: period.startISO })),
       recurringTransactionsApi.list(),
       savingsPotsApi.list(),
-      usersApi.getBalance(),
     ])
-      .then(([t, c, b, r, pots, bal]) => {
+      .then(([t, c, b, r, pots]) => {
         setTransactions(t);
         setCategories(c);
         setBudgets(b);
         setRecurring(r);
         setSavingsPots(pots);
-        setBalance(bal.balance);
       })
       .catch(() => setError('Daten konnten nicht geladen werden.'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,7 +94,7 @@ export function DashboardPage() {
     return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
   }
 
-  if (!transactions || !categories || !budgets || !recurring || !savingsPots || balance === null) {
+  if (!transactions || !categories || !budgets || !recurring || !savingsPots) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-40 w-full rounded-2xl" />
@@ -121,7 +117,12 @@ export function DashboardPage() {
   const elapsed = dayOfFinancialPeriod(monthStartDay);
   const { incomeCents, expenseCents } = monthlyTotals(transactions);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
-  const savingsRatePct = savingsRate(incomeCents, expenseCents);
+  // Kontostand (Settings) is topped up by hand once a period (payday), savings excluded — it's
+  // not a one-time opening balance, so it doesn't belong in an all-time cumulative sum. It's the
+  // period's real starting point, so it's treated as part of this period's income throughout.
+  const kontostandCents = user?.startingBalance ?? 0;
+  const combinedIncomeCents = kontostandCents + incomeCents;
+  const savingsRatePct = savingsRate(combinedIncomeCents, expenseCents);
   const rule503020 = budgetTypeBreakdown(transactions, categories, incomeCents);
   const categoryShares = expensesByCategory(transactions, categories);
   const moneyFlowData = moneyFlow(transactions, categories);
@@ -137,13 +138,17 @@ export function DashboardPage() {
   // Alle Fixkosten mit Fälligkeit im Zeitraum (gebucht + noch offen) — zeigt die "Fixkosten
   // {periodLabel}"-Kachel unten unverändert weiter an.
   const totalFixedCostsCents = upcomingFixedCosts(recurring, period.startISO, period.endISO);
-  // Der bereits gebuchte Anteil davon steckt schon in `balance` (dem Saldo aus allen bisherigen
-  // Buchungen) — für availableIncome() darf deshalb nur der noch NICHT gebuchte Rest abgezogen
-  // werden, sonst würden diese Fixkosten doppelt abgezogen.
+  // Der bereits gebuchte Anteil davon steckt schon in expenseCents (und damit in periodBalanceCents)
+  // — für availableIncome() darf deshalb nur der noch NICHT gebuchte Rest abgezogen werden, sonst
+  // würden diese Fixkosten doppelt abgezogen.
   const postedFixedCostsCents = postedFixedCosts(recurring, period.startISO, period.endISO);
   const notYetPostedFixedCostsCents = totalFixedCostsCents - postedFixedCostsCents;
   const lockedInPotsCents = savingsPots.reduce((sum, p) => sum + p.amountCents, 0);
-  const availableIncomeCents = availableIncome(balance, notYetPostedFixedCostsCents, lockedInPotsCents);
+  // "Gesamtsaldo" für den Zeitraum: Kontostand (Startpunkt dieses Zeitraums) plus alles, was seither
+  // gebucht wurde. Ersetzt die frühere kontostandsübergreifende Berechnung (Startsaldo + alle
+  // Buchungen seit Accounterstellung), die bei jedem manuellen Kontostand-Update auseinanderlief.
+  const periodBalanceCents = combinedIncomeCents - expenseCents;
+  const availableIncomeCents = availableIncome(periodBalanceCents, notYetPostedFixedCostsCents, lockedInPotsCents);
   const nextIncome = nextIncomeDueDate(recurring);
   const burnRateHorizon = nextIncome ?? period.end;
   const daysUntilNextIncome = daysUntil(burnRateHorizon);
@@ -158,7 +163,7 @@ export function DashboardPage() {
   // current period plus the entire next one), which buried the near-term picture the user
   // actually wants right after Gehaltseingang.
   const cashflowHorizonDays = daysUntil(period.end);
-  const cashflowPoints = cashflowProjection(balance, recurring, cashflowHorizonDays);
+  const cashflowPoints = cashflowProjection(periodBalanceCents, recurring, cashflowHorizonDays);
   const shortfall = firstShortfall(cashflowPoints);
   const shortfallLabel = shortfall?.date.toLocaleDateString('de-DE', { timeZone: 'UTC' });
 
@@ -174,7 +179,7 @@ export function DashboardPage() {
       <p className="text-sm text-neutral-500 dark:text-neutral-400">Zeitraum: {periodLabel}</p>
 
       <HeroCard
-        balanceCents={balance}
+        balanceCents={periodBalanceCents}
         availableIncomeCents={availableIncomeCents}
         availableIncomeCaption={
           lockedInPotsCents > 0
@@ -221,7 +226,12 @@ export function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile label="Einnahmen (Zeitraum)" cents={incomeCents} valueClassName="text-[#2a78d6]" />
+        <StatTile
+          label="Einnahmen (Zeitraum)"
+          cents={combinedIncomeCents}
+          valueClassName="text-[#2a78d6]"
+          caption="Kontostand aus den Einstellungen zzgl. Einnahmen-Buchungen im Zeitraum"
+        />
         <StatTile label="Ausgaben (Zeitraum)" cents={expenseCents} valueClassName="text-[#eb6834]" />
         <StatTile
           label="Sparquote"
