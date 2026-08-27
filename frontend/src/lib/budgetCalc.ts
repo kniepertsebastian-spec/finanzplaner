@@ -138,21 +138,26 @@ export function projectRemainingBudget(
   return totalBudgetCents - projectedExpense;
 }
 
-// Verfügbar = (Kontostand + Einnahmen des Zeitraums) - Fixkosten des Zeitraums - Ausgaben des
-// Zeitraums (ohne bereits gebuchte Fixkosten) - Rücklagen (virtuelle Töpfe, die Teile des Saldos
-// sperren, z. B. Notgroschen/Kfz-Steuer/Urlaub).
+// Verfügbar = Gesamtsaldo - noch nicht gebuchte Fixkosten - Rücklagen (virtuelle Töpfe, die Teile
+// des Saldos sperren, z. B. Notgroschen/Kfz-Steuer/Urlaub).
 //
-// `totalFixedCostsCents` (from upcomingFixedCosts()) covers *every* fixed cost due this period,
-// including ones that already posted as a transaction. `variableExpenseCents` must therefore have
-// those already-posted fixed costs stripped back out (expenseCents - postedFixedCosts()) — passing
-// the period's raw, unfiltered expense total here would subtract those postings a second time.
+// `outstandingFixedCostsCents` must cover only fixed costs that HAVEN'T posted as a transaction
+// yet this period (e.g. upcomingFixedCosts(period) minus postedFixedCosts(period)) — balanceCents
+// already reflects every transaction that has posted, fixed-cost ones included, so passing the
+// period's *total* fixed-costs figure (posted + unposted) here would deduct the posted share a
+// second time.
+//
+// balanceCents must be the live, cumulative account balance (startingBalance + every transaction
+// ever posted, not just this period's) — Kontostand only equals that for the very first tracked
+// period; from the second period on they diverge; using anything scoped to just the current
+// period as the base would silently drop every prior period's result and let "Frei verfügbar"
+// come out higher than Gesamtsaldo itself.
 export function availableIncome(
-  baseCents: number,
-  totalFixedCostsCents: number,
-  variableExpenseCents: number,
+  balanceCents: number,
+  outstandingFixedCostsCents: number,
   lockedInPotsCents: number,
 ): number {
-  return baseCents - totalFixedCostsCents - variableExpenseCents - lockedInPotsCents;
+  return balanceCents - outstandingFixedCostsCents - lockedInPotsCents;
 }
 
 // Earliest active, income-type (positive-amount) recurring rule due today or later. `nextDueDate`

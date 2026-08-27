@@ -121,11 +121,7 @@ export function DashboardPage() {
   const elapsed = dayOfFinancialPeriod(monthStartDay);
   const { incomeCents, expenseCents } = monthlyTotals(transactions);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
-  // "Einnahmen (Zeitraum)" = Kontostand (Startsaldo, in den Einstellungen gepflegt) + Einnahmen
-  // aus Buchungen des Zeitraums — sonst fließt ein in den Einstellungen erfasstes Gehalt/Saldo
-  // nirgends in "frei verfügbar", "Tagesbudget" oder die Sparquote ein.
-  const combinedIncomeCents = (user?.startingBalance ?? 0) + incomeCents;
-  const savingsRatePct = savingsRate(combinedIncomeCents, expenseCents);
+  const savingsRatePct = savingsRate(incomeCents, expenseCents);
   const rule503020 = budgetTypeBreakdown(transactions, categories, incomeCents);
   const categoryShares = expensesByCategory(transactions, categories);
   const moneyFlowData = moneyFlow(transactions, categories);
@@ -138,19 +134,16 @@ export function DashboardPage() {
   const periodLabel = financialPeriodLabel(period);
   const nextPeriodLabel = financialPeriodLabel(nextPeriod);
 
-  const outstandingFixedCostsCents = upcomingFixedCosts(recurring, period.startISO, period.endISO);
-  // Fixkosten, die im Zeitraum schon als Buchung gebucht wurden — bereits in expenseCents
-  // enthalten, deshalb hier herausgerechnet, damit availableIncome() sie nicht zusätzlich zu
-  // outstandingFixedCostsCents (Fixkosten insgesamt) ein zweites Mal abzieht.
+  // Alle Fixkosten mit Fälligkeit im Zeitraum (gebucht + noch offen) — zeigt die "Fixkosten
+  // {periodLabel}"-Kachel unten unverändert weiter an.
+  const totalFixedCostsCents = upcomingFixedCosts(recurring, period.startISO, period.endISO);
+  // Der bereits gebuchte Anteil davon steckt schon in `balance` (dem Saldo aus allen bisherigen
+  // Buchungen) — für availableIncome() darf deshalb nur der noch NICHT gebuchte Rest abgezogen
+  // werden, sonst würden diese Fixkosten doppelt abgezogen.
   const postedFixedCostsCents = postedFixedCosts(recurring, period.startISO, period.endISO);
-  const variableExpenseCents = expenseCents - postedFixedCostsCents;
+  const notYetPostedFixedCostsCents = totalFixedCostsCents - postedFixedCostsCents;
   const lockedInPotsCents = savingsPots.reduce((sum, p) => sum + p.amountCents, 0);
-  const availableIncomeCents = availableIncome(
-    combinedIncomeCents,
-    outstandingFixedCostsCents,
-    variableExpenseCents,
-    lockedInPotsCents,
-  );
+  const availableIncomeCents = availableIncome(balance, notYetPostedFixedCostsCents, lockedInPotsCents);
   const nextIncome = nextIncomeDueDate(recurring);
   const burnRateHorizon = nextIncome ?? period.end;
   const daysUntilNextIncome = daysUntil(burnRateHorizon);
@@ -185,8 +178,8 @@ export function DashboardPage() {
         availableIncomeCents={availableIncomeCents}
         availableIncomeCaption={
           lockedInPotsCents > 0
-            ? `abzüglich Fixkosten, Ausgaben und ${formatCents(lockedInPotsCents)} in Rücklagen`
-            : 'abzüglich Fixkosten und Ausgaben im Zeitraum'
+            ? `abzüglich Fixkosten und ${formatCents(lockedInPotsCents)} in Rücklagen`
+            : 'abzüglich noch ausstehender Fixkosten'
         }
         dailyBurnRateCents={dailyBurnRateCents}
         burnRateCaption={burnRateCaption}
@@ -228,12 +221,7 @@ export function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile
-          label="Einnahmen (Zeitraum)"
-          cents={combinedIncomeCents}
-          valueClassName="text-[#2a78d6]"
-          caption="Kontostand aus den Einstellungen zzgl. Einnahmen-Buchungen im Zeitraum"
-        />
+        <StatTile label="Einnahmen (Zeitraum)" cents={incomeCents} valueClassName="text-[#2a78d6]" />
         <StatTile label="Ausgaben (Zeitraum)" cents={expenseCents} valueClassName="text-[#eb6834]" />
         <StatTile
           label="Sparquote"
@@ -247,7 +235,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatTile
           label={`Fixkosten ${periodLabel}`}
-          cents={outstandingFixedCostsCents}
+          cents={totalFixedCostsCents}
           valueClassName="text-[#eb6834]"
           caption="Summe aller aktiven Fixkosten mit Fälligkeit im laufenden Zeitraum"
         />
