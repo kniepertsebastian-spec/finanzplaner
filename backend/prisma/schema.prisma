@@ -17,10 +17,10 @@ model User {
   totpSecretEncrypted String?
   totpEnabled         Boolean  @default(false)
   monthStartDay       Int      @default(1) // 1-31; day the user's financial month begins (e.g. 23 = salary day)
-  startingBalance     Int      @default(0) // Cents; opening balance before any tracked transactions existed
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  accounts              Account[]
   transactions          Transaction[]
   categories            Category[]
   budgets               Budget[]
@@ -30,6 +30,34 @@ model User {
   invoices              Invoice[]
   savingsPots           SavingsPot[]
   pushSubscriptions     PushSubscription[]
+}
+
+enum AccountType {
+  CHECKING // Girokonto
+  SAVINGS // Sparkonto/Tagesgeld
+  CASH // Bargeld
+  OTHER
+}
+
+// A real bank/cash account with its own balance. Replaces the old single implicit
+// User.startingBalance — every user gets at least one (created by the accounts migration for
+// existing users, seeded with their old startingBalance).
+model Account {
+  id              String      @id @default(uuid())
+  name            String // e.g. "Girokonto", "Tagesgeld", "Bargeld"
+  type            AccountType @default(CHECKING)
+  startingBalance Int         @default(0) // Cents; opening balance before any tracked transactions existed
+  archived        Boolean     @default(false) // hidden from pickers/totals but kept for historical transactions
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
+
+  @@index([userId])
 }
 
 model Authenticator {
@@ -63,13 +91,26 @@ model Transaction {
   splitGroupId     String? // shared id across sibling rows created by one "split into categories" action; null for ordinary transactions
   tags             String[] @default([]) // free-form hashtags (e.g. "Urlaub2026") for cross-category evaluation, stored without the leading '#'
 
+  // Umbuchung between two of the user's own accounts: a linked pair of rows sharing one
+  // transferGroupId (one negative leg in the source account, one positive leg in the destination
+  // account) with isTransfer=true. Not real income/expense — excluded from every income/expense,
+  // Sparquote, 50/30/20 and category-share calculation, but each leg still moves its account's
+  // balance correctly.
+  isTransfer      Boolean @default(false)
+  transferGroupId String?
+
   userId String
   user   User   @relation(fields: [userId], references: [id])
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id])
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
   @@index([splitGroupId])
+  @@index([transferGroupId])
+  @@index([accountId])
 }
 
 enum BudgetType {
@@ -148,10 +189,14 @@ model RecurringTransaction {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id])
+
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
   @@index([userId])
+  @@index([accountId])
 }
 
 model SavingsPot {

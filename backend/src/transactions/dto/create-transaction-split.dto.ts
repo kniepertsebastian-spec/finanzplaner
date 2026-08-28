@@ -18,6 +18,10 @@ export class CreateTransactionSplitDto {
   @IsISO8601()
   date?: string;
 
+  @IsOptional()
+  @IsUUID()
+  accountId?: string;
+
   @IsArray()
   @ArrayMinSize(2)
   @ValidateNested({ each: true })

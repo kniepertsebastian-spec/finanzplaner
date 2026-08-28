@@ -4,9 +4,10 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Amount } from '../Amount';
 import { CategoryBadge } from '../CategoryBadge';
 import { SkeletonList } from '../Skeleton';
+import { accountsApi } from '../../lib/api/accounts';
 import { categoriesApi } from '../../lib/api/categories';
 import { recurringTransactionsApi } from '../../lib/api/recurringTransactions';
-import type { Category, RecurringTransaction } from '../../lib/api/types';
+import type { Account, Category, RecurringTransaction } from '../../lib/api/types';
 import { priceIncreaseRules } from '../../lib/budgetCalc';
 import { eurosToCents, formatCents } from '../../lib/money';
 
@@ -29,6 +30,7 @@ const formatDate = (isoDate: string) => new Date(isoDate).toLocaleDateString('de
 export function RecurringTransactionsPanel() {
   const [items, setItems] = useState<RecurringTransaction[] | null>(null);
   const [categories, setCategories] = useState<Category[] | null>(null);
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -36,6 +38,7 @@ export function RecurringTransactionsPanel() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [nextDueDate, setNextDueDate] = useState(todayIsoDate());
   const [intervalMonths, setIntervalMonths] = useState('1');
   const [contractNumber, setContractNumber] = useState('');
@@ -45,10 +48,12 @@ export function RecurringTransactionsPanel() {
   const [submitting, setSubmitting] = useState(false);
 
   const load = () => {
-    Promise.all([recurringTransactionsApi.list(), categoriesApi.list()])
-      .then(([r, c]) => {
+    Promise.all([recurringTransactionsApi.list(), categoriesApi.list(), accountsApi.list()])
+      .then(([r, c, a]) => {
         setItems(r);
         setCategories(c);
+        setAccounts(a);
+        setAccountId((current) => current || a[0]?.id || '');
       })
       .catch(() => setError('Daten konnten nicht geladen werden.'));
   };
@@ -61,6 +66,7 @@ export function RecurringTransactionsPanel() {
     setAmount('');
     setDescription('');
     setCategoryId('');
+    setAccountId(accounts?.[0]?.id ?? '');
     setNextDueDate(todayIsoDate());
     setIntervalMonths('1');
     setContractNumber('');
@@ -75,6 +81,7 @@ export function RecurringTransactionsPanel() {
     setAmount(String(Math.abs(item.amount) / 100));
     setDescription(item.description);
     setCategoryId(item.categoryId);
+    setAccountId(item.accountId);
     setNextDueDate(item.nextDueDate.slice(0, 10));
     setIntervalMonths(String(item.intervalMonths));
     setContractNumber(item.contractNumber ?? '');
@@ -93,6 +100,7 @@ export function RecurringTransactionsPanel() {
         amount: sign === 'income' ? cents : -cents,
         description,
         categoryId,
+        accountId,
         nextDueDate,
         intervalMonths: Number(intervalMonths),
         contractNumber: contractNumber || undefined,
@@ -148,11 +156,12 @@ export function RecurringTransactionsPanel() {
     return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
   }
 
-  if (!items || !categories) {
+  if (!items || !categories || !accounts) {
     return <SkeletonList />;
   }
 
   const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
   const priceIncreaseByRuleId = new Map(priceIncreaseRules(items).map((p) => [p.recurring.id, p.previousAmount]));
 
   return (
@@ -243,6 +252,23 @@ export function RecurringTransactionsPanel() {
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
+          {accounts.length > 1 && (
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Konto</label>
+              <select
+                required
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              >
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Rhythmus</label>
             <select
@@ -332,6 +358,7 @@ export function RecurringTransactionsPanel() {
               <th className="px-4 py-2 font-medium">Rhythmus</th>
               <th className="px-4 py-2 font-medium">Beschreibung</th>
               <th className="px-4 py-2 font-medium">Kategorie</th>
+              {accounts.length > 1 && <th className="px-4 py-2 font-medium">Konto</th>}
               <th className="px-4 py-2 font-medium">Betrag</th>
               <th className="px-4 py-2" />
             </tr>
@@ -357,6 +384,11 @@ export function RecurringTransactionsPanel() {
                     <span className="text-neutral-700 dark:text-neutral-300">Unbekannt</span>
                   )}
                 </td>
+                {accounts.length > 1 && (
+                  <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
+                    {accountById.get(item.accountId)?.name ?? 'Unbekannt'}
+                  </td>
+                )}
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   <Amount cents={item.amount} />
                   {priceIncreaseByRuleId.has(item.id) && (
@@ -450,7 +482,10 @@ export function RecurringTransactionsPanel() {
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-neutral-400 dark:text-neutral-500">
+                <td
+                  colSpan={accounts.length > 1 ? 7 : 6}
+                  className="px-4 py-6 text-center text-neutral-400 dark:text-neutral-500"
+                >
                   Noch keine wiederkehrenden Buchungen angelegt.
                 </td>
               </tr>

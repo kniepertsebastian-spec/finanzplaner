@@ -17,6 +17,10 @@ export class CreateTransactionDto {
   categoryId?: string;
 
   @IsOptional()
+  @IsUUID()
+  accountId?: string;
+
+  @IsOptional()
   @IsBoolean()
   avoidable?: boolean;
 

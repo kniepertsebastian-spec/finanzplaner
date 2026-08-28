@@ -22,6 +22,14 @@ async function main() {
     create: { email, passwordHash },
   });
 
+  const existingAccount = await prisma.account.findFirst({ where: { userId: user.id } });
+  if (!existingAccount) {
+    await prisma.account.create({
+      data: { userId: user.id, name: 'Girokonto', type: 'CHECKING' },
+    });
+    console.log('Created default account "Girokonto" for the seeded user.');
+  }
+
   console.log(`Seeded user ${user.email} (${user.id}).`);
   console.log('Change this password after first login and register a passkey via /auth/webauthn/register-options.');
 

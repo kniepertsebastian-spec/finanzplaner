@@ -3,6 +3,7 @@ import type { Transaction } from './types';
 
 export interface TransactionListParams {
   categoryId?: string;
+  accountId?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -12,6 +13,7 @@ export interface TransactionInput {
   description: string;
   date?: string;
   categoryId?: string;
+  accountId?: string;
   avoidable?: boolean;
   inefficient?: boolean;
   tooExpensive?: boolean;
@@ -22,11 +24,21 @@ export interface TransactionInput {
 export interface TransactionSplitInput {
   description: string;
   date?: string;
+  accountId?: string;
   splits: { amount: number; categoryId: string }[];
+}
+
+export interface TransferInput {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  description?: string;
+  date?: string;
 }
 
 export interface BulkUpdatePatch {
   categoryId?: string;
+  accountId?: string;
   avoidable?: boolean;
   inefficient?: boolean;
   tooExpensive?: boolean;
@@ -39,6 +51,8 @@ export const transactionsApi = {
   create: (dto: TransactionInput) => apiClient.post<Transaction>('/transactions', dto).then((r) => r.data),
   createSplit: (dto: TransactionSplitInput) =>
     apiClient.post<Transaction[]>('/transactions/split', dto).then((r) => r.data),
+  createTransfer: (dto: TransferInput) =>
+    apiClient.post<{ outgoing: Transaction; incoming: Transaction }>('/transactions/transfer', dto).then((r) => r.data),
   update: (id: string, dto: Partial<TransactionInput>) =>
     apiClient.patch<Transaction>(`/transactions/${id}`, dto).then((r) => r.data),
   remove: (id: string) => apiClient.delete(`/transactions/${id}`).then((r) => r.data),

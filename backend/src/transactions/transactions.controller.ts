@@ -5,6 +5,7 @@ import { BulkRemoveTransactionsDto } from './dto/bulk-remove-transactions.dto';
 import { BulkUpdateTransactionsDto } from './dto/bulk-update-transactions.dto';
 import { CreateTransactionSplitDto } from './dto/create-transaction-split.dto';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { CreateTransferDto } from './dto/create-transfer.dto';
 import { FindTransactionsQueryDto } from './dto/find-transactions-query.dto';
 import { TaxExportQueryDto } from './dto/tax-export-query.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -22,6 +23,11 @@ export class TransactionsController {
   @Post('split')
   createSplit(@CurrentUser() user: { id: string }, @Body() dto: CreateTransactionSplitDto) {
     return this.transactionsService.createSplit(user.id, dto);
+  }
+
+  @Post('transfer')
+  createTransfer(@CurrentUser() user: { id: string }, @Body() dto: CreateTransferDto) {
+    return this.transactionsService.createTransfer(user.id, dto);
   }
 
   // POST rather than DELETE/PATCH with an id list in the body, so these stay unambiguous literal

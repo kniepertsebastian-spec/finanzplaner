@@ -54,7 +54,6 @@ export class AuthService {
       email: user.email,
       totpEnabled: user.totpEnabled,
       monthStartDay: user.monthStartDay,
-      startingBalance: user.startingBalance,
     };
   }
 
@@ -65,7 +64,6 @@ export class AuthService {
       email: user.email,
       totpEnabled: user.totpEnabled,
       monthStartDay: user.monthStartDay,
-      startingBalance: user.startingBalance,
     };
   }
 

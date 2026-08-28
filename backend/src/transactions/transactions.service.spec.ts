@@ -16,6 +16,7 @@ describe('TransactionsService', () => {
       findMany: jest.Mock;
     };
     category: { findFirst: jest.Mock };
+    account: { findFirst: jest.Mock };
     invoice: { findMany: jest.Mock };
     $transaction: jest.Mock;
   };
@@ -32,10 +33,14 @@ describe('TransactionsService', () => {
         findMany: jest.fn(),
       },
       category: { findFirst: jest.fn() },
+      account: { findFirst: jest.fn() },
       invoice: { findMany: jest.fn() },
       $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
     };
     categorization = { learn: jest.fn(), suggestCategoryId: jest.fn() };
+    // create()/createSplit() fall back to the user's default account when no accountId is given
+    // in the DTO — most tests below don't care which account, so resolve one by default.
+    prisma.account.findFirst.mockResolvedValue({ id: 'acc-default', userId: 'user-1' });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -50,28 +55,6 @@ describe('TransactionsService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
-  });
-
-  describe('getBalance', () => {
-    it('returns the summed transaction amount for the user', async () => {
-      prisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: 12345 } });
-
-      const balance = await service.getBalance('user-1');
-
-      expect(prisma.transaction.aggregate).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
-        _sum: { amount: true },
-      });
-      expect(balance).toBe(12345);
-    });
-
-    it('returns 0 when the user has no transactions yet (sum is null)', async () => {
-      prisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: null } });
-
-      const balance = await service.getBalance('user-1');
-
-      expect(balance).toBe(0);
-    });
   });
 
   describe('create', () => {

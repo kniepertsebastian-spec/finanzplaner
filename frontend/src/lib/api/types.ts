@@ -3,7 +3,28 @@ export interface User {
   email: string;
   totpEnabled: boolean;
   monthStartDay: number; // 1-31; day the user's financial month begins
-  startingBalance: number; // Cents; opening balance before any tracked transactions existed
+}
+
+export type AccountType = 'CHECKING' | 'SAVINGS' | 'CASH' | 'OTHER';
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  startingBalance: number; // Cents; opening balance before any tracked transactions for this account existed
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+}
+
+export interface AccountWithBalance extends Account {
+  balanceCents: number; // startingBalance + every transaction ever posted to this account
+}
+
+export interface AccountBalances {
+  accounts: AccountWithBalance[];
+  totalCents: number; // Gesamtsaldo across all non-archived accounts
 }
 
 export interface Authenticator {
@@ -40,6 +61,7 @@ export interface RecurringTransaction {
   updatedAt: string;
   userId: string;
   categoryId: string;
+  accountId: string;
   contractNumber: string | null;
   contractEndDate: string | null; // minimum term end date; contract auto-renews if not cancelled in time
   cancellationPeriodDays: number | null; // days' notice required before contractEndDate to cancel
@@ -76,7 +98,10 @@ export interface Transaction {
   taxRelevant: boolean;
   userId: string;
   categoryId: string;
+  accountId: string;
   splitGroupId: string | null; // shared across sibling rows created by one "split into categories" action
+  isTransfer: boolean; // Umbuchung leg between two of the user's own accounts; excluded from income/expense totals
+  transferGroupId: string | null; // shared with this transfer's other leg
   tags: string[]; // free-form hashtags (e.g. "Urlaub2026"), stored without the leading '#'
 }
 

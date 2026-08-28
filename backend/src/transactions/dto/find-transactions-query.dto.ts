@@ -6,6 +6,10 @@ export class FindTransactionsQueryDto {
   categoryId?: string;
 
   @IsOptional()
+  @IsUUID()
+  accountId?: string;
+
+  @IsOptional()
   @IsISO8601()
   startDate?: string;
 

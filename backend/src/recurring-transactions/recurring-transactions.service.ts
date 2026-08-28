@@ -23,14 +23,23 @@ export class RecurringTransactionsService {
     }
   }
 
+  private async assertAccountOwnership(userId: string, accountId: string) {
+    const account = await this.prisma.account.findFirst({ where: { id: accountId, userId } });
+    if (!account) {
+      throw new ForbiddenException('Account does not belong to the current user');
+    }
+  }
+
   async create(userId: string, dto: CreateRecurringTransactionDto) {
     await this.assertCategoryOwnership(userId, dto.categoryId);
+    await this.assertAccountOwnership(userId, dto.accountId);
     return this.prisma.recurringTransaction.create({
       data: {
         userId,
         amount: dto.amount,
         description: dto.description,
         categoryId: dto.categoryId,
+        accountId: dto.accountId,
         nextDueDate: new Date(dto.nextDueDate),
         intervalMonths: dto.intervalMonths ?? 1,
         active: dto.active ?? true,
@@ -63,6 +72,9 @@ export class RecurringTransactionsService {
     const existing = await this.findOne(userId, id);
     if (dto.categoryId) {
       await this.assertCategoryOwnership(userId, dto.categoryId);
+    }
+    if (dto.accountId) {
+      await this.assertAccountOwnership(userId, dto.accountId);
     }
     const amountChanged = dto.amount !== undefined && dto.amount !== existing.amount;
     return this.prisma.recurringTransaction.update({
@@ -125,6 +137,7 @@ export class RecurringTransactionsService {
         amount: recurring.amount,
         description: recurring.description,
         categoryId: recurring.categoryId,
+        accountId: recurring.accountId,
         date: today.toISOString(),
       });
       await this.prisma.recurringTransaction.update({

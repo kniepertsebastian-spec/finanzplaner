@@ -86,6 +86,7 @@ export class PushService {
             userId: user.id,
             categoryId: budget.categoryId,
             amount: { lt: 0 },
+            isTransfer: false,
             date: { gte: periodStart, lte: periodEnd },
           },
           _sum: { amount: true },

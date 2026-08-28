@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import {
+  ArrowLeftRight,
   Download,
   Flag,
   Landmark,
@@ -16,9 +17,10 @@ import { Amount } from '../components/Amount';
 import { CategoryBadge } from '../components/CategoryBadge';
 import { Skeleton } from '../components/Skeleton';
 import { TagBadge } from '../components/TagBadge';
+import { accountsApi } from '../lib/api/accounts';
 import { categoriesApi } from '../lib/api/categories';
 import { transactionsApi } from '../lib/api/transactions';
-import type { Category, Transaction } from '../lib/api/types';
+import type { Account, Category, Transaction } from '../lib/api/types';
 import { eurosToCents, formatCents } from '../lib/money';
 import { parseTags } from '../lib/parseTags';
 
@@ -73,6 +75,7 @@ function groupByDate(transactions: Transaction[]): { label: string; items: Trans
 export function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [categories, setCategories] = useState<Category[] | null>(null);
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -80,31 +83,44 @@ export function TransactionsPage() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [accountFilter, setAccountFilter] = useState<string | null>(null);
   const [taxExportYear, setTaxExportYear] = useState(new Date().getFullYear());
 
   const [splitting, setSplitting] = useState(false);
   const [splitSign, setSplitSign] = useState<Sign>('expense');
   const [splitDescription, setSplitDescription] = useState('');
   const [splitDate, setSplitDate] = useState('');
+  const [splitAccountId, setSplitAccountId] = useState('');
   const [splitRows, setSplitRows] = useState<SplitRow[]>([emptySplitRow(), emptySplitRow()]);
   const [splitError, setSplitError] = useState<string | null>(null);
   const [splitSubmitting, setSplitSubmitting] = useState(false);
+
+  const [transferring, setTransferring] = useState(false);
+  const [transferFromId, setTransferFromId] = useState('');
+  const [transferToId, setTransferToId] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferDescription, setTransferDescription] = useState('');
+  const [transferDate, setTransferDate] = useState('');
+  const [transferError, setTransferError] = useState<string | null>(null);
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkCategoryId, setBulkCategoryId] = useState('');
 
   const load = () => {
-    Promise.all([transactionsApi.list(), categoriesApi.list()])
-      .then(([t, c]) => {
+    Promise.all([transactionsApi.list(), categoriesApi.list(), accountsApi.list()])
+      .then(([t, c, a]) => {
         setTransactions(t);
         setCategories(c);
+        setAccounts(a);
         // Drop any selected id that no longer exists (e.g. deleted via the single-row action)
         // instead of leaving a stale, invisible entry in the selection count.
         const stillPresent = new Set(t.map((tx) => tx.id));
@@ -121,6 +137,7 @@ export function TransactionsPage() {
     setAmount('');
     setDescription('');
     setCategoryId('');
+    setAccountId('');
     setDate('');
     setTagsInput('');
     setFormError(null);
@@ -132,6 +149,7 @@ export function TransactionsPage() {
     setAmount(String(Math.abs(t.amount) / 100));
     setDescription(t.description);
     setCategoryId(t.categoryId);
+    setAccountId(t.accountId);
     setDate(t.date.slice(0, 10));
     setTagsInput(t.tags.join(' '));
     setFormError(null);
@@ -148,6 +166,7 @@ export function TransactionsPage() {
         amount: sign === 'income' ? cents : -cents,
         description,
         categoryId,
+        accountId,
         date,
         tags: parseTags(tagsInput),
       });
@@ -198,7 +217,9 @@ export function TransactionsPage() {
     });
   };
 
-  const visibleTransactions = (transactions ?? []).filter((t) => !tagFilter || t.tags.includes(tagFilter));
+  const visibleTransactions = (transactions ?? []).filter(
+    (t) => (!tagFilter || t.tags.includes(tagFilter)) && (!accountFilter || t.accountId === accountFilter),
+  );
 
   const allSelected = visibleTransactions.length > 0 && visibleTransactions.every((t) => selectedIds.has(t.id));
 
@@ -256,6 +277,7 @@ export function TransactionsPage() {
     setSplitSign('expense');
     setSplitDescription('');
     setSplitDate('');
+    setSplitAccountId('');
     setSplitRows([emptySplitRow(), emptySplitRow()]);
     setSplitError(null);
   };
@@ -282,6 +304,7 @@ export function TransactionsPage() {
       await transactionsApi.createSplit({
         description: splitDescription,
         date: splitDate || undefined,
+        accountId: splitAccountId || undefined,
         splits: splitRows.map((row) => {
           const rowCents = Math.abs(eurosToCents(row.amount));
           return {
@@ -299,11 +322,46 @@ export function TransactionsPage() {
     }
   };
 
+  const resetTransferForm = () => {
+    setTransferring(false);
+    setTransferFromId('');
+    setTransferToId('');
+    setTransferAmount('');
+    setTransferDescription('');
+    setTransferDate('');
+    setTransferError(null);
+  };
+
+  const handleTransferSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setTransferError(null);
+    if (transferFromId === transferToId) {
+      setTransferError('Quell- und Zielkonto müssen unterschiedlich sein.');
+      return;
+    }
+    setTransferSubmitting(true);
+    try {
+      await transactionsApi.createTransfer({
+        fromAccountId: transferFromId,
+        toAccountId: transferToId,
+        amount: Math.abs(eurosToCents(transferAmount)),
+        description: transferDescription || undefined,
+        date: transferDate || undefined,
+      });
+      resetTransferForm();
+      load();
+    } catch {
+      setTransferError('Umbuchung fehlgeschlagen.');
+    } finally {
+      setTransferSubmitting(false);
+    }
+  };
+
   if (error) {
     return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
   }
 
-  if (!transactions || !categories) {
+  if (!transactions || !categories || !accounts) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -317,6 +375,7 @@ export function TransactionsPage() {
   }
 
   const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
 
   const splitSiblingsByGroupId = new Map<string, Transaction[]>();
   for (const t of transactions) {
@@ -370,6 +429,16 @@ export function TransactionsPage() {
             >
               <SplitSquareHorizontal size={16} />
               Buchung aufteilen
+            </button>
+          )}
+          {!transferring && accounts.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setTransferring(true)}
+              className="flex items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            >
+              <ArrowLeftRight size={16} />
+              Umbuchen
             </button>
           )}
         </div>
@@ -435,6 +504,23 @@ export function TransactionsPage() {
                 className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
               />
             </div>
+            {accounts.length > 1 && (
+              <div>
+                <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Konto</label>
+                <select
+                  value={splitAccountId}
+                  onChange={(e) => setSplitAccountId(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                >
+                  <option value="">Standardkonto</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -506,6 +592,109 @@ export function TransactionsPage() {
             <button
               type="button"
               onClick={resetSplitForm}
+              className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </form>
+      )}
+
+      {transferring && (
+        <form
+          onSubmit={handleTransferSubmit}
+          className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+        >
+          <h2 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            Umbuchung zwischen eigenen Konten
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Von Konto</label>
+              <select
+                required
+                value={transferFromId}
+                onChange={(e) => setTransferFromId(e.target.value)}
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              >
+                <option value="" disabled>
+                  Wählen…
+                </option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Auf Konto</label>
+              <select
+                required
+                value={transferToId}
+                onChange={(e) => setTransferToId(e.target.value)}
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              >
+                <option value="" disabled>
+                  Wählen…
+                </option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Betrag (€)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                required
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                Datum (optional, sonst heute)
+              </label>
+              <input
+                type="date"
+                value={transferDate}
+                onChange={(e) => setTransferDate(e.target.value)}
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                Beschreibung (optional)
+              </label>
+              <input
+                type="text"
+                value={transferDescription}
+                onChange={(e) => setTransferDescription(e.target.value)}
+                placeholder="Umbuchung"
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              />
+            </div>
+          </div>
+
+          {transferError && <p className="text-sm text-red-600 dark:text-red-400">{transferError}</p>}
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={transferSubmitting}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              Umbuchen
+            </button>
+            <button
+              type="button"
+              onClick={resetTransferForm}
               className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"
             >
               Abbrechen
@@ -600,6 +789,23 @@ export function TransactionsPage() {
                 className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
               />
             </div>
+            {accounts.length > 1 && (
+              <div>
+                <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Konto</label>
+                <select
+                  required
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                >
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
                 Tags (optional, mit Leerzeichen getrennt)
@@ -633,6 +839,24 @@ export function TransactionsPage() {
             </button>
           </div>
         </form>
+      )}
+
+      {accounts.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Konto:</span>
+          <select
+            value={accountFilter ?? ''}
+            onChange={(e) => setAccountFilter(e.target.value || null)}
+            className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          >
+            <option value="">Alle Konten</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
 
       {allTags.length > 0 && (
@@ -737,6 +961,7 @@ export function TransactionsPage() {
               <th className="px-4 py-2 font-medium">Datum</th>
               <th className="px-4 py-2 font-medium">Beschreibung</th>
               <th className="px-4 py-2 font-medium">Kategorie</th>
+              {accounts.length > 1 && <th className="px-4 py-2 font-medium">Konto</th>}
               <th className="px-4 py-2 font-medium">Betrag</th>
               <th className="px-4 py-2" />
             </tr>
@@ -746,7 +971,7 @@ export function TransactionsPage() {
               <Fragment key={group.items[0].id}>
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={accounts.length > 1 ? 7 : 6}
                     className="bg-neutral-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:bg-neutral-800/60 dark:text-neutral-400"
                   >
                     {group.label}
@@ -768,6 +993,11 @@ export function TransactionsPage() {
                 </td>
                 <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300">
                   {t.description}
+                  {t.isTransfer && (
+                    <span title="Umbuchung" className="ml-1.5 inline-flex items-center text-neutral-400 dark:text-neutral-500">
+                      <ArrowLeftRight size={12} />
+                    </span>
+                  )}
                   {t.splitGroupId && (
                     <span
                       title={`Teil einer Aufteilung: ${(splitSiblingsByGroupId.get(t.splitGroupId) ?? [])
@@ -793,6 +1023,11 @@ export function TransactionsPage() {
                     <span className="text-neutral-700 dark:text-neutral-300">Unbekannt</span>
                   )}
                 </td>
+                {accounts.length > 1 && (
+                  <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
+                    {accountById.get(t.accountId)?.name ?? 'Unbekannt'}
+                  </td>
+                )}
                 <td
                   className={clsx(
                     'px-4 py-2 font-medium',
@@ -873,7 +1108,10 @@ export function TransactionsPage() {
             ))}
             {visibleTransactions.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-neutral-400 dark:text-neutral-500">
+                <td
+                  colSpan={accounts.length > 1 ? 7 : 6}
+                  className="px-4 py-6 text-center text-neutral-400 dark:text-neutral-500"
+                >
                   {tagFilter ? `Keine Buchungen mit Tag #${tagFilter}.` : 'Noch keine Transaktionen vorhanden.'}
                 </td>
               </tr>

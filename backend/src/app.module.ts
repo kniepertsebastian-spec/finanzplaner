@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './common/redis/redis.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
+import { AccountsModule } from './accounts/accounts.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { CategoriesModule } from './categories/categories.module';
 import { BudgetsModule } from './budgets/budgets.module';
@@ -28,6 +29,7 @@ import { MetricsModule } from './metrics/metrics.module';
     }),
     AuthModule,
     UsersModule,
+    AccountsModule,
     TransactionsModule,
     CategoriesModule,
     BudgetsModule,

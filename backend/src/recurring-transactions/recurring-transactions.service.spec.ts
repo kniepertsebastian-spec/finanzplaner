@@ -11,6 +11,7 @@ describe('RecurringTransactionsService', () => {
   let prisma: {
     recurringTransaction: { findMany: jest.Mock; findFirst: jest.Mock; update: jest.Mock; create: jest.Mock };
     category: { findFirst: jest.Mock };
+    account: { findFirst: jest.Mock };
   };
   let transactionsService: { create: jest.Mock };
 
@@ -25,6 +26,9 @@ describe('RecurringTransactionsService', () => {
         create: jest.fn(),
       },
       category: {
+        findFirst: jest.fn(),
+      },
+      account: {
         findFirst: jest.fn(),
       },
     };
@@ -48,11 +52,13 @@ describe('RecurringTransactionsService', () => {
   describe('create', () => {
     it('passes through optional contract metadata and converts contractEndDate to a Date', async () => {
       prisma.category.findFirst.mockResolvedValue({ id: 'cat-1', userId: 'user-1' });
+      prisma.account.findFirst.mockResolvedValue({ id: 'acc-1', userId: 'user-1' });
 
       await service.create('user-1', {
         amount: -2999,
         description: 'Internet',
         categoryId: 'cat-1',
+        accountId: 'acc-1',
         nextDueDate: '2026-09-01',
         contractNumber: 'INET-123',
         contractEndDate: '2027-08-31',
@@ -70,11 +76,13 @@ describe('RecurringTransactionsService', () => {
 
     it('leaves contract metadata undefined when not provided', async () => {
       prisma.category.findFirst.mockResolvedValue({ id: 'cat-1', userId: 'user-1' });
+      prisma.account.findFirst.mockResolvedValue({ id: 'acc-1', userId: 'user-1' });
 
       await service.create('user-1', {
         amount: -2999,
         description: 'Internet',
         categoryId: 'cat-1',
+        accountId: 'acc-1',
         nextDueDate: '2026-09-01',
       });
 
@@ -183,6 +191,7 @@ describe('RecurringTransactionsService', () => {
           amount: -5000,
           description: 'Miete',
           categoryId: 'cat-1',
+          accountId: 'acc-1',
           nextDueDate: new Date('2026-08-17T00:00:00.000Z'),
           intervalMonths: 1,
           active: true,
@@ -198,6 +207,7 @@ describe('RecurringTransactionsService', () => {
         amount: -5000,
         description: 'Miete',
         categoryId: 'cat-1',
+        accountId: 'acc-1',
         date: today.toISOString(),
       });
       expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
@@ -214,6 +224,7 @@ describe('RecurringTransactionsService', () => {
           amount: -1200,
           description: 'Netflix',
           categoryId: 'cat-1',
+          accountId: 'acc-1',
           nextDueDate: new Date('2026-08-18T00:00:00.000Z'),
           intervalMonths: 1,
           active: true,
@@ -233,6 +244,7 @@ describe('RecurringTransactionsService', () => {
         {
           id: 'rec-2b',
           userId: 'user-1',
+          accountId: 'acc-1',
           nextDueDate: new Date('2026-09-05T00:00:00.000Z'),
           intervalMonths: 1,
           active: true,
@@ -253,6 +265,7 @@ describe('RecurringTransactionsService', () => {
         {
           id: 'rec-2c',
           userId: 'user-1',
+          accountId: 'acc-1',
           nextDueDate: new Date('2026-08-25T00:00:00.000Z'), // falls in the Aug23-Sep22 cycle, not the current one
           intervalMonths: 1,
           active: true,
@@ -275,6 +288,7 @@ describe('RecurringTransactionsService', () => {
           amount: -8400,
           description: 'Miete',
           categoryId: 'cat-1',
+          accountId: 'acc-1',
           nextDueDate: new Date('2026-08-20T00:00:00.000Z'), // still inside Jul23-Aug22
           intervalMonths: 1,
           active: true,
@@ -297,6 +311,7 @@ describe('RecurringTransactionsService', () => {
           amount: -1000,
           description: 'Verspätet',
           categoryId: 'cat-1',
+          accountId: 'acc-1',
           nextDueDate: new Date('2026-08-10T00:00:00.000Z'),
           intervalMonths: 1,
           active: true,
@@ -319,6 +334,7 @@ describe('RecurringTransactionsService', () => {
           amount: -5525,
           description: 'GEZ',
           categoryId: 'cat-3',
+          accountId: 'acc-3',
           nextDueDate: new Date('2026-08-17T00:00:00.000Z'),
           intervalMonths: 3,
           active: true,
@@ -334,6 +350,7 @@ describe('RecurringTransactionsService', () => {
         amount: -5525,
         description: 'GEZ',
         categoryId: 'cat-3',
+        accountId: 'acc-3',
         date: today.toISOString(),
       });
       expect(prisma.recurringTransaction.update).toHaveBeenCalledWith({
@@ -347,6 +364,7 @@ describe('RecurringTransactionsService', () => {
         {
           id: 'rec-5',
           userId: 'user-1',
+          accountId: 'acc-1',
           nextDueDate: new Date('2026-10-15T00:00:00.000Z'),
           intervalMonths: 12,
           active: true,
@@ -370,6 +388,7 @@ describe('RecurringTransactionsService', () => {
           amount: -12000,
           description: 'Kfz-Steuer',
           categoryId: 'cat-4',
+          accountId: 'acc-1',
           nextDueDate: new Date('2026-10-15T00:00:00.000Z'),
           intervalMonths: 12,
           active: true,
@@ -396,6 +415,7 @@ describe('RecurringTransactionsService', () => {
           amount: -100,
           description: 'Monatsende-Regel',
           categoryId: 'cat-1',
+          accountId: 'acc-1',
           nextDueDate: new Date('2026-01-31T00:00:00.000Z'),
           intervalMonths: 1,
           active: true,

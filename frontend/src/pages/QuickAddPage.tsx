@@ -2,10 +2,11 @@ import { isAxiosError } from 'axios';
 import clsx from 'clsx';
 import { Camera, Globe, Mic, MicOff } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { accountsApi } from '../lib/api/accounts';
 import { categoriesApi } from '../lib/api/categories';
 import { SkeletonList } from '../components/Skeleton';
 import { transactionsApi, type TransactionInput } from '../lib/api/transactions';
-import type { Category } from '../lib/api/types';
+import type { Account, Category } from '../lib/api/types';
 import { COMMON_CURRENCIES, convertForeignToEuroCents, getRememberedRate, rememberRate } from '../lib/currency';
 import { addPendingTransaction, listWithCache } from '../lib/offlineDb';
 import { eurosToCents } from '../lib/money';
@@ -24,12 +25,14 @@ function todayInputValue(): string {
 
 export function QuickAddPage() {
   const [categories, setCategories] = useState<Category[] | null>(null);
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [sign, setSign] = useState<Sign>('expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState(todayInputValue());
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
@@ -136,6 +139,13 @@ export function QuickAddPage() {
     listWithCache('categories', () => categoriesApi.list())
       .then(setCategories)
       .catch(() => setError('Kategorien konnten nicht geladen werden.'));
+    accountsApi
+      .list()
+      .then((list) => {
+        setAccounts(list);
+        if (list.length > 0) setAccountId(list[0].id);
+      })
+      .catch(() => setError('Konten konnten nicht geladen werden.'));
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -150,6 +160,7 @@ export function QuickAddPage() {
       description,
       date: new Date(date).toISOString(),
       categoryId,
+      accountId: accountId || undefined,
     };
 
     try {
@@ -369,6 +380,23 @@ export function QuickAddPage() {
             ))}
           </select>
         </div>
+
+        {accounts && accounts.length > 1 && (
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Konto</label>
+            <select
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Datum</label>

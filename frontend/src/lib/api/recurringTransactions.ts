@@ -5,6 +5,7 @@ export interface RecurringTransactionInput {
   amount: number;
   description: string;
   categoryId: string;
+  accountId: string;
   nextDueDate: string; // ISO date, e.g. "2026-10-15"
   intervalMonths?: number;
   active?: boolean;

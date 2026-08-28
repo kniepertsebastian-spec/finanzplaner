@@ -6,8 +6,4 @@ export class UpdateUserDto {
   @Min(1)
   @Max(31)
   monthStartDay?: number;
-
-  @IsOptional()
-  @IsInt()
-  startingBalance?: number;
 }

@@ -15,9 +15,13 @@ import { BulkRemoveTransactionsDto } from './dto/bulk-remove-transactions.dto';
 import { BulkUpdateTransactionsDto } from './dto/bulk-update-transactions.dto';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { CreateTransactionSplitDto } from './dto/create-transaction-split.dto';
+import { CreateTransferDto } from './dto/create-transfer.dto';
 import { FindTransactionsQueryDto } from './dto/find-transactions-query.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { normalizeTags } from './normalize-tags';
+
+const TRANSFER_CATEGORY_NAME = 'Umbuchung';
+const TRANSFER_DEFAULT_DESCRIPTION = 'Umbuchung';
 
 @Injectable()
 export class TransactionsService {
@@ -31,6 +35,30 @@ export class TransactionsService {
     if (!category) {
       throw new ForbiddenException('Category does not belong to the current user');
     }
+  }
+
+  private async assertAccountOwnership(userId: string, accountId: string) {
+    const account = await this.prisma.account.findFirst({ where: { id: accountId, userId } });
+    if (!account) {
+      throw new ForbiddenException('Account does not belong to the current user');
+    }
+  }
+
+  // Falls back to the user's oldest non-archived account when none is given, so a single-account
+  // user (the common case) never has to pick one explicitly.
+  private async resolveAccountId(userId: string, accountId: string | undefined): Promise<string> {
+    if (accountId) {
+      await this.assertAccountOwnership(userId, accountId);
+      return accountId;
+    }
+    const defaultAccount = await this.prisma.account.findFirst({
+      where: { userId, archived: false },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!defaultAccount) {
+      throw new BadRequestException('accountId is required (no account exists yet for this user)');
+    }
+    return defaultAccount.id;
   }
 
   private async resolveCategoryId(
@@ -55,10 +83,12 @@ export class TransactionsService {
 
   async create(userId: string, dto: CreateTransactionDto) {
     const categoryId = await this.resolveCategoryId(userId, dto.description, dto.categoryId);
+    const accountId = await this.resolveAccountId(userId, dto.accountId);
     return this.prisma.transaction.create({
       data: {
         userId,
         categoryId,
+        accountId,
         amount: dto.amount,
         description: dto.description,
         date: dto.date ? new Date(dto.date) : undefined,
@@ -83,6 +113,7 @@ export class TransactionsService {
     for (const split of dto.splits) {
       await this.assertCategoryOwnership(userId, split.categoryId);
     }
+    const accountId = await this.resolveAccountId(userId, dto.accountId);
 
     const splitGroupId = randomUUID();
     const date = dto.date ? new Date(dto.date) : undefined;
@@ -92,6 +123,7 @@ export class TransactionsService {
           data: {
             userId,
             categoryId: split.categoryId,
+            accountId,
             amount: split.amount,
             description: dto.description,
             date,
@@ -102,11 +134,64 @@ export class TransactionsService {
     );
   }
 
+  // "Umbuchung": moves money between two of the user's own accounts. Booked as a linked pair of
+  // ordinary transactions (negative leg in fromAccount, positive leg in toAccount) sharing one
+  // transferGroupId, both flagged isTransfer so income/expense aggregations everywhere else skip
+  // them — this isn't real income or spending, just money changing which account it sits in.
+  // Category find-or-create + both transaction creates run in one $transaction, same pattern as
+  // UsersService.reconcile(), so a dropped connection can't leave one leg posted without the other.
+  async createTransfer(userId: string, dto: CreateTransferDto) {
+    if (dto.fromAccountId === dto.toAccountId) {
+      throw new BadRequestException('fromAccountId and toAccountId must be different accounts');
+    }
+    await this.assertAccountOwnership(userId, dto.fromAccountId);
+    await this.assertAccountOwnership(userId, dto.toAccountId);
+
+    const transferGroupId = randomUUID();
+    const date = dto.date ? new Date(dto.date) : undefined;
+    const description = dto.description ?? TRANSFER_DEFAULT_DESCRIPTION;
+
+    const [outgoing, incoming] = await this.prisma.$transaction(async (tx) => {
+      const category =
+        (await tx.category.findFirst({ where: { userId, name: TRANSFER_CATEGORY_NAME } })) ??
+        (await tx.category.create({ data: { userId, name: TRANSFER_CATEGORY_NAME } }));
+
+      const outgoingLeg = await tx.transaction.create({
+        data: {
+          userId,
+          categoryId: category.id,
+          accountId: dto.fromAccountId,
+          amount: -dto.amount,
+          description,
+          date,
+          isTransfer: true,
+          transferGroupId,
+        },
+      });
+      const incomingLeg = await tx.transaction.create({
+        data: {
+          userId,
+          categoryId: category.id,
+          accountId: dto.toAccountId,
+          amount: dto.amount,
+          description,
+          date,
+          isTransfer: true,
+          transferGroupId,
+        },
+      });
+      return [outgoingLeg, incomingLeg];
+    });
+
+    return { outgoing, incoming };
+  }
+
   findAll(userId: string, query: FindTransactionsQueryDto) {
     return this.prisma.transaction.findMany({
       where: {
         userId,
         categoryId: query.categoryId,
+        accountId: query.accountId,
         date: {
           gte: query.startDate ? new Date(query.startDate) : undefined,
           lte: query.endDate ? new Date(query.endDate) : undefined,
@@ -134,6 +219,12 @@ export class TransactionsService {
       await this.categorization.learn(userId, dto.description ?? existing.description, categoryId);
     }
 
+    let accountId = existing.accountId;
+    if (dto.accountId) {
+      await this.assertAccountOwnership(userId, dto.accountId);
+      accountId = dto.accountId;
+    }
+
     return this.prisma.transaction.update({
       where: { id },
       data: {
@@ -141,6 +232,7 @@ export class TransactionsService {
         description: dto.description,
         date: dto.date ? new Date(dto.date) : undefined,
         categoryId,
+        accountId,
         avoidable: dto.avoidable,
         inefficient: dto.inefficient,
         tooExpensive: dto.tooExpensive,
@@ -170,10 +262,14 @@ export class TransactionsService {
     if (dto.patch.categoryId) {
       await this.assertCategoryOwnership(userId, dto.patch.categoryId);
     }
+    if (dto.patch.accountId) {
+      await this.assertAccountOwnership(userId, dto.patch.accountId);
+    }
     const result = await this.prisma.transaction.updateMany({
       where: { id: { in: dto.ids }, userId },
       data: {
         categoryId: dto.patch.categoryId,
+        accountId: dto.patch.accountId,
         avoidable: dto.patch.avoidable,
         inefficient: dto.patch.inefficient,
         tooExpensive: dto.patch.tooExpensive,
@@ -181,16 +277,6 @@ export class TransactionsService {
       },
     });
     return { count: result.count };
-  }
-
-  // Sum of every booked transaction (income positive, expense negative) — the delta since
-  // User.startingBalance. Callers add startingBalance themselves to get the actual account balance.
-  async getBalance(userId: string): Promise<number> {
-    const result = await this.prisma.transaction.aggregate({
-      where: { userId },
-      _sum: { amount: true },
-    });
-    return result._sum.amount ?? 0;
   }
 
   // Bundles every tax-relevant transaction of the given year (CSV) together with whatever invoices
@@ -204,7 +290,7 @@ export class TransactionsService {
 
     const [transactions, invoices] = await Promise.all([
       this.prisma.transaction.findMany({
-        where: { userId, taxRelevant: true, date: { gte: rangeStart, lt: rangeEnd } },
+        where: { userId, taxRelevant: true, isTransfer: false, date: { gte: rangeStart, lt: rangeEnd } },
         include: { category: true },
         orderBy: { date: 'asc' },
       }),

@@ -22,6 +22,9 @@ export class CreateRecurringTransactionDto {
   @IsUUID()
   categoryId: string;
 
+  @IsUUID()
+  accountId: string;
+
   @IsDateString()
   nextDueDate: string;
 

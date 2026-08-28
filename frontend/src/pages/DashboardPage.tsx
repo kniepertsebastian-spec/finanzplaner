@@ -11,6 +11,7 @@ import { Skeleton } from '../components/Skeleton';
 import { StatTile } from '../components/StatTile';
 import { useAuth } from '../context/AuthContext';
 import { useDarkMode } from '../context/DarkModeContext';
+import { accountsApi } from '../lib/api/accounts';
 import { budgetsApi } from '../lib/api/budgets';
 import { categoriesApi } from '../lib/api/categories';
 import { recurringTransactionsApi } from '../lib/api/recurringTransactions';
@@ -65,6 +66,7 @@ export function DashboardPage() {
   const [budgets, setBudgets] = useState<Budget[] | null>(null);
   const [recurring, setRecurring] = useState<RecurringTransaction[] | null>(null);
   const [savingsPots, setSavingsPots] = useState<SavingsPot[] | null>(null);
+  const [balanceCents, setBalanceCents] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -78,13 +80,15 @@ export function DashboardPage() {
       listWithCache('budgets', () => budgetsApi.list({ month: period.startISO })),
       recurringTransactionsApi.list(),
       savingsPotsApi.list(),
+      accountsApi.balances(),
     ])
-      .then(([t, c, b, r, pots]) => {
+      .then(([t, c, b, r, pots, balances]) => {
         setTransactions(t);
         setCategories(c);
         setBudgets(b);
         setRecurring(r);
         setSavingsPots(pots);
+        setBalanceCents(balances.totalCents);
       })
       .catch(() => setError('Daten konnten nicht geladen werden.'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,7 +98,7 @@ export function DashboardPage() {
     return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
   }
 
-  if (!transactions || !categories || !budgets || !recurring || !savingsPots) {
+  if (!transactions || !categories || !budgets || !recurring || !savingsPots || balanceCents === null) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-40 w-full rounded-2xl" />
@@ -115,17 +119,16 @@ export function DashboardPage() {
   const period = getFinancialPeriod(monthStartDay);
   const days = daysInFinancialPeriod(period);
   const elapsed = dayOfFinancialPeriod(monthStartDay);
-  const { incomeCents, expenseCents } = monthlyTotals(transactions);
+  // Umbuchungen zwischen eigenen Konten sind kein echtes Einkommen/Ausgabe — überall dort
+  // herausgefiltert, wo Einnahmen/Ausgaben ausgewertet werden, sonst würde eine Kontoumbuchung
+  // fälschlich Sparquote, 50/30/20-Regel, Kategorie-Auswertung usw. verzerren.
+  const realTransactions = transactions.filter((t) => !t.isTransfer);
+  const { incomeCents, expenseCents } = monthlyTotals(realTransactions);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
-  // Kontostand (Settings) is topped up by hand once a period (payday), savings excluded — it's
-  // not a one-time opening balance, so it doesn't belong in an all-time cumulative sum. It's the
-  // period's real starting point, so it's treated as part of this period's income throughout.
-  const kontostandCents = user?.startingBalance ?? 0;
-  const combinedIncomeCents = kontostandCents + incomeCents;
-  const savingsRatePct = savingsRate(combinedIncomeCents, expenseCents);
-  const rule503020 = budgetTypeBreakdown(transactions, categories, incomeCents);
-  const categoryShares = expensesByCategory(transactions, categories);
-  const moneyFlowData = moneyFlow(transactions, categories);
+  const savingsRatePct = savingsRate(incomeCents, expenseCents);
+  const rule503020 = budgetTypeBreakdown(realTransactions, categories, incomeCents);
+  const categoryShares = expensesByCategory(realTransactions, categories);
+  const moneyFlowData = moneyFlow(realTransactions, categories);
 
   const totalBudgetCents = budgets.reduce((sum, b) => sum + b.amount, 0);
   const remainingCents = projectRemainingBudget(totalBudgetCents, expenseCents, elapsed, days);
@@ -138,17 +141,13 @@ export function DashboardPage() {
   // Alle Fixkosten mit Fälligkeit im Zeitraum (gebucht + noch offen) — zeigt die "Fixkosten
   // {periodLabel}"-Kachel unten unverändert weiter an.
   const totalFixedCostsCents = upcomingFixedCosts(recurring, period.startISO, period.endISO);
-  // Der bereits gebuchte Anteil davon steckt schon in expenseCents (und damit in periodBalanceCents)
-  // — für availableIncome() darf deshalb nur der noch NICHT gebuchte Rest abgezogen werden, sonst
-  // würden diese Fixkosten doppelt abgezogen.
+  // Der bereits gebuchte Anteil davon steckt schon in `balanceCents` (Summe aller Konten, inkl.
+  // aller bisherigen Buchungen) — für availableIncome() darf deshalb nur der noch NICHT gebuchte
+  // Rest abgezogen werden, sonst würden diese Fixkosten doppelt abgezogen.
   const postedFixedCostsCents = postedFixedCosts(recurring, period.startISO, period.endISO);
   const notYetPostedFixedCostsCents = totalFixedCostsCents - postedFixedCostsCents;
   const lockedInPotsCents = savingsPots.reduce((sum, p) => sum + p.amountCents, 0);
-  // "Gesamtsaldo" für den Zeitraum: Kontostand (Startpunkt dieses Zeitraums) plus alles, was seither
-  // gebucht wurde. Ersetzt die frühere kontostandsübergreifende Berechnung (Startsaldo + alle
-  // Buchungen seit Accounterstellung), die bei jedem manuellen Kontostand-Update auseinanderlief.
-  const periodBalanceCents = combinedIncomeCents - expenseCents;
-  const availableIncomeCents = availableIncome(periodBalanceCents, notYetPostedFixedCostsCents, lockedInPotsCents);
+  const availableIncomeCents = availableIncome(balanceCents, notYetPostedFixedCostsCents, lockedInPotsCents);
   const nextIncome = nextIncomeDueDate(recurring);
   const burnRateHorizon = nextIncome ?? period.end;
   const daysUntilNextIncome = daysUntil(burnRateHorizon);
@@ -163,13 +162,13 @@ export function DashboardPage() {
   // current period plus the entire next one), which buried the near-term picture the user
   // actually wants right after Gehaltseingang.
   const cashflowHorizonDays = daysUntil(period.end);
-  const cashflowPoints = cashflowProjection(periodBalanceCents, recurring, cashflowHorizonDays);
+  const cashflowPoints = cashflowProjection(balanceCents, recurring, cashflowHorizonDays);
   const shortfall = firstShortfall(cashflowPoints);
   const shortfallLabel = shortfall?.date.toLocaleDateString('de-DE', { timeZone: 'UTC' });
 
   const cancellationNotices = contractsNeedingCancellationNotice(recurring);
   const increasedRules = priceIncreaseRules(recurring);
-  const savings = savingsPotential(transactions, recurring);
+  const savings = savingsPotential(realTransactions, recurring);
   const hasSavingsPotential = [savings.avoidable, savings.inefficient, savings.tooExpensive].some(
     (f) => f.transactionCents > 0 || f.recurringMonthlyCents > 0,
   );
@@ -179,7 +178,7 @@ export function DashboardPage() {
       <p className="text-sm text-neutral-500 dark:text-neutral-400">Zeitraum: {periodLabel}</p>
 
       <HeroCard
-        balanceCents={periodBalanceCents}
+        balanceCents={balanceCents}
         availableIncomeCents={availableIncomeCents}
         availableIncomeCaption={
           lockedInPotsCents > 0
@@ -226,12 +225,7 @@ export function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile
-          label="Einnahmen (Zeitraum)"
-          cents={combinedIncomeCents}
-          valueClassName="text-[#2a78d6]"
-          caption="Kontostand aus den Einstellungen zzgl. Einnahmen-Buchungen im Zeitraum"
-        />
+        <StatTile label="Einnahmen (Zeitraum)" cents={incomeCents} valueClassName="text-[#2a78d6]" />
         <StatTile label="Ausgaben (Zeitraum)" cents={expenseCents} valueClassName="text-[#eb6834]" />
         <StatTile
           label="Sparquote"
@@ -372,7 +366,7 @@ export function DashboardPage() {
         <h2 className="mb-4 text-sm font-medium text-neutral-700 dark:text-neutral-300">
           Einnahmen &amp; Ausgaben im Zeitverlauf
         </h2>
-        <IncomeExpenseChart transactions={transactions} periodStart={period.start} daysInPeriod={days} isDark={isDark} />
+        <IncomeExpenseChart transactions={realTransactions} periodStart={period.start} daysInPeriod={days} isDark={isDark} />
       </div>
 
       {categoryShares.length > 0 && (
@@ -425,7 +419,7 @@ export function DashboardPage() {
                 categoryId={b.categoryId}
                 categoryName={categoryById.get(b.categoryId)?.name ?? 'Unbekannt'}
                 budgetCents={b.amount}
-                spentCents={spentForCategory(transactions, b.categoryId)}
+                spentCents={spentForCategory(realTransactions, b.categoryId)}
               />
             ))}
           </div>

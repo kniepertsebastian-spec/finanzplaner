@@ -1,18 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { TransactionsService } from '../transactions/transactions.service';
-import { ReconcileBalanceDto } from './dto/reconcile-balance.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-
-const RECONCILIATION_CATEGORY_NAME = 'Kontoabgleich';
-const RECONCILIATION_DESCRIPTION = 'Saldo-Abgleich';
 
 @Injectable()
 export class UsersService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly transactions: TransactionsService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async update(userId: string, dto: UpdateUserDto) {
     const user = await this.prisma.user.update({ where: { id: userId }, data: dto });
@@ -21,49 +13,6 @@ export class UsersService {
       email: user.email,
       totpEnabled: user.totpEnabled,
       monthStartDay: user.monthStartDay,
-      startingBalance: user.startingBalance,
     };
-  }
-
-  async getBalance(userId: string) {
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    const transactionsSum = await this.transactions.getBalance(userId);
-    return { balance: user.startingBalance + transactionsSum };
-  }
-
-  // "Saldo abgleichen": user provides the real balance from their bank, we book an automatic
-  // adjustment transaction for whatever cent difference remains vs. our own calculated balance —
-  // no attempt to guess which real-world booking is missing, just closes the gap.
-  //
-  // The category find-or-create and the transaction create both run inside one
-  // `$transaction`, not as two independent queries — otherwise a connection drop between them
-  // could leave a freshly-created "Kontoabgleich" category with no adjustment transaction (or,
-  // on a retry, a second duplicate category), an inconsistent state the old two-step version
-  // couldn't roll back from.
-  async reconcile(userId: string, dto: ReconcileBalanceDto) {
-    const { balance: calculatedBalance } = await this.getBalance(userId);
-    const diff = dto.actualBalance - calculatedBalance;
-
-    if (diff === 0) {
-      return { transaction: null, previousBalance: calculatedBalance, actualBalance: dto.actualBalance, diff };
-    }
-
-    const transaction = await this.prisma.$transaction(async (tx) => {
-      const category =
-        (await tx.category.findFirst({ where: { userId, name: RECONCILIATION_CATEGORY_NAME } })) ??
-        (await tx.category.create({ data: { userId, name: RECONCILIATION_CATEGORY_NAME } }));
-
-      return tx.transaction.create({
-        data: {
-          userId,
-          categoryId: category.id,
-          amount: diff,
-          description: RECONCILIATION_DESCRIPTION,
-          isReconciliation: true,
-        },
-      });
-    });
-
-    return { transaction, previousBalance: calculatedBalance, actualBalance: dto.actualBalance, diff };
   }
 }

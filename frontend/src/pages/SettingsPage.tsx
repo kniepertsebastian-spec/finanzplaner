@@ -1,5 +1,5 @@
 import { useAuth } from '../context/AuthContext';
-import { BalanceSettings } from '../components/settings/BalanceSettings';
+import { AccountsPanel } from '../components/settings/AccountsPanel';
 import { CategoryManager } from '../components/settings/CategoryManager';
 import { MonthCycleSettings } from '../components/settings/MonthCycleSettings';
 import { NotificationSettings } from '../components/settings/NotificationSettings';
@@ -21,7 +21,7 @@ export function SettingsPage() {
       <PasskeyManager />
       <TotpEnrollment />
       <NotificationSettings />
-      <BalanceSettings />
+      <AccountsPanel />
       <MonthCycleSettings />
       <CategoryManager />
       <RecurringTransactionsPanel />
